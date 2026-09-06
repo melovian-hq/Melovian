@@ -75,7 +75,9 @@
         toast.error("Could not save settings");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save settings");
+      toast.error(
+        err instanceof Error ? err.message : "Could not save settings",
+      );
     } finally {
       saving = false;
     }

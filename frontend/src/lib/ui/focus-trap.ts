@@ -57,7 +57,8 @@ export function focusInitial(
     }
   }
   const cancel = focusable.find(
-    (el) => el.tagName === "BUTTON" && !el.classList.contains("confirm__danger"),
+    (el) =>
+      el.tagName === "BUTTON" && !el.classList.contains("confirm__danger"),
   );
   const target = cancel ?? focusable[0];
   target.focus();

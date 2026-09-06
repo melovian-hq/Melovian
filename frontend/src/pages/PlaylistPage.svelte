@@ -21,6 +21,8 @@
   import { savePlaylistFilesToDevice } from "$lib/music/context-actions";
   import { stableItemKey } from "$lib/core/collection";
   import type { PlaylistTrack, SubsonicSong } from "$lib/subsonic";
+  import { APP_NAME } from "$lib/brand";
+  import { setPageMeta } from "$lib/seo/meta";
 
   interface Props {
     playlistId: string;
@@ -93,6 +95,19 @@
   const filteredSongs = $derived(filteredTracks.map(trackToSong));
 
   const hasSearch = $derived(searchQuery.trim().length > 0);
+
+  $effect(() => {
+    if (!playlist) return;
+    const name = playlist.name?.trim() || "Playlist";
+    const count = playlist.tracks?.length ?? 0;
+    setPageMeta({
+      title: name,
+      description:
+        count > 0
+          ? `${name} · ${count} track${count === 1 ? "" : "s"} in ${APP_NAME}.`
+          : `${name} playlist in ${APP_NAME}.`,
+    });
+  });
 
   function playAll() {
     if (filteredSongs.length === 0) return;

@@ -95,7 +95,10 @@ describe("music prefs", () => {
   });
 
   it("rejects invalid saved playback payloads", () => {
-    localStorage.setItem("mel-music-playback", JSON.stringify({ trackIds: [] }));
+    localStorage.setItem(
+      "mel-music-playback",
+      JSON.stringify({ trackIds: [] }),
+    );
     expect(loadSavedPlayback()).toBeNull();
 
     localStorage.setItem("mel-music-playback", "not-json");

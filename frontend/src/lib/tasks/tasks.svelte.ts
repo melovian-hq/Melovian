@@ -90,7 +90,8 @@ class TasksStore {
         const payload = event.payload as ScanProgressPayload;
         if (!payload?.libraryId) return;
         const name = payload.name?.trim() || "Library";
-        const phase = payload.phase === "reconciling" ? "Reconciling" : "Scanning";
+        const phase =
+          payload.phase === "reconciling" ? "Reconciling" : "Scanning";
         this.upsert({
           id: scanTaskId(payload.libraryId),
           title: `Scan ${name}`,

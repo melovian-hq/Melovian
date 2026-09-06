@@ -172,9 +172,7 @@ export async function sendSentryTestEvent(): Promise<SentryTestEventResponse> {
   };
   if (!payload.ok || !payload.eventId) {
     throw new Error(
-      payload.error ||
-        payload.message ||
-        "Test event failed: missing event id",
+      payload.error || payload.message || "Test event failed: missing event id",
     );
   }
 

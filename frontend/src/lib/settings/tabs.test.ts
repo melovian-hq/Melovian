@@ -52,9 +52,9 @@ describe("settings tabs", () => {
     expect(filterSettingsTabs(SETTINGS_TABS, "  ").map((t) => t.id)).toEqual(
       SETTINGS_TABS.map((t) => t.id),
     );
-    expect(filterSettingsTabs(SETTINGS_TABS, "playback").map((t) => t.id)).toEqual(
-      ["playback"],
-    );
+    expect(
+      filterSettingsTabs(SETTINGS_TABS, "playback").map((t) => t.id),
+    ).toEqual(["playback"]);
     const playHits = filterSettingsTabs(SETTINGS_TABS, "play").map((t) => t.id);
     expect(playHits).toContain("playback");
     expect(playHits.length).toBeGreaterThanOrEqual(1);

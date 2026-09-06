@@ -6,7 +6,10 @@
   let { size = "sm" }: Props = $props();
 </script>
 
-<span class="now-playing-bars now-playing-bars--{size} jb-motion" aria-hidden="true">
+<span
+  class="now-playing-bars now-playing-bars--{size} jb-motion"
+  aria-hidden="true"
+>
   <span class="now-playing-bars__bar"></span>
   <span class="now-playing-bars__bar"></span>
   <span class="now-playing-bars__bar"></span>

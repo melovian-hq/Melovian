@@ -81,7 +81,15 @@
     color: var(--jb-text);
   }
 
-  :where(a, button, input, select, textarea, summary, [tabindex]:not([tabindex="-1"])):focus-visible {
+  :where(
+    a,
+    button,
+    input,
+    select,
+    textarea,
+    summary,
+    [tabindex]:not([tabindex="-1"])
+  ):focus-visible {
     outline: none;
     box-shadow: var(--jb-focus-ring);
   }

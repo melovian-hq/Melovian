@@ -35,6 +35,8 @@
     resolveServerArtistArtUrl,
   } from "$lib/music/artist-artwork";
   import { stableItemKey } from "$lib/core/collection";
+  import { APP_NAME } from "$lib/brand";
+  import { setPageMeta } from "$lib/seo/meta";
 
   interface Props {
     artistId: string;
@@ -206,6 +208,21 @@
   const breadcrumbItems = $derived(
     data ? [{ label: data.artist.name }] : [{ label: "Artist" }],
   );
+
+  $effect(() => {
+    if (!data) return;
+    const name = data.artist.name?.trim() || "Artist";
+    const albumCount = data.albums.length;
+    setPageMeta({
+      title: name,
+      description:
+        albumCount > 0
+          ? `${name} · ${albumCount} album${albumCount === 1 ? "" : "s"} in ${APP_NAME}.`
+          : `Browse ${name} in ${APP_NAME}.`,
+      image: portraitUrl ?? undefined,
+      type: "profile",
+    });
+  });
 
   function onArtistHeroContextMenu(event: MouseEvent) {
     const pos = contextMenuPositionFromEvent(event);

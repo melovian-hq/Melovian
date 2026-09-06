@@ -178,13 +178,13 @@ describe("window-close", () => {
     await confirmCloseChoice({ action: "minimize", remember: true });
 
     expect(closePrompt.open).toBe(false);
-    expect(JSON.parse(localStorage.getItem("mel-desktop-integration")!)).toEqual(
-      {
-        taskbarEnabled: true,
-        closeBehavior: "background",
-        nativeTitleBar: false,
-      },
-    );
+    expect(
+      JSON.parse(localStorage.getItem("mel-desktop-integration")!),
+    ).toEqual({
+      taskbarEnabled: true,
+      closeBehavior: "background",
+      nativeTitleBar: false,
+    });
     expect(MinimizeMainWindow).toHaveBeenCalledOnce();
   });
 
@@ -204,13 +204,13 @@ describe("window-close", () => {
   it("updates taskbar integration when toggled from settings", async () => {
     setTaskbarIntegrationEnabled(false);
 
-    expect(JSON.parse(localStorage.getItem("mel-desktop-integration")!)).toEqual(
-      {
-        taskbarEnabled: false,
-        closeBehavior: "ask",
-        nativeTitleBar: false,
-      },
-    );
+    expect(
+      JSON.parse(localStorage.getItem("mel-desktop-integration")!),
+    ).toEqual({
+      taskbarEnabled: false,
+      closeBehavior: "ask",
+      nativeTitleBar: false,
+    });
     await vi.waitFor(() => {
       expect(SetTaskbarIntegrationEnabled).toHaveBeenCalledWith(false);
     });
@@ -219,13 +219,13 @@ describe("window-close", () => {
   it("persists close behavior without touching tray settings", () => {
     setCloseBehavior("quit");
 
-    expect(JSON.parse(localStorage.getItem("mel-desktop-integration")!)).toEqual(
-      {
-        taskbarEnabled: true,
-        closeBehavior: "quit",
-        nativeTitleBar: false,
-      },
-    );
+    expect(
+      JSON.parse(localStorage.getItem("mel-desktop-integration")!),
+    ).toEqual({
+      taskbarEnabled: true,
+      closeBehavior: "quit",
+      nativeTitleBar: false,
+    });
   });
 
   it("routes tray quit events to executeCloseAction quit", async () => {

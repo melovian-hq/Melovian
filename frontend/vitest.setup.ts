@@ -33,6 +33,30 @@ function stubMatchMedia(query: string) {
 }
 vi.stubGlobal("matchMedia", stubMatchMedia);
 
+// jsdom lacks the Web Animations API. Svelte transitions call
+// element.animate; return a finished-animation stand-in.
+Object.defineProperty(Element.prototype, "animate", {
+  configurable: true,
+  value: () => {
+    const animation = {
+      finished: Promise.resolve(),
+      ready: Promise.resolve(),
+      cancel: () => {},
+      finish: () => {},
+      play: () => {},
+      pause: () => {},
+      reverse: () => {},
+      addEventListener: () => {},
+      removeEventListener: () => {},
+      onfinish: null,
+      oncancel: null,
+      currentTime: 0,
+      playState: "finished",
+    };
+    return animation;
+  },
+});
+
 const storage = new Map<string, string>();
 
 beforeEach(() => {

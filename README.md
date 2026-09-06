@@ -3,7 +3,9 @@
 > [!WARNING]
 > This project is still alpha level software and being actively developed.
 
-<img src="frontend/public/logo.png" alt="Melovian logo" width="96" height="96" />
+<p align="center">
+  <img src="frontend/public/logo-lockup.png" alt="Melovian" width="420" />
+</p>
 
 Melovian plays music from a library you control. Connect [Navidrome](https://www.navidrome.org/) or any Subsonic-compatible server, or add folders on your computer and play everything in one app.
 

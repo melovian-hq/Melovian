@@ -7,6 +7,7 @@ import (
 	"io/fs"
 	"net/http"
 	"net/http/httptest"
+	"strings"
 	"testing"
 	"testing/fstest"
 )
@@ -82,7 +83,7 @@ func TestCombinedHandlerDevProxyPassthrough(t *testing.T) {
 func TestCombinedHandlerSPAFallback(t *testing.T) {
 	t.Setenv("FRONTEND_DEVSERVER_URL", "")
 	assets := fstest.MapFS{
-		"index.html": &fstest.MapFile{Data: []byte("<html>app</html>")},
+		"index.html": &fstest.MapFile{Data: []byte("<html><head><title>Shell</title></head><body>app</body></html>")},
 	}
 
 	handler := &CombinedHandler{
@@ -90,17 +91,23 @@ func TestCombinedHandlerSPAFallback(t *testing.T) {
 			w.WriteHeader(http.StatusTeapot)
 		}),
 		Assets: http.FileServer(http.FS(assets)),
+		Shell:  assets,
 	}
 
-	req := httptest.NewRequest(http.MethodGet, "/login", nil)
+	req := httptest.NewRequest(http.MethodGet, "/music/albums", nil)
+	req.Host = "music.example"
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 
 	if rec.Code != http.StatusOK {
 		t.Fatalf("status %d, want 200", rec.Code)
 	}
-	if body := rec.Body.String(); body != "<html>app</html>" {
-		t.Fatalf("body %q, want index.html content", body)
+	body := rec.Body.String()
+	if !strings.Contains(body, "<title>Albums · Melovian</title>") {
+		t.Fatalf("body missing injected title: %q", body)
+	}
+	if !strings.Contains(body, `property="og:url" content="http://music.example/music/albums"`) {
+		t.Fatalf("body missing og:url: %q", body)
 	}
 }
 

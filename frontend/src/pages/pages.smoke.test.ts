@@ -192,7 +192,9 @@ vi.mock("$lib/features/sources/store.svelte", () => ({
 vi.mock("$lib/router/router.svelte", () => ({
   router: {
     pathname: "/music",
+    search: "",
     navigate: vi.fn(),
+    match: () => null,
   },
   link: vi.fn(),
   withBase: (path: string) => path,

@@ -4,10 +4,7 @@
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { apiHeaders } from "$lib/core/http/client";
 import { isRemoteClient, resolveApiUrl } from "$lib/config/remote-server";
-import {
-  normalizeParsedLyrics,
-  type ParsedLyrics,
-} from "$lib/music/lyrics";
+import { normalizeParsedLyrics, type ParsedLyrics } from "$lib/music/lyrics";
 
 export interface WhisperSegment {
   startMs: number;
@@ -42,7 +39,9 @@ async function fetchAudioBuffer(url: string): Promise<ArrayBuffer> {
     credentials: isRemoteClient() ? "include" : "same-origin",
   });
   if (!response.ok) {
-    throw new Error(`Could not download track audio (status ${response.status})`);
+    throw new Error(
+      `Could not download track audio (status ${response.status})`,
+    );
   }
   return response.arrayBuffer();
 }
@@ -69,7 +68,10 @@ async function decodeToMonoPcm(data: ArrayBuffer): Promise<Float32Array> {
 }
 
 /** Encode 16 kHz mono float PCM as a 16-bit WAV blob. */
-export function encodeWav16(pcm: Float32Array, sampleRate = WHISPER_SAMPLE_RATE): Blob {
+export function encodeWav16(
+  pcm: Float32Array,
+  sampleRate = WHISPER_SAMPLE_RATE,
+): Blob {
   const dataLength = pcm.length * 2;
   const buffer = new ArrayBuffer(44 + dataLength);
   const view = new DataView(buffer);
@@ -93,7 +95,11 @@ export function encodeWav16(pcm: Float32Array, sampleRate = WHISPER_SAMPLE_RATE)
   view.setUint32(40, dataLength, true);
   for (let i = 0; i < pcm.length; i++) {
     const sample = Math.max(-1, Math.min(1, pcm[i] ?? 0));
-    view.setInt16(44 + i * 2, sample < 0 ? sample * 0x8000 : sample * 0x7fff, true);
+    view.setInt16(
+      44 + i * 2,
+      sample < 0 ? sample * 0x8000 : sample * 0x7fff,
+      true,
+    );
   }
   return new Blob([buffer], { type: "audio/wav" });
 }
@@ -116,16 +122,18 @@ async function postWhisperRequest(
     WHISPER_REQUEST_TIMEOUT_MS,
   );
   try {
-    const response = await fetch(resolveApiUrl(ApiPaths.musicLyricsWhisper(trackId)), {
-      credentials: isRemoteClient() ? "include" : "same-origin",
-      ...input,
-      signal: controller.signal,
-      headers: { ...apiHeaders(), ...(input.headers ?? {}) },
-    });
+    const response = await fetch(
+      resolveApiUrl(ApiPaths.musicLyricsWhisper(trackId)),
+      {
+        credentials: isRemoteClient() ? "include" : "same-origin",
+        ...input,
+        signal: controller.signal,
+        headers: { ...apiHeaders(), ...(input.headers ?? {}) },
+      },
+    );
     if (response.status === 404) return null;
     const payload = (await response.json().catch(() => null)) as
-      | (Partial<ParsedLyrics> & { message?: string })
-      | null;
+      (Partial<ParsedLyrics> & { message?: string }) | null;
     if (!response.ok) {
       throw new Error(payload?.message ?? "Whisper transcription failed");
     }

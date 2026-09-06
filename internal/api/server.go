@@ -531,39 +531,6 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	httputil.WriteJSON(w, http.StatusOK, payload)
 }
 
-type CombinedHandler struct {
-	API    http.Handler
-	Assets http.Handler
-}
-
-func (h *CombinedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
-	if isAPIPath(r.URL.Path) {
-		h.API.ServeHTTP(w, r)
-		return
-	}
-
-	// In dev, Wails proxies to the Vite server. Do not SPA-fallback paths like
-	// /@vite/client here or the webview receives HTML with a JS MIME type.
-	if frontendDevServerEnabled() {
-		h.Assets.ServeHTTP(w, r)
-		return
-	}
-
-	if isStaticAssetPath(r.URL.Path) {
-		h.Assets.ServeHTTP(w, r)
-		return
-	}
-
-	if r.Method == http.MethodGet && needsSPAFallback(r.URL.Path) {
-		cloned := r.Clone(r.Context())
-		cloned.URL.Path = "/"
-		h.Assets.ServeHTTP(w, cloned)
-		return
-	}
-
-	h.Assets.ServeHTTP(w, r)
-}
-
 func frontendDevServerEnabled() bool {
 	return os.Getenv("FRONTEND_DEVSERVER_URL") != ""
 }

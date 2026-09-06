@@ -222,7 +222,7 @@
   {#if extensionFeatures.lyricsWhisper}
     <Field
       label="Whisper server URL"
-      hint={"Base URL of a whisper.cpp-compatible server or transcriptasm host (for example http://127.0.0.1:8080). Used to generate synced lyrics from track audio. Requires the Lyrics Whisper extension."}
+      hint="Base URL of a whisper.cpp-compatible server or transcriptasm host (for example http://127.0.0.1:8080). Used to generate synced lyrics from track audio. Requires the Lyrics Whisper extension."
     >
       <input
         type="text"

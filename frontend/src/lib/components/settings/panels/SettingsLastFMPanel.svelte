@@ -84,7 +84,9 @@
         toast.error("Credentials are not valid");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Credential test failed");
+      toast.error(
+        err instanceof Error ? err.message : "Credential test failed",
+      );
     } finally {
       testing = false;
     }
@@ -109,17 +111,16 @@
         toast.error("Could not save settings");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save settings");
+      toast.error(
+        err instanceof Error ? err.message : "Could not save settings",
+      );
     } finally {
       saving = false;
     }
   }
 </script>
 
-<SettingsCard
-  title="Last.fm"
-  description="Scrobble listens to Last.fm."
->
+<SettingsCard title="Last.fm" description="Scrobble listens to Last.fm.">
   <div class="lastfm-settings">
     {#if !enabled}
       <p class="lastfm-settings__note">
@@ -136,9 +137,7 @@
       bind:value={endpoint}
       disabled={!settings}
     />
-    <label class="lastfm-settings__label" for="lastfm-api-key">
-      API key
-    </label>
+    <label class="lastfm-settings__label" for="lastfm-api-key"> API key </label>
     <Input
       id="lastfm-api-key"
       type="text"
@@ -172,18 +171,10 @@
       </p>
     {/if}
     <div class="lastfm-settings__actions">
-      <Button
-        size="sm"
-        disabled={!canTest()}
-        onclick={() => void test()}
-      >
+      <Button size="sm" disabled={!canTest()} onclick={() => void test()}>
         {testing ? "Testing..." : "Test credentials"}
       </Button>
-      <Button
-        size="sm"
-        disabled={!canSave()}
-        onclick={() => void save()}
-      >
+      <Button size="sm" disabled={!canSave()} onclick={() => void save()}>
         {saving ? "Saving..." : "Save credentials"}
       </Button>
     </div>

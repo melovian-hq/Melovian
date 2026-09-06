@@ -6,6 +6,7 @@ import { flushSync, mount, unmount } from "svelte";
 import type { QueueTrack, SubsonicSong } from "$lib/subsonic";
 import type { ParsedLyrics } from "$lib/music/lyrics";
 import { layout } from "$lib/components/layout/layout.svelte";
+import { confirmDialog } from "$lib/ui/confirm.svelte";
 
 vi.hoisted(() => {
   const storage = new Map<string, string>();
@@ -331,7 +332,8 @@ describe("NowPlayingPage", () => {
     cleanup();
   });
 
-  it("renders queue items and handles queue actions", () => {
+  it("renders queue items and handles queue actions", async () => {
+    vi.spyOn(confirmDialog, "confirm").mockResolvedValue(true);
     music.currentTrack = sampleTrack;
     music.queue = [sampleTrack, queueTrack];
     music.queueIndex = 0;
@@ -343,7 +345,9 @@ describe("NowPlayingPage", () => {
     target
       .querySelector(".now-playing-queue__clear")
       ?.dispatchEvent(new MouseEvent("click", { bubbles: true }));
-    expect(music.clearQueue).toHaveBeenCalledTimes(1);
+    await vi.waitFor(() => {
+      expect(music.clearQueue).toHaveBeenCalledTimes(1);
+    });
 
     const queueItems = target.querySelectorAll(".now-playing-queue__item");
     (queueItems[1] as HTMLDivElement).click();

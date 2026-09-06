@@ -138,9 +138,7 @@
   @media (min-width: 1024px) {
     .settings-nav {
       position: sticky;
-      top: calc(
-        var(--jb-window-chrome-offset, 0px) + var(--jb-space-4)
-      );
+      top: calc(var(--jb-window-chrome-offset, 0px) + var(--jb-space-4));
       align-self: flex-start;
       flex-direction: column;
       align-items: stretch;

@@ -84,11 +84,7 @@ export async function updateMetadataTrack(
 }
 
 export type MetadataLookupSource =
-  | "itunes"
-  | "musicbrainz"
-  | "deezer"
-  | "theaudiodb"
-  | "all";
+  "itunes" | "musicbrainz" | "deezer" | "theaudiodb" | "all";
 
 export const metadataLookupSources: Array<{
   id: MetadataLookupSource;

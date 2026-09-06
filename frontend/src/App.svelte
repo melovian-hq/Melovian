@@ -1,6 +1,6 @@
 <script lang="ts">
   import { routes } from "./routes";
-  import { APP_NAME } from "$lib/brand";
+  import { APP_DESCRIPTION, APP_NAME } from "$lib/brand";
   import { music } from "$lib/config/music.svelte";
   import { auth } from "$lib/features/auth/store.svelte";
   import { router } from "$lib/router/router.svelte";
@@ -38,6 +38,7 @@
     syncSidebarWidthEffect,
   } from "$lib/app/bootstrap";
   import { layout } from "$lib/components/layout/layout.svelte";
+  import { applyPageMeta, metaFromRoute } from "$lib/seo/meta";
 
   let bootstrapped = $state(false);
 
@@ -108,6 +109,22 @@
   });
 
   const match = $derived(router.match(routes));
+
+  $effect(() => {
+    const current = match;
+    const path = `${router.pathname}${router.search}`;
+    if (!current) {
+      applyPageMeta({
+        title: "Not found",
+        description: APP_DESCRIPTION,
+        path,
+        index: false,
+      });
+      return;
+    }
+    applyPageMeta(metaFromRoute(current.route, path));
+  });
+
   const playerChrome = $derived(music.playerVisible);
   const playerMini = $derived(
     music.playerLayout === "mini" && music.playerVisible,

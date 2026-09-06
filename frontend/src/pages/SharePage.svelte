@@ -14,6 +14,8 @@
   import type { QueueTrack } from "$lib/subsonic/types";
   import { downloadFromUrl, sanitizeFilename } from "$lib/utils/download";
   import { toast } from "$lib/ui/toast.svelte";
+  import { APP_NAME } from "$lib/brand";
+  import { setPageMeta } from "$lib/seo/meta";
 
   interface Props {
     token: string;
@@ -134,6 +136,19 @@
   const unlocked = $derived(
     Boolean(share) && !share?.requiresPassword && !share?.requiresLogin,
   );
+
+  $effect(() => {
+    if (!share) return;
+    const shareTitle = title.trim() || "Shared playlist";
+    const count = tracks.length;
+    setPageMeta({
+      title: shareTitle,
+      description:
+        count > 0
+          ? `${shareTitle} · ${count} track${count === 1 ? "" : "s"} shared via ${APP_NAME}.`
+          : `A playlist shared via ${APP_NAME}.`,
+    });
+  });
 </script>
 
 <AppShell compactTop>

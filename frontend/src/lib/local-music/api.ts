@@ -4,7 +4,6 @@
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { requireOk } from "$lib/core/http/errors";
 import { resolveMediaUrl } from "$lib/config/runtime";
-import { ApiPaths } from "$lib/core/http/api-paths";
 import {
   lyricsMatchText,
   lyricsSnippet,
@@ -286,10 +285,7 @@ export async function unstar(id: string): Promise<void> {
 // External scrobblers (Last.fm, ListenBrainz, Rocksky) are dispatched
 // generically by the player, so local scrobble only marks the track played in
 // the built-in listen history.
-export async function scrobble(
-  id: string,
-  submission: boolean,
-): Promise<void> {
+export async function scrobble(id: string, submission: boolean): Promise<void> {
   if (!submission) return;
   await musicApi.markTrackPlayed(id);
 }

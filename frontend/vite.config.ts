@@ -19,6 +19,8 @@ const base = process.env.VITE_BASE || "/";
 // rebrand. The defaults here also feed the %VITE_APP_*% tokens in index.html.
 process.env.VITE_APP_NAME ??= "Melovian";
 process.env.VITE_APP_SLUG ??= "melovian";
+process.env.VITE_APP_DESCRIPTION ??=
+  "Music player for local libraries and Subsonic-compatible servers";
 
 /** Match Go/server stamps: env, live git, optional .build-version, then package.json. */
 function resolveAppVersion(): string {

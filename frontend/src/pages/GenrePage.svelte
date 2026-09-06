@@ -17,6 +17,8 @@
   import { filterByLocalSearch } from "$lib/utils/local-search";
   import type { SubsonicSong } from "$lib/subsonic";
   import { rejectUnknownTracks } from "$lib/music/unknown-metadata";
+  import { APP_NAME } from "$lib/brand";
+  import { setPageMeta } from "$lib/seo/meta";
 
   interface Props {
     genre: string;
@@ -25,6 +27,14 @@
   let { genre }: Props = $props();
 
   const name = $derived(decodeURIComponent(genre));
+
+  $effect(() => {
+    const genreName = name.trim() || "Genre";
+    setPageMeta({
+      title: genreName,
+      description: `Browse ${genreName} tracks in ${APP_NAME}.`,
+    });
+  });
 
   const PAGE_SIZE = 200;
   let loading = $state(true);

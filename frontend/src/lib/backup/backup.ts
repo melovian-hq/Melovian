@@ -2,7 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
-import { APP_NAME, STORAGE_BACKUP_PREFIXES, BACKUP_FILE_BASENAME } from "$lib/brand";
+import {
+  APP_NAME,
+  STORAGE_BACKUP_PREFIXES,
+  BACKUP_FILE_BASENAME,
+} from "$lib/brand";
 import * as instanceApi from "$lib/features/instances/api";
 import * as libraryApi from "$lib/features/local-libraries/api";
 import * as musicApi from "$lib/music/api";
@@ -45,8 +49,7 @@ export const BACKUP_SECTIONS: BackupSectionMeta[] = [
   {
     id: "serverSettings",
     label: "Server settings",
-    description:
-      `EQ, connection, cache, and lyrics settings stored on this ${APP_NAME} server.`,
+    description: `EQ, connection, cache, and lyrics settings stored on this ${APP_NAME} server.`,
   },
   {
     id: "playlists",

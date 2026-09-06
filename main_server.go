@@ -154,8 +154,10 @@ func main() {
 	}
 
 	handler := api.IPAllowlistMiddleware(cfg.AllowedIPs, cfg.TrustProxy, &api.CombinedHandler{
-		API:    apiServer.Handler(),
-		Assets: api.StaticAssetHandler(dist),
+		API:       apiServer.Handler(),
+		Assets:    api.StaticAssetHandler(dist),
+		Shell:     dist,
+		PublicURL: cfg.PublicURL,
 	})
 
 	httpServer := &http.Server{

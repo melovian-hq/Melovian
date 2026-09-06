@@ -305,7 +305,9 @@ export async function testListenBrainzToken(
   return (await response.json()) as { ok: boolean; userName?: string };
 }
 
-export async function listenbrainzNowPlaying(track: RockskyTrack): Promise<void> {
+export async function listenbrainzNowPlaying(
+  track: RockskyTrack,
+): Promise<void> {
   await fetchWithRetry(ApiPaths.musicListenBrainzNowPlaying, {
     method: "POST",
     headers: apiHeaders("application/json"),
@@ -339,7 +341,10 @@ export async function getLastFMSettings(): Promise<LastFMSettings | null> {
 }
 
 export async function saveLastFMSettings(
-  settings: Pick<LastFMSettings, "apiKey" | "apiSecret" | "sessionKey" | "endpoint">,
+  settings: Pick<
+    LastFMSettings,
+    "apiKey" | "apiSecret" | "sessionKey" | "endpoint"
+  >,
 ): Promise<LastFMSettings | null> {
   const response = await fetchWithRetry(ApiPaths.musicLastFMSettings, {
     method: "PUT",
@@ -854,7 +859,8 @@ async function lyricsRequest(
     // Resolve remote base URL, but do not use fetchWithRetry: that helper
     // retries 404s, which is the normal "no lyrics" response.
     return await fetch(resolveApiUrl(input), {
-      credentials: init.credentials ?? (crossOrigin ? "include" : "same-origin"),
+      credentials:
+        init.credentials ?? (crossOrigin ? "include" : "same-origin"),
       ...init,
       signal: controller.signal,
       headers: {

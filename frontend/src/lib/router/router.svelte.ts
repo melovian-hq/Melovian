@@ -15,7 +15,12 @@ export interface RouteDefinition {
   path: string;
   component?: RouteComponent;
   load?: RouteLoader;
+  /** Short page title used for document.title and Open Graph. */
   title?: string;
+  /** Meta description for this route. Falls back to the app description. */
+  description?: string;
+  /** When false, emit noindex. Defaults to true. */
+  index?: boolean;
 }
 
 function appBase(): string {

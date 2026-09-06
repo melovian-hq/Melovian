@@ -23,6 +23,15 @@ export const APP_SLUG: string =
     (import.meta.env?.VITE_APP_SLUG as string | undefined)) ||
   "melovian";
 
+/** One-line product blurb for meta tags, Open Graph, and installers. */
+export const APP_DESCRIPTION: string =
+  (typeof import.meta !== "undefined" &&
+    (import.meta.env?.VITE_APP_DESCRIPTION as string | undefined)) ||
+  "Music player for local libraries and Subsonic-compatible servers";
+
+/** Default Open Graph / Twitter card image (site-root path). */
+export const DEFAULT_OG_IMAGE = "/og.png";
+
 /** Local and session storage key prefix. Changing this orphans saved settings. */
 export const STORAGE_PREFIX = APP_SLUG;
 

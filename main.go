@@ -76,7 +76,7 @@ func main() {
 
 	app := application.New(application.Options{
 		Name:        brand.Name,
-		Description: "Music player for local libraries and Subsonic-compatible servers",
+		Description: brand.Description,
 		Icon:        appIcon,
 		Services: []application.Service{
 			application.NewService(mediaSvc),

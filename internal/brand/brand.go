@@ -19,6 +19,10 @@ var (
 	Name = "Melovian"
 	// Slug is the lowercase identifier ("melovian").
 	Slug = "melovian"
+	// Description is the one-line product blurb for meta tags and installers.
+	Description = "Music player for local libraries and Subsonic-compatible servers"
+	// OGImage is the default Open Graph image path on the site root.
+	OGImage = "/og.png"
 )
 
 // ManifestName is the extension manifest file name.

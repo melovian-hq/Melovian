@@ -36,9 +36,9 @@ vi.mock("$lib/core/logger", () => ({
 
 describe("isTransientNetworkError", () => {
   it("treats Failed to fetch as transient", () => {
-    expect(
-      isTransientNetworkError(new TypeError("Failed to fetch")),
-    ).toBe(true);
+    expect(isTransientNetworkError(new TypeError("Failed to fetch"))).toBe(
+      true,
+    );
   });
 
   it("treats AbortError as transient", () => {

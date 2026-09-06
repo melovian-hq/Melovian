@@ -122,6 +122,18 @@ jobs:
           install-nsis: ${{ matrix.install_nsis && 'true' || 'false' }}
           install-macos-deps: ${{ matrix.macos_deps && 'true' || 'false' }}
 
+      - name: Install ImageMagick
+        if: matrix.android || matrix.ios
+        shell: bash
+        run: |
+          set -euo pipefail
+          if [ "${{ runner.os }}" = "macOS" ]; then
+            brew install imagemagick
+          else
+            sudo apt-get update
+            sudo apt-get install -y --no-install-recommends imagemagick
+          fi
+
       - name: Setup Android SDK
         if: matrix.android
         uses: ./.github/actions/setup-android

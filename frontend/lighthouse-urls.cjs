@@ -27,6 +27,7 @@ const DEMO = {
  * Keep in sync with frontend/src/routes.ts (demo-reachable paths only).
  */
 const PATHS = [
+  "/setup",
   "/music",
   "/music/search",
   "/music/artists",

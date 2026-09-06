@@ -56,12 +56,7 @@ class AuthStore {
       this.error =
         err instanceof Error ? err.message : "Failed to load auth status";
       this.statusLoaded = false;
-      logger.error(
-        "Failed to load auth status",
-        err,
-        undefined,
-        "auth.init",
-      );
+      logger.error("Failed to load auth status", err, undefined, "auth.init");
     } finally {
       this.loading = false;
     }

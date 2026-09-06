@@ -2,11 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
-import {
-  EXT_LYRICS,
-  EXT_METADATA,
-  extensionFeatures,
-} from "./features.svelte";
+import { EXT_LYRICS, EXT_METADATA, extensionFeatures } from "./features.svelte";
 import { visibleSettingsTabs } from "$lib/settings/tabs";
 
 const EXT_DEMO_THEME = "demo-theme";

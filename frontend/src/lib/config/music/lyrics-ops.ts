@@ -175,7 +175,12 @@ export async function fetchCurrentLyrics(
     }
     const message =
       err instanceof Error ? err.message : "Failed to fetch lyrics";
-    logger.error("Failed to fetch lyrics", err, { trackId: track.id }, "lyrics");
+    logger.error(
+      "Failed to fetch lyrics",
+      err,
+      { trackId: track.id },
+      "lyrics",
+    );
     toast.error(message);
     tasks.finishLyricsFetch(lyricsTaskId, false, message);
     return null;

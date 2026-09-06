@@ -53,6 +53,11 @@ func (s *Server) downloadTrackMu(instanceID, trackID string) *sync.Mutex {
 
 func (s *Server) openDownloadPath(instanceID, path string) (*os.File, error) {
 	jail := s.downloadDir(instanceID)
+	// Canonicalize the jail so a symlinked data dir (macOS /var -> /private/var)
+	// matches the resolved file path below.
+	if resolved, err := filepath.EvalSymlinks(jail); err == nil {
+		jail = resolved
+	}
 	cleaned := filepath.Clean(path)
 	if err := osutil.PathEscapesRoot(jail, cleaned); err != nil {
 		return nil, os.ErrNotExist

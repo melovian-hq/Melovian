@@ -31,6 +31,8 @@
     groupTrackVersions,
   } from "$lib/music/track-versions";
   import type { SubsonicSong } from "$lib/subsonic";
+  import { APP_NAME } from "$lib/brand";
+  import { setPageMeta } from "$lib/seo/meta";
 
   interface Props {
     albumId: string;
@@ -93,6 +95,20 @@
       ? coverArtUrl(music.config, album.album.coverArt ?? album.album.id, 256)
       : null,
   );
+
+  $effect(() => {
+    if (!album) return;
+    const name = album.album.name?.trim() || "Album";
+    const artist = album.album.artist?.trim() || "";
+    setPageMeta({
+      title: artist ? `${name} · ${artist}` : name,
+      description: artist
+        ? `Listen to ${name} by ${artist} in ${APP_NAME}.`
+        : `Listen to ${name} in ${APP_NAME}.`,
+      image: coverImage ?? undefined,
+      type: "music.album",
+    });
+  });
 
   const trackGroups = $derived(album ? groupTrackVersions(album.songs) : []);
 

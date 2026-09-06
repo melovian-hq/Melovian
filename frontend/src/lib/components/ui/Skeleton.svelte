@@ -7,10 +7,7 @@
   let { class: className = "", variant = "block" }: Props = $props();
 </script>
 
-<div
-  class="skeleton skeleton--{variant} {className}"
-  aria-hidden="true"
-></div>
+<div class="skeleton skeleton--{variant} {className}" aria-hidden="true"></div>
 
 <style>
   .skeleton {
