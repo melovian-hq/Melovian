@@ -83,15 +83,9 @@ func splitPatch(patch []byte) (ctrl, diff, extra []byte, newSize int64, err erro
 // patchStep applies one control triple: add addLen diff bytes, copy
 // extraLen literal bytes, seek the old cursor by seekAdj.
 func patchStep(oldData, newData []byte, oldPos, newPos, newSize int64, ctrlR, diffR, extraR io.Reader) (int64, int64, error) {
-	var triple [24]byte
-	if _, err := io.ReadFull(ctrlR, triple[:]); err != nil {
-		return 0, 0, fmt.Errorf("read control entry: %w", err)
-	}
-	addLen := offtin(triple[0:8])
-	extraLen := offtin(triple[8:16])
-	seekAdj := offtin(triple[16:24])
-	if addLen < 0 || extraLen < 0 || newPos+addLen > newSize || newPos+extraLen > newSize {
-		return 0, 0, errors.New("corrupt control entry")
+	addLen, extraLen, seekAdj, err := readCtrl(ctrlR, newPos, newSize)
+	if err != nil {
+		return 0, 0, err
 	}
 	if _, err := io.ReadFull(diffR, newData[newPos:newPos+addLen]); err != nil {
 		return 0, 0, fmt.Errorf("read diff data: %w", err)
@@ -101,14 +95,25 @@ func patchStep(oldData, newData []byte, oldPos, newPos, newSize int64, ctrlR, di
 			newData[newPos+i] += oldData[op]
 		}
 	}
-	newPos += addLen
-	oldPos += addLen
-	if _, err := io.ReadFull(extraR, newData[newPos:newPos+extraLen]); err != nil {
+	if _, err := io.ReadFull(extraR, newData[newPos+addLen:newPos+addLen+extraLen]); err != nil {
 		return 0, 0, fmt.Errorf("read extra data: %w", err)
 	}
-	newPos += extraLen
-	oldPos += seekAdj
-	return oldPos, newPos, nil
+	return oldPos + addLen + seekAdj, newPos + addLen + extraLen, nil
+}
+
+// readCtrl reads and validates one 24-byte control triple.
+func readCtrl(r io.Reader, newPos, newSize int64) (add, extra, seek int64, err error) {
+	var triple [24]byte
+	if _, err := io.ReadFull(r, triple[:]); err != nil {
+		return 0, 0, 0, fmt.Errorf("read control entry: %w", err)
+	}
+	add = offtin(triple[0:8])
+	extra = offtin(triple[8:16])
+	seek = offtin(triple[16:24])
+	if add < 0 || extra < 0 || newPos+add > newSize || newPos+add+extra > newSize {
+		return 0, 0, 0, errors.New("corrupt control entry")
+	}
+	return add, extra, seek, nil
 }
 
 func openPatchStreams(ctrl, diff, extra []byte) (io.Reader, io.Reader, io.Reader, error) {

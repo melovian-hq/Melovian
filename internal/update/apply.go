@@ -12,6 +12,7 @@ import (
 	"io"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
 )
 
@@ -36,22 +37,14 @@ func binaryEntry(name, slug string) bool {
 	return strings.HasPrefix(base, slug) && !strings.Contains(base, ".")
 }
 
-// safeJoin joins destDir and an archive entry's base name, rejecting any
-// entry whose cleaned path would escape destDir. The entry name is never
-// used verbatim: only its base name survives.
-func safeJoin(destDir, name string) (string, error) {
-	if !filepath.IsLocal(name) {
-		return "", fmt.Errorf("unsafe archive entry name: %q", name)
+// stagedName is the fixed output name for an extracted binary. Archive
+// entry names are never used in the destination path, so a hostile archive
+// cannot redirect the write (zip-slip) no matter what it contains.
+func stagedName(destDir, slug string) string {
+	if runtime.GOOS == "windows" {
+		return filepath.Join(destDir, slug+".exe")
 	}
-	base := filepath.Base(filepath.Clean("/" + name))
-	if base == "." || base == ".." || base == "/" {
-		return "", fmt.Errorf("unsafe archive entry name: %q", name)
-	}
-	out := filepath.Join(destDir, base)
-	if rel, err := filepath.Rel(destDir, out); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
-		return "", fmt.Errorf("archive entry escapes destination: %q", name)
-	}
-	return out, nil
+	return filepath.Join(destDir, slug)
 }
 
 func extractTarGz(path, destDir, slug string) (string, error) {
@@ -65,7 +58,7 @@ func extractTarGz(path, destDir, slug string) (string, error) {
 		return "", err
 	}
 	tr := tar.NewReader(gz)
-	var fallback string
+	sawFile := false
 	for {
 		hdr, err := tr.Next()
 		if err == io.EOF {
@@ -77,18 +70,12 @@ func extractTarGz(path, destDir, slug string) (string, error) {
 		if hdr.Typeflag != tar.TypeReg {
 			continue
 		}
+		sawFile = true
 		if binaryEntry(hdr.Name, slug) {
-			out, err := safeJoin(destDir, hdr.Name)
-			if err != nil {
-				return "", err
-			}
-			return writeExtracted(tr, out, hdr.FileInfo().Mode())
-		}
-		if fallback == "" {
-			fallback = hdr.Name
+			return writeExtracted(tr, stagedName(destDir, slug), hdr.FileInfo().Mode())
 		}
 	}
-	if fallback == "" {
+	if !sawFile {
 		return "", errors.New("archive contains no files")
 	}
 	return "", fmt.Errorf("no %s binary found in archive", slug)
@@ -108,12 +95,7 @@ func extractZip(path, destDir, slug string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		outPath, err := safeJoin(destDir, f.Name)
-		if err != nil {
-			rc.Close()
-			return "", err
-		}
-		out, werr := writeExtracted(rc, outPath, f.Mode())
+		out, werr := writeExtracted(rc, stagedName(destDir, slug), f.Mode())
 		rc.Close()
 		if werr != nil {
 			return "", werr

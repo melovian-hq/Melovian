@@ -83,15 +83,24 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 		BytesDownloaded: downloaded,
 		ReleaseURL:      releaseURL(rel, latest),
 	}
-	if !opts.NoRestart && strings.TrimSpace(opts.RestartCommand) != "" {
-		report(opts.OnProgress, Progress{Stage: StageRestart, Message: "Restarting " + brand.Slug})
-		if err := runRestart(ctx, opts.RestartCommand); err != nil {
-			return result, fmt.Errorf("update installed but restart failed: %w", err)
-		}
-		result.Restarted = true
+	if err := maybeRestart(ctx, opts, result); err != nil {
+		return result, err
 	}
 	report(opts.OnProgress, Progress{Stage: StageDone, Message: "Updated to " + latest.Version})
 	return result, nil
+}
+
+// maybeRestart runs the caller-supplied restart command after a swap.
+func maybeRestart(ctx context.Context, opts Options, result *ApplyResult) error {
+	if opts.NoRestart || strings.TrimSpace(opts.RestartCommand) == "" {
+		return nil
+	}
+	report(opts.OnProgress, Progress{Stage: StageRestart, Message: "Restarting " + brand.Slug})
+	if err := runRestart(ctx, opts.RestartCommand); err != nil {
+		return fmt.Errorf("update installed but restart failed: %w", err)
+	}
+	result.Restarted = true
+	return nil
 }
 
 // resolveRelease fetches the release asset list and its verified checksums
