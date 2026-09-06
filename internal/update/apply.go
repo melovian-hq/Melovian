@@ -40,13 +40,15 @@ func binaryEntry(name, slug string) bool {
 // entry whose cleaned path would escape destDir. The entry name is never
 // used verbatim: only its base name survives.
 func safeJoin(destDir, name string) (string, error) {
-	clean := filepath.Clean("/" + name)
-	base := filepath.Base(clean)
-	if base == "." || base == ".." || base == "/" || strings.ContainsRune(base, os.PathSeparator) {
+	if !filepath.IsLocal(name) {
+		return "", fmt.Errorf("unsafe archive entry name: %q", name)
+	}
+	base := filepath.Base(filepath.Clean("/" + name))
+	if base == "." || base == ".." || base == "/" {
 		return "", fmt.Errorf("unsafe archive entry name: %q", name)
 	}
 	out := filepath.Join(destDir, base)
-	if rel, err := filepath.Rel(destDir, out); err != nil || strings.HasPrefix(rel, "..") {
+	if rel, err := filepath.Rel(destDir, out); err != nil || rel == ".." || strings.HasPrefix(rel, ".."+string(os.PathSeparator)) {
 		return "", fmt.Errorf("archive entry escapes destination: %q", name)
 	}
 	return out, nil

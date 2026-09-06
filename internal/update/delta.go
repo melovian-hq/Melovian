@@ -39,23 +39,10 @@ func offtin(buf []byte) int64 {
 
 // ApplyPatch applies a bsdiff40 patch to oldData and returns the new bytes.
 func ApplyPatch(oldData, patch []byte) ([]byte, error) {
-	if len(patch) < bsdiffHeaderLen || string(patch[:8]) != bsdiffMagic {
-		return nil, errors.New("not a BSDIFF40 patch")
+	ctrl, diff, extra, newSize, err := splitPatch(patch)
+	if err != nil {
+		return nil, err
 	}
-	ctrlLen := offtin(patch[8:16])
-	diffLen := offtin(patch[16:24])
-	newSize := offtin(patch[24:32])
-	if ctrlLen < 0 || diffLen < 0 || newSize < 0 {
-		return nil, errors.New("corrupt patch header")
-	}
-	end := int64(len(patch))
-	if bsdiffHeaderLen+ctrlLen > end || bsdiffHeaderLen+ctrlLen+diffLen > end {
-		return nil, errors.New("truncated patch")
-	}
-	ctrl := patch[bsdiffHeaderLen : bsdiffHeaderLen+ctrlLen]
-	diff := patch[bsdiffHeaderLen+ctrlLen : bsdiffHeaderLen+ctrlLen+diffLen]
-	extra := patch[bsdiffHeaderLen+ctrlLen+diffLen:]
-
 	ctrlR, diffR, extraR, err := openPatchStreams(ctrl, diff, extra)
 	if err != nil {
 		return nil, err
@@ -64,13 +51,33 @@ func ApplyPatch(oldData, patch []byte) ([]byte, error) {
 	newData := make([]byte, newSize)
 	var oldPos, newPos int64
 	for newPos < newSize {
-		var err error
 		oldPos, newPos, err = patchStep(oldData, newData, oldPos, newPos, newSize, ctrlR, diffR, extraR)
 		if err != nil {
 			return nil, err
 		}
 	}
 	return newData, nil
+}
+
+// splitPatch validates the BSDIFF40 header and returns the three compressed
+// blocks and the expected output size.
+func splitPatch(patch []byte) (ctrl, diff, extra []byte, newSize int64, err error) {
+	if len(patch) < bsdiffHeaderLen || string(patch[:8]) != bsdiffMagic {
+		return nil, nil, nil, 0, errors.New("not a BSDIFF40 patch")
+	}
+	ctrlLen := offtin(patch[8:16])
+	diffLen := offtin(patch[16:24])
+	newSize = offtin(patch[24:32])
+	if ctrlLen < 0 || diffLen < 0 || newSize < 0 {
+		return nil, nil, nil, 0, errors.New("corrupt patch header")
+	}
+	end := int64(len(patch))
+	if bsdiffHeaderLen+ctrlLen > end || bsdiffHeaderLen+ctrlLen+diffLen > end {
+		return nil, nil, nil, 0, errors.New("truncated patch")
+	}
+	return patch[bsdiffHeaderLen : bsdiffHeaderLen+ctrlLen],
+		patch[bsdiffHeaderLen+ctrlLen : bsdiffHeaderLen+ctrlLen+diffLen],
+		patch[bsdiffHeaderLen+ctrlLen+diffLen:], newSize, nil
 }
 
 // patchStep applies one control triple: add addLen diff bytes, copy

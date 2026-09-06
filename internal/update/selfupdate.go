@@ -39,9 +39,9 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 
 	target := opts.Target
 	if target == "" {
-		var err error
-		target, err = selfPath()
-		if err != nil {
+		if t, err := selfPath(); err == nil {
+			target = t
+		} else {
 			return nil, fmt.Errorf("resolve executable path: %w", err)
 		}
 	}
@@ -55,26 +55,18 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 		return &ApplyResult{Version: currentVersion, Path: target, Method: "none"}, nil
 	}
 
-	rel, relErr := fetchRelease(ctx, client, latest.Tag)
-	if relErr != nil {
-		// The Atom feed already proved the tag exists. A missing asset list
-		// only blocks the delta/preferred-name lookup, not the download.
-		rel = nil
-	}
-
-	sums, err := fetchVerifiedChecksums(ctx, client, rel, latest.Tag)
+	rel, sums, err := resolveRelease(ctx, client, latest.Tag)
 	if err != nil {
 		return nil, err
 	}
 
-	suffix := PlatformSuffix(opts.ArchSuffix)
 	staging, err := os.MkdirTemp(filepath.Dir(target), ".melovian-update-*")
 	if err != nil {
 		return nil, fmt.Errorf("create staging dir next to target: %w", err)
 	}
 	defer os.RemoveAll(staging)
 
-	staged, method, downloaded, err := fetchNewBinary(ctx, client, rel, latest.Tag, currentVersion, suffix, target, staging, sums, opts)
+	staged, method, downloaded, err := fetchNewBinary(ctx, client, rel, latest.Tag, currentVersion, PlatformSuffix(opts.ArchSuffix), target, staging, sums, opts)
 	if err != nil {
 		return nil, err
 	}
@@ -100,6 +92,23 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 	}
 	report(opts.OnProgress, Progress{Stage: StageDone, Message: "Updated to " + latest.Version})
 	return result, nil
+}
+
+// resolveRelease fetches the release asset list and its verified checksums
+// for a tag. The asset list may be nil when the API is unreachable; the
+// deterministic download URLs still work.
+func resolveRelease(ctx context.Context, client *http.Client, tag string) (*ghRelease, map[string]string, error) {
+	rel, relErr := fetchRelease(ctx, client, tag)
+	if relErr != nil {
+		// The Atom feed already proved the tag exists. A missing asset list
+		// only blocks the delta/preferred-name lookup, not the download.
+		rel = nil
+	}
+	sums, err := fetchVerifiedChecksums(ctx, client, rel, tag)
+	if err != nil {
+		return nil, nil, err
+	}
+	return rel, sums, nil
 }
 
 // resolveTarget picks the release to install: the pinned TargetVersion when
