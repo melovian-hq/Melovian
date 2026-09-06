@@ -1,0 +1,35 @@
+version = 1
+
+# Generated and vendored code is out of scope for review.
+exclude_patterns = [
+  "frontend/bindings/*",
+  "frontend/bindings/**",
+  "**/frontend/bindings/**",
+  "**/bindings/**",
+  "vendor/**",
+  "**/*.pb.go"
+]
+
+[[analyzers]]
+name = "go"
+enabled = true
+
+[[analyzers]]
+name = "javascript"
+enabled = true
+
+[[analyzers]]
+name = "shell"
+enabled = true
+
+[[analyzers]]
+name = "cxx"
+enabled = true
+
+[[analyzers]]
+name = "docker"
+enabled = true
+
+[[analyzers]]
+name = "secrets"
+enabled = true
