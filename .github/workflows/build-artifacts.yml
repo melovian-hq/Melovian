@@ -39,7 +39,6 @@ jobs:
             docker_setup: false
             task: linux:build
             package: linux-binary
-            build_shell: bash
           - id: linux-appimage
             name: Linux AppImage
             runner: ubuntu-latest
@@ -50,7 +49,6 @@ jobs:
             docker_setup: true
             task: linux:create:appimage:docker
             package: linux-appimage
-            build_shell: bash
           - id: windows-amd64
             name: Windows amd64
             runner: windows-latest
@@ -61,7 +59,6 @@ jobs:
             docker_setup: false
             task: windows:package
             package: windows
-            build_shell: bash
           - id: macos-universal
             name: macOS universal
             runner: macos-latest
@@ -72,7 +69,6 @@ jobs:
             docker_setup: false
             task: darwin:package:universal
             package: macos
-            build_shell: bash
           - id: frontend-zip
             name: Frontend zip
             runner: ubuntu-latest
@@ -83,7 +79,6 @@ jobs:
             docker_setup: false
             task: package:frontend
             package: frontend
-            build_shell: bash
           - id: android-arm64
             name: Android arm64 APK
             runner: ubuntu-latest
@@ -95,7 +90,6 @@ jobs:
             android: true
             task: build:android
             package: android
-            build_shell: bash
           - id: ios-ipa
             name: iOS IPA
             runner: macos-latest
@@ -107,7 +101,6 @@ jobs:
             ios: true
             task: ios:package:ipa
             package: ios
-            build_shell: bash
 
     steps:
       - name: Harden Runner
@@ -150,7 +143,7 @@ jobs:
         run: task linux:setup:appimage:docker
 
       - name: Build
-        shell: ${{ matrix.build_shell }}
+        shell: bash
         env:
           IOS_PLATFORM: ${{ matrix.ios && 'device' || '' }}
           CODESIGN_IDENTITY: ${{ matrix.ios && '-' || '' }}
