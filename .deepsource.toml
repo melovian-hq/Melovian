@@ -2,8 +2,9 @@ version = 1
 
 # Generated and vendored code is out of scope for review.
 exclude_patterns = [
-  "frontend/bindings/**",
-  "vendor/**",
+  "frontend/bindings/**/*",
+  "**/bindings/**/*",
+  "vendor/**/*",
   "**/*.pb.go"
 ]
 
