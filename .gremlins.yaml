@@ -1,0 +1,27 @@
+# SPDX-FileCopyrightText: 2026 Quad4 Software
+# SPDX-License-Identifier: Apache-2.0
+#
+# Optional Gremlins config. Primary Go mutation path is build/scripts/mutation-go.sh
+# because Gremlins currently reports 0% coverage under this Go toolchain.
+
+silent: false
+unleash:
+  dry-run: false
+  workers: 2
+  threshold:
+    efficacy: 0
+    mutant-coverage: 0
+  exclude-files:
+    - "_test\\.go$"
+    - "testdata"
+mutants:
+  arithmetic-base:
+    enabled: true
+  conditionals-boundary:
+    enabled: true
+  conditionals-negation:
+    enabled: true
+  increment-decrement:
+    enabled: true
+  invert-negatives:
+    enabled: true

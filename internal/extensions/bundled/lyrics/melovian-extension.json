@@ -1,0 +1,9 @@
+{
+  "id": "lyrics",
+  "name": "Lyrics",
+  "version": "0.1.1",
+  "description": "Lyrics panel, providers, settings, and now-playing lyrics tab.",
+  "author": "Melovian",
+  "icon": "assets/icon.svg",
+  "image": "assets/icon.svg"
+}

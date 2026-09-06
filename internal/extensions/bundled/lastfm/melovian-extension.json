@@ -1,0 +1,7 @@
+{
+  "id": "lastfm",
+  "name": "Last.fm",
+  "version": "0.1.0",
+  "description": "Scrobble listens to Last.fm.",
+  "author": "Melovian"
+}

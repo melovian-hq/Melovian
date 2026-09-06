@@ -1,0 +1,7 @@
+WebView2Loader.dll copies used when running build/scripts/go-vendor.sh.
+
+Wails v3 embeds these files under internal/webview2/webviewloader/{arm64,x64,x86}/
+but the published module zip omits them. Without the files, `go mod vendor` fails.
+
+Source: github.com/wailsapp/go-webview2 @ v1.0.23 (webviewloader/).
+Microsoft WebView2 Loader. Windows desktop builds only. Not used on Linux or macOS.

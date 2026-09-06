@@ -1,0 +1,9 @@
+{
+  "id": "metadata",
+  "name": "Metadata",
+  "version": "0.1.1",
+  "description": "Local metadata editor, catalog lookups (iTunes, MusicBrainz, Deezer, TheAudioDB), and library metadata tools.",
+  "author": "Melovian",
+  "icon": "assets/icon.svg",
+  "image": "assets/icon.svg"
+}

@@ -1,0 +1,9 @@
+{
+  "id": "lyrics-whisper",
+  "name": "Lyrics Whisper",
+  "version": "0.1.0",
+  "description": "Generate synced lyrics by transcribing track audio with Whisper. Point Melovian at a whisper.cpp-compatible server or a transcriptasm host in Settings, Lyrics, then generate lyrics from the lyrics panel. Audio can also be transcribed client-side when a WASM engine package is installed.",
+  "author": "Melovian",
+  "icon": "assets/icon.svg",
+  "image": "assets/image.svg"
+}

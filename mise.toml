@@ -1,0 +1,16 @@
+# Toolchain pins for [mise](https://mise.jdx.dev/). Optional.
+# Install: curl https://mise.run | sh
+# Then: mise install && mise activate
+
+[tools]
+go = "1.26"
+node = "22"
+pnpm = "11.1.2"
+"go:github.com/go-task/task/v3/cmd/task" = "3.46.3"
+"go:github.com/golangci/golangci-lint/v2/cmd/golangci-lint" = "2.13.2"
+"go:github.com/wailsapp/wails/v3/cmd/wails3" = "v3.0.0-beta.16"
+"go:github.com/evilmartians/lefthook" = "1.11.13"
+"aqua:goreleaser/goreleaser" = "2.18.1"
+
+[env]
+_.path = ["{{config_root}}/bin", "{{config_root}}/frontend/node_modules/.bin"]
