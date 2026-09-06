@@ -65,8 +65,35 @@ type ServerCLI struct {
 	ConnSelfHealMs        int
 	ConnMaxHistory        int
 
+	Update        bool
+	UpdateVersion string
+	// Args holds positional arguments left after flag parsing (for example
+	// the version in `melovian-server --update v1.2.3`).
+	Args []string
+
 	visited map[string]bool
 }
+
+// updateFlag accepts an optional value: `--update`, `--update v1.2.3`, and
+// `--update=v1.2.3` all work. With IsBoolFlag the bare form calls
+// Set("true"), and the space-separated form leaves the version as a
+// positional argument captured in ServerCLI.Args.
+type updateFlag struct {
+	requested *bool
+	version   *string
+}
+
+func (f updateFlag) String() string { return *f.version }
+
+func (f updateFlag) Set(s string) error {
+	*f.requested = true
+	if s != "true" && s != "" {
+		*f.version = strings.TrimPrefix(strings.TrimSpace(s), "v")
+	}
+	return nil
+}
+
+func (f updateFlag) IsBoolFlag() bool { return true }
 
 func NewServerCLI() *ServerCLI {
 	return &ServerCLI{visited: make(map[string]bool)}
@@ -122,6 +149,9 @@ func (c *ServerCLI) Register(fs *flag.FlagSet) {
 	fs.IntVar(&c.ConnOfflinePollMs, "conn-offline-poll-ms", 0, "offline poll interval")
 	fs.IntVar(&c.ConnSelfHealMs, "conn-self-heal-ms", 0, "self-heal refresh interval")
 	fs.IntVar(&c.ConnMaxHistory, "conn-max-history", 0, "connection event history limit")
+
+	fs.Var(updateFlag{requested: &c.Update, version: &c.UpdateVersion},
+		"update", "self-update to the latest release (or the given version) and exit")
 }
 
 func (c *ServerCLI) Parse(args []string) error {
@@ -131,9 +161,15 @@ func (c *ServerCLI) Parse(args []string) error {
 	if err := fs.Parse(args); err != nil {
 		return err
 	}
+	c.Args = fs.Args()
 	fs.Visit(func(f *flag.Flag) {
 		c.visited[f.Name] = true
 	})
+	if c.Update && c.UpdateVersion == "" && len(c.Args) > 0 {
+		// `melovian-server --update v1.2.3` leaves the version positional.
+		c.UpdateVersion = strings.TrimPrefix(strings.TrimSpace(c.Args[0]), "v")
+		c.Args = c.Args[1:]
+	}
 	return nil
 }
 
@@ -373,6 +409,7 @@ func (c *ServerCLI) PrintHelp() {
 		{"--conn-offline-poll-ms", "Offline poll interval"},
 		{"--conn-self-heal-ms", "Self-heal refresh interval"},
 		{"--conn-max-history", "Connection event history limit"},
+		{"--update [version]", "Self-update to the given version (default latest) and exit"},
 	}
 	for _, item := range helpFlags {
 		termout.HelpFlag(item.name, item.desc)

@@ -20,12 +20,14 @@ import (
 
 	"melovian/internal/api"
 	"melovian/internal/appconfig"
+	"melovian/internal/compat"
 	"melovian/internal/democatalog"
 	"melovian/internal/melog"
 	"melovian/internal/observability"
 	"melovian/internal/sandbox"
 	"melovian/internal/store"
 	"melovian/internal/termout"
+	"melovian/internal/update"
 )
 
 //go:embed all:frontend/dist
@@ -41,6 +43,11 @@ func main() {
 	if cli.ShowHelp {
 		printServerHelp(cli)
 		os.Exit(0)
+	}
+
+	if cli.Update {
+		runSelfUpdate(cli)
+		return
 	}
 
 	defer melog.DeferredPanicHandler()
@@ -236,6 +243,48 @@ func authSecretConfigured(cli *appconfig.ServerCLI) bool {
 		return true
 	}
 	return strings.TrimSpace(os.Getenv("MELOVIAN_AUTH_SECRET")) != ""
+}
+
+// runSelfUpdate implements `melovian-server --update [version]`: resolve the
+// release, download and verify it, swap this binary in place, then exit so
+// the process supervisor restarts us on the new version.
+func runSelfUpdate(cli *appconfig.ServerCLI) {
+	termout.Banner()
+	termout.Line("current", compat.Version)
+
+	onProgress := func(p update.Progress) {
+		switch p.Stage {
+		case update.StageDownload:
+			if p.Total > 0 {
+				pct := float64(p.Written) / float64(p.Total) * 100
+				fmt.Fprintf(os.Stderr, "\r%s %.0f%% (%d/%d bytes)", termout.Dim("downloading"), pct, p.Written, p.Total)
+			} else {
+				fmt.Fprintf(os.Stderr, "\r%s %d bytes", termout.Dim("downloading"), p.Written)
+			}
+		default:
+			if p.Stage == update.StageDone || p.Written == 0 {
+				fmt.Fprint(os.Stderr, "\r\033[K")
+				termout.Note(p.Message)
+			}
+		}
+	}
+
+	res, err := update.Apply(context.Background(), compat.Version, update.Options{
+		TargetVersion:  cli.UpdateVersion,
+		RestartCommand: os.Getenv("MELOVIAN_UPDATE_RESTART_CMD"),
+		OnProgress:     onProgress,
+	})
+	if err != nil {
+		fmt.Fprint(os.Stderr, "\r\033[K")
+		termout.Fail("Update failed: " + err.Error())
+		os.Exit(1)
+	}
+	if res.Method == "none" {
+		termout.OK("Already up to date")
+		return
+	}
+	termout.OK(fmt.Sprintf("Updated to v%s (%s, %d bytes downloaded)", res.Version, res.Method, res.BytesDownloaded))
+	termout.Note("Restart the service to run the new version.")
 }
 
 func formatAllowedIPs(cfg appconfig.Config) string {

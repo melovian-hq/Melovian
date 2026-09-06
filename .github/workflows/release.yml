@@ -102,6 +102,9 @@ jobs:
           path: artifacts
           merge-multiple: true
 
+      - name: Install bsdiff
+        run: sudo apt-get update && sudo apt-get install -y bsdiff unzip
+
       - name: Run GoReleaser
         uses: goreleaser/goreleaser-action@f06c13b6b1a9625abc9e6e439d9c05a8f2190e94 # v7.2.3
         with:
@@ -110,3 +113,19 @@ jobs:
           args: release --clean
         env:
           GITHUB_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          # Compiles the release signing public key into every binary so
+          # update clients verify downloads against this trust root.
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
+
+      # Adds raw-binary checksums, bsdiff deltas against the previous tag,
+      # and the Ed25519 signature over the checksums manifest. Tags should
+      # be signed (git tag -s) and immutable releases enabled in the repo
+      # settings so published assets cannot be replaced after the fact.
+      - name: Sign checksums and generate delta patches
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_SIGNING_KEY: ${{ secrets.UPDATE_SIGNING_KEY }}
+          UPDATE_TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          bash build/scripts/release-extras.sh "${UPDATE_TAG}" dist

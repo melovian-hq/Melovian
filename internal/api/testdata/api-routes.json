@@ -1,6 +1,12 @@
 {
   "routes": [
     { "method": "GET", "pattern": "/api/config" },
+    { "method": "GET", "pattern": "/api/update/status" },
+    { "method": "POST", "pattern": "/api/update/check" },
+    { "method": "POST", "pattern": "/api/update/apply" },
+    { "method": "POST", "pattern": "/api/update/restart" },
+    { "method": "GET", "pattern": "/api/update/settings" },
+    { "method": "PUT", "pattern": "/api/update/settings" },
     { "method": "GET", "pattern": "/api/settings/sentry" },
     { "method": "PUT", "pattern": "/api/settings/sentry" },
     { "method": "POST", "pattern": "/api/settings/sentry/test" },

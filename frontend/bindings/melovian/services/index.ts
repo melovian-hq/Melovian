@@ -3,9 +3,11 @@
 
 import * as AudioService from "./audioservice.js";
 import * as MediaService from "./mediaservice.js";
+import * as UpdateService from "./updateservice.js";
 export {
     AudioService,
-    MediaService
+    MediaService,
+    UpdateService
 };
 
 export {
