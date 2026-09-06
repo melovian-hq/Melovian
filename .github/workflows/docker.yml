@@ -82,6 +82,7 @@ jobs:
         uses: ./.github/actions/setup-dev
         with:
           install-frontend: "true"
+          install-wails: "true"
 
       - name: Image name
         id: image

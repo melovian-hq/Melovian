@@ -136,6 +136,12 @@ jobs:
         with:
           install-frontend: "false"
 
+      - name: Stub frontend dist for embed
+        shell: bash
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html>\n' > frontend/dist/index.html
+
       - name: Run Go tests with race detector
         if: matrix.race
         run: go test -race ./...
@@ -221,6 +227,11 @@ jobs:
         with:
           install-frontend: "false"
           install-golangci: "true"
+
+      - name: Stub frontend dist for embed
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html>\n' > frontend/dist/index.html
 
       - name: Run golangci-lint
         run: task lint:go
@@ -365,6 +376,8 @@ jobs:
 
       - name: Setup development environment
         uses: ./.github/actions/setup-dev
+        with:
+          install-wails: "true"
 
       - name: Build server binary
         run: task build:server
@@ -556,6 +569,16 @@ jobs:
 
       - name: Setup development environment
         uses: ./.github/actions/setup-dev
+
+      - name: Export demo catalog fixtures
+        run: go run ./internal/democatalog/cmd/export -out frontend/public/demo
+
+      - name: Build static demo frontend
+        working-directory: frontend
+        env:
+          VITE_STATIC_DEMO: "true"
+          VITE_APP_VERSION: ${{ github.sha }}
+        run: pnpm run build
 
       - name: Install Chromium for Lighthouse
         working-directory: frontend

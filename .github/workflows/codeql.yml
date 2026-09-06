@@ -87,6 +87,12 @@ jobs:
           build-mode: ${{ matrix.build-mode }}
           queries: security-extended
 
+      - name: Stub frontend dist for embed
+        if: matrix.language == 'go'
+        run: |
+          mkdir -p frontend/dist
+          printf '<!doctype html>\n' > frontend/dist/index.html
+
       - name: Build Go (server tags)
         if: matrix.language == 'go'
         run: go build -tags server -o /tmp/melovian-codeql .
