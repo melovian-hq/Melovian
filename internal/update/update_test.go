@@ -77,7 +77,7 @@ const testFeed = `<?xml version="1.0" encoding="UTF-8"?>
 
 func serveFeed(t *testing.T, body string) (*httptest.Server, string) {
 	t.Helper()
-	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
 		w.Header().Set("Content-Type", "application/atom+xml")
 		fmt.Fprint(w, body)
 	}))
