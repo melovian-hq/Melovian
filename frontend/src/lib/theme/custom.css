@@ -1,0 +1,49 @@
+/*
+ * Mobile layout overrides.
+ */
+
+@media (max-width: 768px) {
+  :root {
+    --jb-topbar-height: 3.25rem;
+  }
+
+  .app-root--mobile-nav {
+    --jb-bottom-nav-height: 3.5rem;
+    --jb-bottom-chrome-height: var(--jb-bottom-nav-height);
+  }
+
+  .app-root--mobile-nav.app-root--player {
+    --jb-player-bar-height: var(--jb-slim-player-height);
+    --jb-bottom-chrome-height: calc(
+      var(--jb-player-bar-height) + var(--jb-bottom-nav-height)
+    );
+  }
+
+  .app-root--mobile-nav.app-root--now-playing-mobile:not(.app-root--player) {
+    --jb-bottom-chrome-height: var(--jb-bottom-nav-height);
+  }
+
+  .app-root--mobile-nav .app-shell__content {
+    padding-bottom: calc(
+      var(--jb-space-10) + var(--jb-bottom-chrome-height) +
+        env(safe-area-inset-bottom, 0px)
+    ) !important;
+  }
+
+  .app-root--mobile-nav .app-shell__content--fill {
+    padding-bottom: calc(
+      var(--jb-bottom-chrome-height) + env(safe-area-inset-bottom, 0px)
+    ) !important;
+  }
+}
+
+@media (max-width: 480px) {
+  :root {
+    --jb-topbar-height: 3rem;
+  }
+
+  .app-root--mobile-nav {
+    --jb-bottom-nav-height: 3.25rem;
+    --jb-slim-player-height: 4rem;
+  }
+}

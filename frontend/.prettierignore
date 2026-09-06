@@ -1,0 +1,12 @@
+dist
+node_modules
+bindings
+coverage
+reports
+.stryker-tmp
+test-results
+playwright-report
+blob-report
+.lighthouseci
+e2e/.tmp
+public/demo
