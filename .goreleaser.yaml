@@ -1,0 +1,143 @@
+# GoReleaser config for the headless server binary. The desktop app is a Wails
+# GUI build and ships through the platform jobs in build-artifacts.yml instead.
+version: 2
+
+project_name: melovian
+
+before:
+  hooks:
+    # The server binary embeds frontend/dist, so it must exist before compile.
+    - task common:build:frontend
+
+builds:
+  - id: server
+    binary: melovian-server
+    main: .
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    tags:
+      - server
+    ldflags:
+      - -s -w -X melovian/internal/compat.Version={{.Version}}
+    goos:
+      - linux
+      - freebsd
+      - openbsd
+      - netbsd
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - "386"
+      - arm64
+      - arm
+      - riscv64
+    goarm:
+      - "6"
+      - "7"
+    ignore:
+      - goos: darwin
+        goarch: "386"
+      - goos: darwin
+        goarch: arm
+      - goos: darwin
+        goarch: riscv64
+      - goos: windows
+        goarch: "386"
+      - goos: windows
+        goarch: arm
+      - goos: windows
+        goarch: riscv64
+      - goos: freebsd
+        goarch: "386"
+      - goos: freebsd
+        goarch: arm
+      - goos: freebsd
+        goarch: riscv64
+      - goos: openbsd
+        goarch: "386"
+      - goos: openbsd
+        goarch: arm
+      - goos: openbsd
+        goarch: riscv64
+      - goos: netbsd
+        goarch: "386"
+      - goos: netbsd
+        goarch: arm64
+      - goos: netbsd
+        goarch: arm
+      - goos: netbsd
+        goarch: riscv64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
+archives:
+  - id: server
+    ids:
+      - server
+    # Matches the names the old cross-server.sh produced, for example
+    # melovian-v0.1.0-server-linux-armv7.tar.gz
+    name_template: >-
+      melovian-{{ .Tag }}-server-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+      - NOTICE
+
+checksum:
+  name_template: melovian-{{ .Tag }}-checksums.txt
+  algorithm: sha256
+
+snapshot:
+  version_template: "{{ incpatch .Version }}-snapshot"
+
+changelog:
+  use: git
+  sort: asc
+  filters:
+    exclude:
+      - "^docs:"
+      - "^test:"
+      - "^tests:"
+      - "^ci:"
+      - "^chore:"
+      - "^build:"
+      - "^style:"
+      - "^refactor:"
+      - "Merge pull request"
+      - "Merge branch"
+      - "Merge remote-tracking branch"
+  groups:
+    - title: Features
+      regexp: "^.*?feat(\\([\\w-]+\\))?!?:.+$"
+      order: 0
+    - title: "Bug fixes"
+      regexp: "^.*?fix(\\([\\w-]+\\))?!?:.+$"
+      order: 1
+    - title: "Performance"
+      regexp: "^.*?perf(\\([\\w-]+\\))?!?:.+$"
+      order: 2
+    - title: "Dependency updates"
+      regexp: "^.*?(deps|dependabot|bump).+$"
+      order: 3
+    - title: Others
+      order: 999
+
+release:
+  name_template: Melovian {{ .Tag }}
+  prerelease: auto
+  # Desktop, mobile, and frontend artifacts are produced by build-artifacts.yml
+  # and downloaded into ./artifacts by the release workflow before this runs.
+  extra_files:
+    - glob: ./artifacts/*
+  footer: |
+    ---
+
+    Checksums are in `melovian-{{ .Tag }}-checksums.txt`. Server archives contain the headless `melovian-server` binary. Desktop and mobile packages are built by the per-platform jobs in the release workflow.

@@ -1,0 +1,12 @@
+[Desktop Entry]
+Type=Application
+Name=Melovian
+Exec=/usr/local/bin/melovian %u
+Icon=melovian
+StartupWMClass=melovian
+Categories=Audio;Music;Player;
+Comment=Music player for local libraries and Subsonic-compatible servers
+Terminal=false
+Keywords=music;player;subsonic;navidrome
+Version=1.0
+StartupNotify=false

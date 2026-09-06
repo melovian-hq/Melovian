@@ -1,0 +1,46 @@
+# SPDX-FileCopyrightText: 2026 Quad4 Software
+# SPDX-License-Identifier: Apache-2.0
+# Wails Server Mode Dockerfile
+# Multi-stage build for minimal image size
+
+# Build stage
+FROM golang:alpine AS builder
+
+WORKDIR /app
+
+# Install build dependencies
+RUN apk add --no-cache git
+
+# Copy source code (includes ./vendor)
+COPY . .
+
+# Remove local replace directive if present (for production builds)
+RUN sed -i '/^replace/d' go.mod || true
+
+RUN test -d vendor || (echo "missing vendor/: run task go:vendor" && exit 1)
+
+# Build the server binary from vendored modules
+RUN go build -mod=vendor -tags server -ldflags="-s -w" -o server .
+
+# Runtime stage - minimal image
+FROM gcr.io/distroless/static-debian12
+LABEL org.opencontainers.image.title="Melovian Server" \
+      org.opencontainers.image.vendor="Quad4 Software" \
+      org.opencontainers.image.authors="Quad4" \
+      org.opencontainers.image.licenses="Apache-2.0"
+
+# Copy the binary
+COPY --from=builder /app/server /server
+
+# Copy frontend assets
+COPY --from=builder /app/frontend/dist /frontend/dist
+
+# Expose the default port
+EXPOSE 8080
+
+# Bind to all interfaces (required for Docker)
+# Can be overridden at runtime with -e WAILS_SERVER_HOST=...
+ENV WAILS_SERVER_HOST=0.0.0.0
+
+# Run the server
+ENTRYPOINT ["/server"]

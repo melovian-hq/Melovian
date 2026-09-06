@@ -1,0 +1,755 @@
+version: '3'
+
+tasks:
+  go:mod:tidy:
+    summary: Runs `go mod tidy`
+    internal: true
+    cmds:
+      - go mod tidy
+
+  go:vendor:
+    summary: Vendors Go modules into ./vendor (patches Wails WebView2 embeds)
+    cmds:
+      - bash build/scripts/go-vendor.sh
+
+  install:frontend:deps:
+    summary: Install frontend dependencies
+    cmds:
+      - task: install:frontend:deps:{{.PACKAGE_MANAGER}}
+
+  install:frontend:deps:npm:
+    dir: frontend
+    sources:
+      - package.json
+      - package-lock.json
+    generates:
+      - node_modules
+    preconditions:
+      - sh: npm version
+        msg: "Looks like npm isn't installed. Npm is part of the Node installer: https://nodejs.org/en/download/"
+    cmds:
+      - npm install
+
+  install:frontend:deps:bun:
+    dir: frontend
+    sources:
+      - package.json
+      - bun.lock
+      - bun.lockb
+    generates:
+      - node_modules
+    preconditions:
+      - sh: bun --version
+        msg: "bun not found"
+    cmds:
+      - bun install
+
+  install:frontend:deps:pnpm:
+    dir: frontend
+    sources:
+      - package.json
+      - pnpm-lock.yaml
+    generates:
+      - node_modules
+    preconditions:
+      - sh: pnpm --version
+        msg: "pnpm not found"
+    cmds:
+      - pnpm install
+
+  install:frontend:deps:yarn:
+    dir: frontend
+    sources:
+      - package.json
+      - yarn.lock
+    status:
+      - test -d node_modules || test -f .pnp.cjs
+    preconditions:
+      - sh: yarn --version
+        msg: "yarn not found"
+    cmds:
+      - yarn install
+
+  stamp:frontend:version:
+    summary: Write frontend/.build-version for Vite VITE_APP_VERSION cache invalidation
+    internal: true
+    status:
+      - test -f frontend/.build-version
+      - test "$(cat frontend/.build-version)" = "{{.VERSION}}"
+    cmds:
+      - echo "{{.VERSION}}" > frontend/.build-version
+    vars:
+      VERSION:
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+
+  build:frontend:
+    label: build:frontend (DEV={{.DEV}} RUNNER={{.PACKAGE_MANAGER}} VERSION={{.VERSION}})
+    summary: Build the frontend project
+    dir: frontend
+    sources:
+      - "**/*"
+      - exclude: node_modules/**/*
+      - .build-version
+    generates:
+      - dist/**/*
+    deps:
+      - task: stamp:frontend:version
+        vars:
+          VERSION:
+            ref: .VERSION
+      - task: install:frontend:deps
+      - task: generate:bindings
+        vars:
+          BUILD_FLAGS:
+            ref: .BUILD_FLAGS
+          OBFUSCATED:
+            ref: .OBFUSCATED
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: '{{if eq .DEV "true"}}build:dev{{else}}build{{end}}'
+    env:
+      PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
+      VITE_APP_VERSION: '{{.VERSION}}'
+    vars:
+      VERSION:
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+
+  frontend:run:
+    summary: Run a frontend script with selected runner
+    cmds:
+      - task: frontend:run:{{.PACKAGE_MANAGER}}
+        vars:
+          SCRIPT: "{{.SCRIPT}}"
+    vars:
+      SCRIPT: "{{.SCRIPT}}"
+
+  frontend:run:npm:
+    dir: frontend
+    cmds:
+      - npm run {{.SCRIPT}} -q
+    vars:
+      SCRIPT: "{{.SCRIPT}}"
+
+  frontend:run:yarn:
+    dir: frontend
+    cmds:
+      - yarn {{.SCRIPT}}
+    vars:
+      SCRIPT: "{{.SCRIPT}}"
+
+  frontend:run:pnpm:
+    dir: frontend
+    cmds:
+      - pnpm run {{.SCRIPT}}
+    vars:
+      SCRIPT: "{{.SCRIPT}}"
+
+  frontend:run:bun:
+    dir: frontend
+    cmds:
+      - bun run {{.SCRIPT}}
+    vars:
+      SCRIPT: "{{.SCRIPT}}"
+
+  frontend:vendor:puppertino:
+    summary: Ensures Puppertino CSS is present under frontend/public (no network fetch)
+    sources:
+      - frontend/public/puppertino/puppertino.css
+    generates:
+      - frontend/public/puppertino/puppertino.css
+    cmds:
+      - |
+        set -euo pipefail
+        # App UI does not load Puppertino today. Keep any bundled copy offline-only.
+        if [ -f frontend/public/puppertino/puppertino.css ]; then
+          echo "Using bundled Puppertino at frontend/public/puppertino/puppertino.css"
+          exit 0
+        fi
+        echo "Puppertino is not bundled. Skip or add frontend/public/puppertino/puppertino.css by hand."
+        exit 0
+
+
+
+  generate:bindings:
+    label: generate:bindings (BUILD_FLAGS={{.BUILD_FLAGS}})
+    summary: Generates bindings for the frontend
+    deps:
+      - task: go:mod:tidy
+    sources:
+      - "**/*.[jt]s"
+      - exclude: frontend/**/*
+      - frontend/bindings/**/*  # Rerun when switching between dev/production mode causes changes in output
+      - "**/*.go"
+      - go.mod
+      - go.sum
+    generates:
+      - frontend/bindings/**/*
+    cmds:
+      - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts
+
+  generate:icons:
+    summary: Generates Windows `.ico` and Mac `.icns` from an image; on macOS, `-iconcomposerinput appicon.icon -macassetdir darwin` also produces `Assets.car` from a `.icon` file (skipped on other platforms).
+    dir: build
+    deps:
+      - task: generate:appicon
+    sources:
+      - "appicon.png"
+      - "appicon.icon"
+    generates:
+      - "darwin/icons.icns"
+      - "windows/icon.ico"
+    cmds:
+      - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico -iconcomposerinput appicon.icon -macassetdir darwin
+
+  generate:appicon:
+    summary: Generates build/appicon.png from the branding logo
+    sources:
+      - "{{.ROOT_DIR}}/build/branding/logo.png"
+    generates:
+      - "{{.ROOT_DIR}}/build/appicon.png"
+      - "{{.ROOT_DIR}}/build/ios/icon.png"
+    cmds:
+      - magick "{{.ROOT_DIR}}/build/branding/logo.png" -resize 512x512 -strip "{{.ROOT_DIR}}/build/appicon.png"
+      - magick "{{.ROOT_DIR}}/build/appicon.png" "{{.ROOT_DIR}}/build/ios/icon.png"
+
+  generate:linux-icons:
+    summary: Generates Linux hicolor icon sizes from appicon.png
+    dir: build
+    deps:
+      - task: generate:appicon
+    sources:
+      - "appicon.png"
+    generates:
+      - "linux/icons/512x512/apps/melovian.png"
+    cmds:
+      - |
+        for size in 48 64 128 256 512; do
+          mkdir -p linux/icons/${size}x${size}/apps
+          magick appicon.png -resize ${size}x${size} linux/icons/${size}x${size}/apps/melovian.png
+        done
+
+  generate:android:icons:
+    summary: Generates Android mipmap launcher icons from appicon.png
+    deps:
+      - task: generate:appicon
+    sources:
+      - "{{.ROOT_DIR}}/build/appicon.png"
+    generates:
+      - "{{.ROOT_DIR}}/build/android/app/src/main/res/mipmap-mdpi/ic_launcher.png"
+      - "{{.ROOT_DIR}}/build/android/app/src/main/res/mipmap-mdpi/ic_launcher_foreground.png"
+    cmds:
+      - |
+        ICON="{{.ROOT_DIR}}/build/appicon.png"
+        RES="{{.ROOT_DIR}}/build/android/app/src/main/res"
+        # Flatten onto app black so transparent corners and white fringe
+        # cannot show through as a white plate on Android launchers.
+        FLAT="$(mktemp --suffix=.png)"
+        magick "$ICON" \
+          -fx 'u.r > 0.85 && u.g > 0.85 && u.b > 0.85 && u.a < 0.4 ? rgba(0,0,0,0) : u' \
+          -background '#090909' -alpha remove -alpha off \
+          "$FLAT"
+        # Adaptive foreground canvas is 108dp (legacy launcher is 48dp).
+        for spec in "mdpi:48:108" "hdpi:72:162" "xhdpi:96:216" "xxhdpi:144:324" "xxxhdpi:192:432"; do
+          density="${spec%%:*}"
+          rest="${spec#*:}"
+          size="${rest%%:*}"
+          fg="${rest##*:}"
+          mkdir -p "$RES/mipmap-${density}"
+          magick "$FLAT" -resize "${size}x${size}" "$RES/mipmap-${density}/ic_launcher.png"
+          magick "$FLAT" -resize "${size}x${size}" \
+            \( +clone -threshold -1 -negate -fill white -draw "circle %[fx:int(w/2)],%[fx:int(h/2)] %[fx:int(w/2)],0" \) \
+            -alpha off -compose copy_opacity -composite \
+            -background '#090909' -alpha remove -alpha off \
+            "$RES/mipmap-${density}/ic_launcher_round.png"
+          magick "$FLAT" -resize "${fg}x${fg}" "$RES/mipmap-${density}/ic_launcher_foreground.png"
+        done
+        rm -f "$FLAT"
+
+  generate:web:icons:
+    summary: Generates web favicon and touch icons from the branding logo
+    sources:
+      - "{{.ROOT_DIR}}/build/branding/logo.png"
+    generates:
+      - "{{.ROOT_DIR}}/frontend/public/logo.png"
+      - "{{.ROOT_DIR}}/frontend/public/favicon-32.png"
+      - "{{.ROOT_DIR}}/frontend/public/favicon-192.png"
+      - "{{.ROOT_DIR}}/frontend/public/apple-touch-icon.png"
+      - "{{.ROOT_DIR}}/frontend/public/icon-512.png"
+      - "{{.ROOT_DIR}}/frontend/public/favicon.svg"
+    cmds:
+      - |
+        SRC="{{.ROOT_DIR}}/build/branding/logo.png"
+        PUB="{{.ROOT_DIR}}/frontend/public"
+        magick "$SRC" -resize 512x512 -strip -define png:compression-level=9 "$PUB/logo.png"
+        magick "$SRC" -resize 32x32 -strip "$PUB/favicon-32.png"
+        magick "$SRC" -resize 192x192 -strip "$PUB/favicon-192.png"
+        magick "$SRC" -resize 180x180 -strip "$PUB/apple-touch-icon.png"
+        magick "$SRC" -resize 512x512 -strip "$PUB/icon-512.png"
+        magick "$SRC" -resize 64x64 -strip /tmp/mel-fav64.png
+        B64=$(base64 -w0 /tmp/mel-fav64.png)
+        printf '%s\n' \
+          '<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 64 64" role="img" aria-label="Melovian">' \
+          "  <image href=\"data:image/png;base64,${B64}\" width=\"64\" height=\"64\" />" \
+          '</svg>' > "$PUB/favicon.svg"
+        rm -f /tmp/mel-fav64.png
+
+  dev:frontend:
+    summary: Runs the frontend in development mode
+    deps:
+      - task: install:frontend:deps
+    cmds:
+      - task: frontend:dev:{{.PACKAGE_MANAGER}}
+
+  test:
+    summary: Run backend and frontend tests
+    cmds:
+      - go test -race ./...
+      - task: test:property
+      - task: frontend:run
+        vars:
+          SCRIPT: test
+
+  test:contracts:
+    summary: Run API contract and drift tests
+    cmds:
+      - go test -race ./internal/api -run 'Contract|Routes'
+      - go test -race ./services -run Contract
+      - task: test:property
+
+  test:bindings-drift:
+    summary: Fail when committed Wails bindings differ from generated output
+    cmds:
+      - bash build/scripts/check-bindings-drift.sh
+
+  test:fuzz:
+    summary: Run Go fuzz smoke tests (short)
+    cmds:
+      - go test -fuzz=FuzzFileSignature -fuzztime=5s ./internal/metaloader
+      - go test -fuzz=FuzzQueryInt -fuzztime=5s ./internal/httputil
+      - go test -fuzz=FuzzInjectAuth -fuzztime=5s ./internal/subsonic
+      - go test -fuzz=FuzzNormalizeDocument -fuzztime=5s ./internal/lyrics
+      - go test -fuzz=FuzzSanitizeFilename -fuzztime=5s ./internal/melog
+      - go test -fuzz=FuzzCacheKey -fuzztime=5s ./internal/cache
+
+  test:memory:
+    summary: Run memory regression and leak-oriented tests
+    cmds:
+      - go test -race ./internal/cache ./internal/localmusic ./internal/api ./internal/subsonic -run 'Memory|Bounded|Stats|LimitReader|CoverArt|CatalogCache|Oversized'
+      - cd frontend && pnpm exec vitest run src/lib/core/bounded-cache.leak.test.ts src/lib/music/cover-art-fallback.memory.test.ts
+
+  test:crash:
+    summary: Run crash and recover isolation tests
+    cmds:
+      - go test -race ./internal/api ./internal/cache ./internal/melog ./internal/metaloader -run 'Crash|Recover|Forget|Sanitize'
+
+  test:perf:
+    summary: Run frontend performance smoke tests
+    cmds:
+      - cd frontend && pnpm exec vitest run src/lib/core/bounded-cache.perf.test.ts src/lib/music/metadata-enhancement.perf.test.ts
+
+  test:property:
+    summary: Run frontend property and contract tests
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: test:property
+
+  test:acceptance:
+    summary: Run acceptance journey tests
+    cmds:
+      - go test -race ./internal/api ./internal/store ./internal/lyrics ./internal/cache ./internal/httputil -run Acceptance
+      - task: frontend:run
+        vars:
+          SCRIPT: test:acceptance
+
+  test:exploratory:
+    summary: Run exploratory generative and fuzz exploration tests
+    cmds:
+      - go test -race ./internal/api ./internal/store ./internal/lyrics ./internal/cache ./internal/httputil ./internal/localmusic ./internal/melog -run Exploratory
+      - task: frontend:run
+        vars:
+          SCRIPT: test:exploratory
+
+  test:oracle:
+    summary: Run oracle and invariant tests
+    cmds:
+      - go test -race ./internal/api ./internal/store ./internal/lyrics ./internal/cache ./internal/httputil ./internal/localmusic ./internal/subsonic -run Oracle
+      - task: frontend:run
+        vars:
+          SCRIPT: test:oracle
+
+  test:mutation:
+    summary: Run mutation testing on high-value pure logic
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: test:mutation
+      - bash build/scripts/mutation-go.sh
+
+  test:coverage:
+    summary: Enforce frontend and Go coverage floors on high-value packages
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: test:coverage
+      - bash build/scripts/coverage-go.sh
+
+  test:frontend:
+    summary: Run frontend Vitest suite
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: test
+
+  test:e2e:
+    summary: Build server and run Playwright e2e suite against demo mode
+    deps:
+      - task: build:server
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: test:e2e
+
+  test:e2e:smoke:
+    summary: Build server and run Playwright smoke e2e project
+    deps:
+      - task: build:server
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: test:e2e:smoke
+
+  check:frontend:
+    summary: Run frontend typecheck
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: check
+
+  lint:frontend:
+    summary: Run frontend ESLint
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: lint
+
+  lint:frontend:fix:
+    summary: Run frontend ESLint with --fix
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: lint:fix
+
+  lint:go:
+    summary: Run golangci-lint on first-party Go packages
+    cmds:
+      - golangci-lint run ./...
+
+  format:frontend:
+    summary: Format frontend sources with Prettier
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: format
+
+  format:frontend:check:
+    summary: Check frontend formatting with Prettier
+    cmds:
+      - task: frontend:run
+        vars:
+          SCRIPT: format:check
+
+  format:go:
+    summary: Format first-party Go sources with gofmt
+    cmds:
+      - |
+        find . \
+          \( -path ./vendor -o -path ./frontend -o -path ./build/android/wails-v3 -o -path ./build/tools -o -path ./.git -o -path ./bin \) -prune \
+          -o -name '*.go' -print \
+          | xargs gofmt -w
+
+  format:go:check:
+    summary: Fail when first-party Go sources need gofmt
+    cmds:
+      - bash build/scripts/check-gofmt.sh
+
+  format:check:
+    summary: Check Go and frontend formatting (CI gate)
+    cmds:
+      - task: format:go:check
+      - task: format:frontend:check
+
+  setup:
+    summary: Copy .env if needed, install frontend deps, print toolchain hints
+    cmds:
+      - bash build/scripts/setup.sh
+
+  dev:server:
+    summary: Run server-mode API plus Vite with /api proxy
+    cmds:
+      - bash build/scripts/dev-server.sh
+
+  verify:
+    summary: Run backend and frontend tests, lint, format check, and typecheck
+    cmds:
+      - task: test:bindings-drift
+      - task: format:check
+      - task: lint:go
+      - go test -race ./...
+      - task: test:property
+      - task: lint:frontend
+      - task: check:frontend
+      - task: test:frontend
+
+  bench:
+    summary: Run Go allocation benchmarks (benchmem)
+    cmds:
+      - go test -bench=. -benchmem -count=1 ./internal/cache/ ./internal/localmusic/ ./internal/subsonic/ ./internal/httputil/ ./internal/video/
+
+  lighthouse:
+    summary: Run Lighthouse CI (expects a built frontend/dist, usually via task lighthouse)
+    dir: frontend
+    cmds:
+      - |
+        set -euo pipefail
+        if [ -n "${CHROME_PATH:-}" ]; then
+          export CHROME_PATH
+        elif command -v google-chrome >/dev/null 2>&1; then
+          export CHROME_PATH="$(command -v google-chrome)"
+        elif command -v chromium >/dev/null 2>&1; then
+          export CHROME_PATH="$(command -v chromium)"
+        elif command -v chromium-browser >/dev/null 2>&1; then
+          export CHROME_PATH="$(command -v chromium-browser)"
+        else
+          export CHROME_PATH="$(pnpm exec node -e "console.log(require('@playwright/test').chromium.executablePath())")"
+        fi
+        pnpm lighthouse:ci
+
+  frontend:dev:npm:
+    dir: frontend
+    cmds:
+      - npm run dev -- --port {{.VITE_PORT}} --strictPort
+
+  frontend:dev:yarn:
+    dir: frontend
+    cmds:
+      - yarn dev --port {{.VITE_PORT}} --strictPort
+
+  frontend:dev:pnpm:
+    dir: frontend
+    cmds:
+      - pnpm dev --port {{.VITE_PORT}} --strictPort
+
+  frontend:dev:bun:
+    dir: frontend
+    cmds:
+      - bun run dev --port {{.VITE_PORT}} --strictPort
+
+  update:build-assets:
+    summary: Updates the build assets
+    dir: build
+    cmds:
+      - wails3 update build-assets -name "{{.APP_NAME}}" -binaryname "{{.APP_NAME}}" -config config.yml -dir .
+
+  build:server:
+    summary: Builds the application in server mode (no GUI, HTTP server only)
+    desc: |
+      Builds the application with the server build tag enabled.
+      Server mode runs as a pure HTTP server without native GUI dependencies.
+      Usage: task build:server
+    deps:
+      - task: build:frontend
+        vars:
+          BUILD_FLAGS:
+            ref: .BUILD_FLAGS
+          VERSION:
+            ref: .VERSION
+    cmds:
+      - go build -tags server {{.BUILD_FLAGS}} -ldflags "-X melovian/internal/compat.Version={{.VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}
+    vars:
+      BUILD_FLAGS: "{{.BUILD_FLAGS}}"
+      VERSION:
+        sh: 'git describe --tags --always --dirty 2>/dev/null || echo 0.1.0'
+
+  build:server:cross:
+    summary: Cross-compiles server binaries for all release OS/arch targets
+    desc: |
+      Builds CGO_ENABLED=0 server binaries for linux (amd64/386/arm64/armv6/armv7/riscv64),
+      freebsd, openbsd, netbsd, windows, and darwin. Requires a prior or dep frontend build.
+      Usage: VERSION=v0.1.0 task build:server:cross
+    deps:
+      - task: build:frontend
+        vars:
+          BUILD_FLAGS:
+            ref: .BUILD_FLAGS
+          VERSION:
+            ref: .VERSION
+    cmds:
+      - bash build/scripts/cross-server.sh
+    env:
+      VERSION: '{{.VERSION}}'
+      BIN_DIR: '{{.BIN_DIR}}'
+      APP_NAME: '{{.APP_NAME}}'
+    vars:
+      VERSION:
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+
+  package:frontend:
+    summary: Zips frontend/dist for release as melovian-{version}-frontend.zip
+    deps:
+      - task: build:frontend
+        vars:
+          BUILD_FLAGS:
+            ref: .BUILD_FLAGS
+          VERSION:
+            ref: .VERSION
+    cmds:
+      - |
+        set -euo pipefail
+        VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"
+        ROOT="$(pwd)"
+        mkdir -p "{{.BIN_DIR}}"
+        ARCHIVE="${ROOT}/{{.BIN_DIR}}/{{.APP_NAME}}-${VERSION}-frontend.zip"
+        rm -f "${ARCHIVE}"
+        (cd frontend/dist && zip -qr "${ARCHIVE}" .)
+        echo "Wrote ${ARCHIVE}"
+    env:
+      VERSION: '{{.VERSION}}'
+    vars:
+      VERSION:
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+
+  run:server:
+    summary: Builds and runs the application in server mode
+    deps:
+      - task: build:server
+    cmds:
+      - ./{{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}
+
+  build:docker:
+    summary: Builds a Docker image for server mode deployment
+    deps:
+      - task: build:frontend
+        vars:
+          BUILD_FLAGS:
+            ref: .BUILD_FLAGS
+          VERSION:
+            ref: .VERSION
+    cmds:
+      - >-
+        docker build
+        --build-arg VERSION={{.VERSION}}
+        --build-arg REVISION={{.REVISION}}
+        --build-arg CREATED={{.CREATED}}
+        --build-arg SOURCE={{.SOURCE}}
+        -t {{.TAG | default (printf "%s:web" .APP_NAME)}}
+        -f docker/Dockerfile .
+    vars:
+      TAG: "{{.TAG}}"
+      VERSION:
+        sh: 'git describe --tags --always --dirty 2>/dev/null || echo dev'
+      REVISION:
+        sh: 'git rev-parse HEAD 2>/dev/null || echo unknown'
+      CREATED:
+        sh: 'date -u +%Y-%m-%dT%H:%M:%SZ'
+      SOURCE:
+        sh: 'git config --get remote.origin.url 2>/dev/null | sed -E "s#^git@([^:]+):#https://\\1/#; s#\\.git$##" || true'
+    preconditions:
+      - sh: docker info > /dev/null 2>&1
+        msg: "Docker is required. Please install Docker first."
+      - sh: test -f docker/Dockerfile
+        msg: "docker/Dockerfile not found."
+
+  run:docker:
+    summary: Builds and runs the Docker compose stack
+    dir: docker
+    deps:
+      - task: build:docker
+        vars:
+          TAG:
+            ref: .TAG
+    cmds:
+      - docker compose --env-file ../.env up --remove-orphans
+    vars:
+      TAG: "{{.TAG}}"
+    preconditions:
+      - sh: test -f ../.env || test -f ../.env.example
+        msg: "Copy .env.example to .env and set MELOVIAN_AUTH_SECRET."
+
+  stop:docker:
+    summary: Stops the Docker compose stack
+    dir: docker
+    cmds:
+      - docker compose down
+
+  setup:docker:
+    summary: Builds Docker image for cross-compilation (~800MB download)
+    desc: |
+      Builds the Docker image needed for cross-compiling to any platform.
+      Run this once to enable cross-platform builds from any OS.
+    cmds:
+      - docker build -t wails-cross -f build/docker/Dockerfile.cross build/docker/
+    preconditions:
+      - sh: docker info > /dev/null 2>&1
+        msg: "Docker is required. Please install Docker first."
+
+  ios:device:list:
+    summary: Lists connected iOS devices (UDIDs)
+    cmds:
+      - xcrun xcdevice list
+
+  ios:run:device:
+    summary: Build, install, and launch on a physical iPhone using Apple tools (xcodebuild/devicectl)
+    vars:
+      PROJECT: '{{.PROJECT}}'   # e.g., build/ios/xcode/<YourProject>.xcodeproj
+      SCHEME: '{{.SCHEME}}'     # e.g., ios.dev
+      CONFIG: '{{.CONFIG | default "Debug"}}'
+      DERIVED: '{{.DERIVED | default "build/ios/DerivedData"}}'
+      UDID: '{{.UDID}}'         # from `task ios:device:list`
+      BUNDLE_ID: '{{.BUNDLE_ID}}' # e.g., com.yourco.wails.ios.dev
+      TEAM_ID: '{{.TEAM_ID}}'   # optional, if your project is not already set up for signing
+    preconditions:
+      - sh: xcrun -f xcodebuild
+        msg: "xcodebuild not found. Please install Xcode."
+      - sh: xcrun -f devicectl
+        msg: "devicectl not found. Please update to Xcode 15+ (which includes devicectl)."
+      - sh: test -n '{{.PROJECT}}'
+        msg: "Set PROJECT to your .xcodeproj path (e.g., PROJECT=build/ios/xcode/App.xcodeproj)."
+      - sh: test -n '{{.SCHEME}}'
+        msg: "Set SCHEME to your app scheme (e.g., SCHEME=ios.dev)."
+      - sh: test -n '{{.UDID}}'
+        msg: "Set UDID to your device UDID (see: task ios:device:list)."
+      - sh: test -n '{{.BUNDLE_ID}}'
+        msg: "Set BUNDLE_ID to your app's bundle identifier (e.g., com.yourco.wails.ios.dev)."
+    cmds:
+      - |
+        set -euo pipefail
+        echo "Building for device: UDID={{.UDID}} SCHEME={{.SCHEME}} PROJECT={{.PROJECT}}"
+        XCB_ARGS=(
+          -project "{{.PROJECT}}"
+          -scheme "{{.SCHEME}}"
+          -configuration "{{.CONFIG}}"
+          -destination "id={{.UDID}}"
+          -derivedDataPath "{{.DERIVED}}"
+          -allowProvisioningUpdates
+          -allowProvisioningDeviceRegistration
+        )
+        # Optionally inject signing identifiers if provided
+        if [ -n '{{.TEAM_ID}}' ]; then XCB_ARGS+=(DEVELOPMENT_TEAM={{.TEAM_ID}}); fi
+        if [ -n '{{.BUNDLE_ID}}' ]; then XCB_ARGS+=(PRODUCT_BUNDLE_IDENTIFIER={{.BUNDLE_ID}}); fi
+        xcodebuild "${XCB_ARGS[@]}" build | xcpretty || true
+        # If xcpretty isn't installed, run without it
+        if [ "${PIPESTATUS[0]}" -ne 0 ]; then
+          xcodebuild "${XCB_ARGS[@]}" build
+        fi
+        # Find built .app
+        APP_PATH=$(find "{{.DERIVED}}/Build/Products" -type d -name "*.app" -maxdepth 3 | head -n 1)
+        if [ -z "$APP_PATH" ]; then
+          echo "Could not locate built .app under {{.DERIVED}}/Build/Products" >&2
+          exit 1
+        fi
+        echo "Installing: $APP_PATH"
+        xcrun devicectl device install app --device "{{.UDID}}" "$APP_PATH"
+        echo "Launching: {{.BUNDLE_ID}}"
+        xcrun devicectl device process launch --device "{{.UDID}}" --stderr console --stdout console "{{.BUNDLE_ID}}"

@@ -1,0 +1,30 @@
+// SPDX-FileCopyrightText: 2026 Quad4 Software
+// SPDX-License-Identifier: Apache-2.0
+
+{
+  "id": "podcast-style",
+  "name": "Podcast progress style",
+  "version": "1.0.0",
+  "description": "Orange progress bar and microphone icon for podcast episodes.",
+  "author": "Melovian",
+  "trackRules": [
+    {
+      "match": {
+        "genreContains": "podcast"
+      },
+      "decoration": {
+        "progressColor": "#e67e22",
+        "icon": "microphone"
+      }
+    },
+    {
+      "match": {
+        "titleContains": "podcast"
+      },
+      "decoration": {
+        "progressColor": "#e67e22",
+        "icon": "microphone"
+      }
+    }
+  ]
+}

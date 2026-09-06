@@ -1,0 +1,430 @@
+{
+  "file": "internal/api/device_sync.go",
+  "generatedAt": "2026-08-29T12:52:24.164Z",
+  "methodCount": 47,
+  "methods": [
+    {
+      "name": "NewDeviceRegistry",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 111,
+      "endLine": 117,
+      "bodyHash": "3abca6955fe89049",
+      "bodyLen": 141
+    },
+    {
+      "name": "newPartyInviteToken",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 119,
+      "endLine": 125,
+      "bodyHash": "4a5ce863724bb21d",
+      "bodyLen": 160
+    },
+    {
+      "name": "newMemberMaps",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 127,
+      "endLine": 127,
+      "bodyHash": "44136fa355b3678a",
+      "bodyLen": 2
+    },
+    {
+      "name": "copyStringSet",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 131,
+      "endLine": 131,
+      "bodyHash": "44136fa355b3678a",
+      "bodyLen": 2
+    },
+    {
+      "name": "deviceKey",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 140,
+      "endLine": 142,
+      "bodyHash": "c059cc74f50526a9",
+      "bodyLen": 37
+    },
+    {
+      "name": "ResolveDeviceScope",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 144,
+      "endLine": 149,
+      "bodyHash": "965d14eea25416c6",
+      "bodyLen": 89
+    },
+    {
+      "name": "guessDeviceName",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 151,
+      "endLine": 168,
+      "bodyHash": "3a4a414173bdd3b1",
+      "bodyLen": 411
+    },
+    {
+      "name": "Register",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 170,
+      "endLine": 206,
+      "bodyHash": "aa2f143a0ee09111",
+      "bodyLen": 821
+    },
+    {
+      "name": "Unregister",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 208,
+      "endLine": 267,
+      "bodyHash": "263f70e1512c4ecd",
+      "bodyLen": 1470
+    },
+    {
+      "name": "Rename",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 269,
+      "endLine": 283,
+      "bodyHash": "d4d12406dda69cb8",
+      "bodyLen": 282
+    },
+    {
+      "name": "UpdatePlayback",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 285,
+      "endLine": 352,
+      "bodyHash": "ec7946c33cc585c2",
+      "bodyLen": 1868
+    },
+    {
+      "name": "sendToDevice",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 354,
+      "endLine": 366,
+      "bodyHash": "6c4a4e1af6b26946",
+      "bodyLen": 224
+    },
+    {
+      "name": "TakeOver",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 368,
+      "endLine": 370,
+      "bodyHash": "e5b5d1467f8dba11",
+      "bodyLen": 57
+    },
+    {
+      "name": "HandoffTo",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 372,
+      "endLine": 377,
+      "bodyHash": "438fb698628f8a8f",
+      "bodyLen": 95
+    },
+    {
+      "name": "grantPlayback",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 379,
+      "endLine": 462,
+      "bodyHash": "b0c40666d1ebd2af",
+      "bodyLen": 2022
+    },
+    {
+      "name": "copyPlayback",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 464,
+      "endLine": 473,
+      "bodyHash": "66278d9b70114631",
+      "bodyLen": 162
+    },
+    {
+      "name": "advancePlaybackSnapshot",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 475,
+      "endLine": 489,
+      "bodyHash": "5c15c21895eadc60",
+      "bodyLen": 311
+    },
+    {
+      "name": "Command",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 491,
+      "endLine": 516,
+      "bodyHash": "9117b95120b3d0f6",
+      "bodyLen": 502
+    },
+    {
+      "name": "CreateSession",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 518,
+      "endLine": 562,
+      "bodyHash": "39c10a770eadfdff",
+      "bodyLen": 1129
+    },
+    {
+      "name": "JoinSession",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 564,
+      "endLine": 600,
+      "bodyHash": "17dd26a6555db1ac",
+      "bodyLen": 1036
+    },
+    {
+      "name": "EnsureInviteToken",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 603,
+      "endLine": 619,
+      "bodyHash": "b3c4ca3bd13f7a00",
+      "bodyLen": 402
+    },
+    {
+      "name": "JoinSessionByToken",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 622,
+      "endLine": 670,
+      "bodyHash": "43f8953e210b2acf",
+      "bodyLen": 1170
+    },
+    {
+      "name": "LeaveSession",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 672,
+      "endLine": 724,
+      "bodyHash": "82d0429dd789afe8",
+      "bodyLen": 1403
+    },
+    {
+      "name": "List",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 726,
+      "endLine": 737,
+      "bodyHash": "5211e05db9f6d26c",
+      "bodyLen": 199
+    },
+    {
+      "name": "GetSession",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 739,
+      "endLine": 747,
+      "bodyHash": "56958bb6ccd6950b",
+      "bodyLen": 164
+    },
+    {
+      "name": "SessionStatus",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 749,
+      "endLine": 777,
+      "bodyHash": "81cb38325ace36e9",
+      "bodyLen": 657
+    },
+    {
+      "name": "IsSessionMember",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 779,
+      "endLine": 796,
+      "bodyHash": "c561e347b2d617fe",
+      "bodyLen": 309
+    },
+    {
+      "name": "HostedSessionID",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 798,
+      "endLine": 806,
+      "bodyHash": "766d24209aaad0fa",
+      "bodyLen": 152
+    },
+    {
+      "name": "CrossUserLeaveNotify",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 809,
+      "endLine": 827,
+      "bodyHash": "5767d1a7649fb3ea",
+      "bodyLen": 531
+    },
+    {
+      "name": "cloneSession",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 829,
+      "endLine": 834,
+      "bodyHash": "d3c52a1583f844c3",
+      "bodyLen": 123
+    },
+    {
+      "name": "addMemberLocked",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 836,
+      "endLine": 847,
+      "bodyHash": "ca7b9b2821dd94ec",
+      "bodyLen": 282
+    },
+    {
+      "name": "removeMemberLocked",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 849,
+      "endLine": 864,
+      "bodyHash": "9a00198dbbe74602",
+      "bodyLen": 308
+    },
+    {
+      "name": "hostPlaybackLocked",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 866,
+      "endLine": 880,
+      "bodyHash": "5a845087679f234a",
+      "bodyLen": 332
+    },
+    {
+      "name": "endSessionLocked",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 883,
+      "endLine": 883,
+      "bodyHash": "44136fa355b3678a",
+      "bodyLen": 2
+    },
+    {
+      "name": "setActiveLocked",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 902,
+      "endLine": 911,
+      "bodyHash": "d72b08319f245356",
+      "bodyLen": 191
+    },
+    {
+      "name": "publicInfo",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 913,
+      "endLine": 923,
+      "bodyHash": "02af58aa06addd7e",
+      "bodyLen": 229
+    },
+    {
+      "name": "listByKeysLocked",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 925,
+      "endLine": 933,
+      "bodyHash": "0a15be0630e02d11",
+      "bodyLen": 169
+    },
+    {
+      "name": "broadcastDevices",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 935,
+      "endLine": 941,
+      "bodyHash": "c3e2773c48e53496",
+      "bodyLen": 146
+    },
+    {
+      "name": "broadcastDevicesTargets",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 943,
+      "endLine": 955,
+      "bodyHash": "68d3b02927439fad",
+      "bodyLen": 278
+    },
+    {
+      "name": "broadcastSessionTargets",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 957,
+      "endLine": 963,
+      "bodyHash": "f1708ba0f4b8e460",
+      "bodyLen": 110
+    },
+    {
+      "name": "broadcastToMemberKeys",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 965,
+      "endLine": 980,
+      "bodyHash": "23682588e85e8f91",
+      "bodyLen": 322
+    },
+    {
+      "name": "broadcastToScope",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 982,
+      "endLine": 987,
+      "bodyHash": "ca13c291b9793ea7",
+      "bodyLen": 72
+    },
+    {
+      "name": "handleDeviceClientMessage",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 994,
+      "endLine": 1090,
+      "bodyHash": "201ddf81442707af",
+      "bodyLen": 2687
+    },
+    {
+      "name": "leaveListenSession",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1092,
+      "endLine": 1119,
+      "bodyHash": "5446ab4cb8dfc712",
+      "bodyLen": 673
+    },
+    {
+      "name": "replyDeviceError",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1121,
+      "endLine": 1132,
+      "bodyHash": "2812ae20eca777d3",
+      "bodyLen": 197
+    },
+    {
+      "name": "deviceErrorMessage",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1134,
+      "endLine": 1151,
+      "bodyHash": "d0071f1405459524",
+      "bodyLen": 550
+    },
+    {
+      "name": "handleListDevices",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1153,
+      "endLine": 1168,
+      "bodyHash": "7b4ffca792532467",
+      "bodyLen": 462
+    }
+  ]
+}

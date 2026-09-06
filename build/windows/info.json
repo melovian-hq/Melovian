@@ -1,0 +1,15 @@
+{
+	"fixed": {
+		"file_version": "0.1.0"
+	},
+	"info": {
+		"0000": {
+			"ProductVersion": "0.1.0",
+			"CompanyName": "Quad4 Software",
+			"FileDescription": "Music player for local libraries and Subsonic-compatible servers",
+			"LegalCopyright": "Copyright 2026 Quad4 Software",
+			"ProductName": "Melovian",
+			"Comments": "Desktop music client with MPRIS support"
+		}
+	}
+}

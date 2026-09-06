@@ -1,0 +1,69 @@
+# SPDX-FileCopyrightText: 2026 Quad4 Software
+# SPDX-License-Identifier: Apache-2.0
+FROM golang:1.26-bookworm
+
+ARG TARGETARCH
+
+RUN apt-get update && apt-get install -y --no-install-recommends \
+    curl ca-certificates wget file binutils \
+    pkg-config gcc libc6-dev \
+    libgtk-4-dev libwebkitgtk-6.0-dev \
+    libmpv-dev \
+    && rm -rf /var/lib/apt/lists/*
+
+COPY <<'SCRIPT' /usr/local/bin/build-appimage.sh
+#!/bin/sh
+set -e
+
+cd /app
+
+if [ ! -d frontend/dist ]; then
+    if [ -f frontend/pnpm-lock.yaml ]; then
+        corepack enable
+        (cd frontend && pnpm install --frozen-lockfile && pnpm run build)
+    elif [ -f frontend/package.json ]; then
+        (cd frontend && npm install --silent && npm run build --silent)
+    fi
+fi
+
+if [ ! -f bin/melovian ]; then
+    if [ ! -d vendor ]; then
+        echo "missing vendor/: run task go:vendor" >&2
+        exit 1
+    fi
+    CGO_ENABLED=1 go build -mod=vendor -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o bin/melovian .
+fi
+
+mkdir -p build/linux/appimage/build bin
+if [ ! -f build/linux/melovian.desktop ]; then
+    cat > build/linux/melovian.desktop <<'DESKTOP'
+[Desktop Entry]
+Type=Application
+Name=Melovian
+Exec=melovian %U
+Icon=melovian
+StartupWMClass=melovian
+Categories=Audio;Music;Player;
+Comment=Music player for local libraries and Subsonic-compatible servers
+Terminal=false
+Keywords=music;player;subsonic;navidrome
+Version=1.0
+StartupNotify=false
+DESKTOP
+fi
+
+export APP_NAME=melovian
+export APP_BINARY=/app/bin/melovian
+export ICON_PATH=/app/build/appicon.png
+export DESKTOP_FILE=/app/build/linux/melovian.desktop
+export OUTPUT_DIR=/app/bin
+export BUILD_DIR=/app/build/linux/appimage/build
+
+chmod +x /app/build/linux/appimage/package.sh
+/app/build/linux/appimage/package.sh
+SCRIPT
+
+RUN chmod +x /usr/local/bin/build-appimage.sh
+
+WORKDIR /app
+ENTRYPOINT ["/usr/local/bin/build-appimage.sh"]

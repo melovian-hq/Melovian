@@ -1,0 +1,41 @@
+{
+  "generatedAt": "2026-09-06T12:51:03.400Z",
+  "shots": [
+    {
+      "file": "desktop-dark-home.png",
+      "device": "desktop",
+      "theme": "dark",
+      "page": "home"
+    },
+    {
+      "file": "desktop-light-home.png",
+      "device": "desktop",
+      "theme": "light",
+      "page": "home"
+    },
+    {
+      "file": "desktop-dark-album.png",
+      "device": "desktop",
+      "theme": "dark",
+      "page": "album"
+    },
+    {
+      "file": "desktop-dark-playlists.png",
+      "device": "desktop",
+      "theme": "dark",
+      "page": "playlists"
+    },
+    {
+      "file": "mobile-dark-home.png",
+      "device": "mobile",
+      "theme": "dark",
+      "page": "home"
+    },
+    {
+      "file": "mobile-light-album.png",
+      "device": "mobile",
+      "theme": "light",
+      "page": "album"
+    }
+  ]
+}

@@ -1,0 +1,52 @@
+# Server-mode / web development container (no libmpv / GTK desktop stack).
+# Open in VS Code / Cursor: Dev Containers: Reopen in Container
+# Then: task setup && task dev:server
+# UI: forwarded port 9245, API: 17337
+
+{
+  "name": "melovian-server",
+  "image": "mcr.microsoft.com/devcontainers/go:1.26-bookworm",
+  "features": {
+    "ghcr.io/devcontainers/features/node:1": {
+      "version": "22",
+      "pnpmVersion": "11.1.2"
+    },
+    "ghcr.io/devcontainers-extra/features/go-task:1": {
+      "version": "latest"
+    }
+  },
+  "forwardPorts": [9245, 17337],
+  "portsAttributes": {
+    "9245": {
+      "label": "Vite UI",
+      "onAutoForward": "notify"
+    },
+    "17337": {
+      "label": "Melovian API",
+      "onAutoForward": "silent"
+    }
+  },
+  "postCreateCommand": "bash build/scripts/setup.sh",
+  "customizations": {
+    "vscode": {
+      "extensions": [
+        "golang.go",
+        "svelte.svelte-vscode",
+        "dbaeumer.vscode-eslint",
+        "esbenp.prettier-vscode",
+        "bradlc.vscode-tailwindcss",
+        "EditorConfig.EditorConfig",
+        "task.vscode-task"
+      ],
+      "settings": {
+        "go.lintTool": "golangci-lint"
+      }
+    }
+  },
+  "remoteEnv": {
+    "MELOVIAN_LISTEN": "0.0.0.0:17337",
+    "MELOVIAN_API_URL": "http://127.0.0.1:17337"
+  },
+  "mounts": [],
+  "remoteUser": "vscode"
+}

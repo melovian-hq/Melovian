@@ -1,0 +1,1825 @@
+{
+  "file": "frontend/src/lib/config/music.svelte.ts",
+  "generatedAt": "2026-08-30T23:28:21.662Z",
+  "methodCount": 202,
+  "methods": [
+    {
+      "name": "applyNativeCaps",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 240,
+      "endLine": 249,
+      "bodyHash": "23d75a25c36f6cff",
+      "bodyLen": 47
+    },
+    {
+      "name": "constructor",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 344,
+      "endLine": 350,
+      "bodyHash": "8e70a46caafedd25",
+      "bodyLen": 188
+    },
+    {
+      "name": "updateTranscodingSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 352,
+      "endLine": 354,
+      "bodyHash": "9d0db1af3784a3ad",
+      "bodyLen": 63
+    },
+    {
+      "name": "updateImmersiveAudioSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 356,
+      "endLine": 358,
+      "bodyHash": "2ad61743b23bf70a",
+      "bodyLen": 66
+    },
+    {
+      "name": "updateQueueSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 360,
+      "endLine": 362,
+      "bodyHash": "f667feae413d6f5c",
+      "bodyLen": 57
+    },
+    {
+      "name": "updatePlaybackSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 364,
+      "endLine": 366,
+      "bodyHash": "5b2cd574e241afc7",
+      "bodyLen": 60
+    },
+    {
+      "name": "updateMetadataEnhancementSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 368,
+      "endLine": 370,
+      "bodyHash": "3fc1c1ace9e3691c",
+      "bodyLen": 71
+    },
+    {
+      "name": "setHideUnknownMetadata",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 372,
+      "endLine": 374,
+      "bodyHash": "b8b5d5400dfd44bc",
+      "bodyLen": 56
+    },
+    {
+      "name": "applyQueueLimit",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 376,
+      "endLine": 386,
+      "bodyHash": "887c4f007c61f81f",
+      "bodyLen": 277
+    },
+    {
+      "name": "toggleLyricsPanel",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 388,
+      "endLine": 390,
+      "bodyHash": "a9a00d1a73d8fdb5",
+      "bodyLen": 45
+    },
+    {
+      "name": "loadCurrentLyrics",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 392,
+      "endLine": 394,
+      "bodyHash": "204293d1c511ad16",
+      "bodyLen": 51
+    },
+    {
+      "name": "fetchCurrentLyrics",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 396,
+      "endLine": 398,
+      "bodyHash": "3e87fa8aa72ca09a",
+      "bodyLen": 53
+    },
+    {
+      "name": "loadLyricsSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 400,
+      "endLine": 402,
+      "bodyHash": "1c8118aa9a4e875c",
+      "bodyLen": 52
+    },
+    {
+      "name": "updateLyricsSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 404,
+      "endLine": 406,
+      "bodyHash": "f59bdb2b4dbd1d5f",
+      "bodyLen": 62
+    },
+    {
+      "name": "seekToLyricLine",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 408,
+      "endLine": 410,
+      "bodyHash": "035e1381976da32a",
+      "bodyLen": 50
+    },
+    {
+      "name": "searchLyrics",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 412,
+      "endLine": 414,
+      "bodyHash": "b9956a9f1d957bac",
+      "bodyLen": 52
+    },
+    {
+      "name": "loadEqSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 416,
+      "endLine": 418,
+      "bodyHash": "005ab4e49adc7329",
+      "bodyLen": 55
+    },
+    {
+      "name": "persistEq",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 420,
+      "endLine": 422,
+      "bodyHash": "53172de62e1b4e92",
+      "bodyLen": 39
+    },
+    {
+      "name": "toggleEqPanel",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 424,
+      "endLine": 426,
+      "bodyHash": "9a04b0a4e722255c",
+      "bodyLen": 37
+    },
+    {
+      "name": "setEqEnabled",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 428,
+      "endLine": 430,
+      "bodyHash": "77cb41fc637b3175",
+      "bodyLen": 49
+    },
+    {
+      "name": "initEngine",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 432,
+      "endLine": 434,
+      "bodyHash": "9e8d0e51666e64b7",
+      "bodyLen": 45
+    },
+    {
+      "name": "refreshNativeCapabilities",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 436,
+      "endLine": 438,
+      "bodyHash": "333661c196411178",
+      "bodyLen": 38
+    },
+    {
+      "name": "setupEngine",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 440,
+      "endLine": 442,
+      "bodyHash": "25c19aa7e5210c15",
+      "bodyLen": 35
+    },
+    {
+      "name": "buildEngine",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 444,
+      "endLine": 446,
+      "bodyHash": "d0981a8416d4d006",
+      "bodyLen": 51
+    },
+    {
+      "name": "syncNativeCaps",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 448,
+      "endLine": 450,
+      "bodyHash": "436be4b0ce4bdc12",
+      "bodyLen": 49
+    },
+    {
+      "name": "attachEngineListeners",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 452,
+      "endLine": 454,
+      "bodyHash": "2dde41798bff8e09",
+      "bodyLen": 49
+    },
+    {
+      "name": "teardownEngine",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 456,
+      "endLine": 458,
+      "bodyHash": "d5e80441df0ef061",
+      "bodyLen": 42
+    },
+    {
+      "name": "recordPlaybackError",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 460,
+      "endLine": 462,
+      "bodyHash": "d4a40b15180b7677",
+      "bodyLen": 54
+    },
+    {
+      "name": "fallbackToWebPlayback",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 464,
+      "endLine": 466,
+      "bodyHash": "eefbc8882585de2e",
+      "bodyLen": 62
+    },
+    {
+      "name": "resumeCurrentAt",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 468,
+      "endLine": 470,
+      "bodyHash": "7ad98f452f4a6baa",
+      "bodyLen": 73
+    },
+    {
+      "name": "applyEngineChange",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 472,
+      "endLine": 474,
+      "bodyHash": "0ca72bc038140646",
+      "bodyLen": 52
+    },
+    {
+      "name": "setRoutePath",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 486,
+      "endLine": 488,
+      "bodyHash": "08734f3f1727951a",
+      "bodyLen": 54
+    },
+    {
+      "name": "dismissPlayer",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 490,
+      "endLine": 492,
+      "bodyHash": "6ce33cc9178ac386",
+      "bodyLen": 47
+    },
+    {
+      "name": "restorePlayer",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 494,
+      "endLine": 496,
+      "bodyHash": "2b0d53c766faa1dd",
+      "bodyLen": 47
+    },
+    {
+      "name": "expandPlayer",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 498,
+      "endLine": 500,
+      "bodyHash": "69f5d708eacbbc52",
+      "bodyLen": 46
+    },
+    {
+      "name": "connect",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 502,
+      "endLine": 506,
+      "bodyHash": "412b1c5920919d4e",
+      "bodyLen": 50
+    },
+    {
+      "name": "doConnect",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 508,
+      "endLine": 512,
+      "bodyHash": "81787b9033167047",
+      "bodyLen": 52
+    },
+    {
+      "name": "finishConnectSetup",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 514,
+      "endLine": 519,
+      "bodyHash": "371624fdef13b605",
+      "bodyLen": 61
+    },
+    {
+      "name": "scheduleBackgroundHydration",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 521,
+      "endLine": 523,
+      "bodyHash": "0a663e1e1d6919a1",
+      "bodyLen": 56
+    },
+    {
+      "name": "pingServer",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 525,
+      "endLine": 527,
+      "bodyHash": "6ead62d543a71ee1",
+      "bodyLen": 46
+    },
+    {
+      "name": "handleServerReachabilityLoss",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 529,
+      "endLine": 531,
+      "bodyHash": "392440211092384b",
+      "bodyLen": 57
+    },
+    {
+      "name": "ensureOfflinePlaybackSource",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 533,
+      "endLine": 535,
+      "bodyHash": "eb763aec23db5955",
+      "bodyLen": 68
+    },
+    {
+      "name": "canPlayCurrentOffline",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 537,
+      "endLine": 539,
+      "bodyHash": "4bec44050b0ae3f6",
+      "bodyLen": 57
+    },
+    {
+      "name": "bootstrapOfflinePlayback",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 541,
+      "endLine": 545,
+      "bodyHash": "b36651447630884a",
+      "bodyLen": 100
+    },
+    {
+      "name": "resolveOfflineTrack",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 547,
+      "endLine": 565,
+      "bodyHash": "73bb340689e49e4a",
+      "bodyLen": 496
+    },
+    {
+      "name": "handlePlaybackNetworkFailure",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 567,
+      "endLine": 572,
+      "bodyHash": "2b589792c85714f4",
+      "bodyLen": 84
+    },
+    {
+      "name": "suspendForReconnect",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 574,
+      "endLine": 576,
+      "bodyHash": "b2f80a77123d50b0",
+      "bodyLen": 48
+    },
+    {
+      "name": "markPendingReconnectResume",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 578,
+      "endLine": 580,
+      "bodyHash": "9655667fb3b29c5b",
+      "bodyLen": 55
+    },
+    {
+      "name": "resumeAfterReconnect",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 582,
+      "endLine": 584,
+      "bodyHash": "70e9b1dd5c73e79c",
+      "bodyLen": 56
+    },
+    {
+      "name": "selfHeal",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 586,
+      "endLine": 588,
+      "bodyHash": "ee7d5b486614845f",
+      "bodyLen": 44
+    },
+    {
+      "name": "disconnect",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 590,
+      "endLine": 594,
+      "bodyHash": "5f388bbdf1622c51",
+      "bodyLen": 87
+    },
+    {
+      "name": "personalRadioOptions",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 596,
+      "endLine": 604,
+      "bodyHash": "2635f711e7a49828",
+      "bodyLen": 256
+    },
+    {
+      "name": "refreshHome",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 606,
+      "endLine": 609,
+      "bodyHash": "057bc21471381c33",
+      "bodyLen": 102
+    },
+    {
+      "name": "refreshHomeCore",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 611,
+      "endLine": 613,
+      "bodyHash": "5a3b73c9abf0ae49",
+      "bodyLen": 57
+    },
+    {
+      "name": "schedulePersonalizationRefresh",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 615,
+      "endLine": 635,
+      "bodyHash": "12a534de0786a525",
+      "bodyLen": 457
+    },
+    {
+      "name": "restoreCachedMixes",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 637,
+      "endLine": 639,
+      "bodyHash": "01bcc975cdc535c4",
+      "bodyLen": 43
+    },
+    {
+      "name": "refreshPersonalization",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 641,
+      "endLine": 645,
+      "bodyHash": "cc1907c6ec5d02cc",
+      "bodyLen": 140
+    },
+    {
+      "name": "refreshMixes",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 647,
+      "endLine": 649,
+      "bodyHash": "24134fced4e5fe65",
+      "bodyLen": 44
+    },
+    {
+      "name": "doRefreshMixes",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 651,
+      "endLine": 653,
+      "bodyHash": "8de556f5e18ecbc9",
+      "bodyLen": 51
+    },
+    {
+      "name": "updateMixSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 655,
+      "endLine": 657,
+      "bodyHash": "58d2381439d51e91",
+      "bodyLen": 50
+    },
+    {
+      "name": "regenerateMixes",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 659,
+      "endLine": 661,
+      "bodyHash": "7d5ac0e1d8d9c588",
+      "bodyLen": 47
+    },
+    {
+      "name": "regenerateMix",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 663,
+      "endLine": 665,
+      "bodyHash": "d2d36c40fccffcad",
+      "bodyLen": 50
+    },
+    {
+      "name": "refreshRecommendations",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 667,
+      "endLine": 669,
+      "bodyHash": "568e8ea2ee0a6400",
+      "bodyLen": 54
+    },
+    {
+      "name": "refreshHistory",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 671,
+      "endLine": 673,
+      "bodyHash": "01b2d0e79eb4899f",
+      "bodyLen": 61
+    },
+    {
+      "name": "clearListenHistory",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 675,
+      "endLine": 677,
+      "bodyHash": "0b84d9bb9e0f6643",
+      "bodyLen": 60
+    },
+    {
+      "name": "refreshStats",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 679,
+      "endLine": 681,
+      "bodyHash": "7d20677b58f4834e",
+      "bodyLen": 59
+    },
+    {
+      "name": "refreshLibraryStats",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 683,
+      "endLine": 685,
+      "bodyHash": "4f6c3c98d7628e4f",
+      "bodyLen": 68
+    },
+    {
+      "name": "refreshLibrary",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 687,
+      "endLine": 689,
+      "bodyHash": "0ed621209d8d897b",
+      "bodyLen": 64
+    },
+    {
+      "name": "startLibraryWatch",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 691,
+      "endLine": 693,
+      "bodyHash": "eb9b9e2d1b1f0ec2",
+      "bodyLen": 53
+    },
+    {
+      "name": "stopLibraryWatch",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 695,
+      "endLine": 697,
+      "bodyHash": "2322660aa3685b72",
+      "bodyLen": 52
+    },
+    {
+      "name": "scheduleLibraryWatch",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 699,
+      "endLine": 701,
+      "bodyHash": "20be609617e72b45",
+      "bodyLen": 63
+    },
+    {
+      "name": "pollLibraryChanges",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 703,
+      "endLine": 705,
+      "bodyHash": "a886b4a770ee05b3",
+      "bodyLen": 61
+    },
+    {
+      "name": "playArtistAlbums",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 707,
+      "endLine": 709,
+      "bodyHash": "b0c3ce78da3d5316",
+      "bodyLen": 73
+    },
+    {
+      "name": "refreshPlaylists",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 711,
+      "endLine": 713,
+      "bodyHash": "ebece863bd2210ee",
+      "bodyLen": 52
+    },
+    {
+      "name": "refreshServerPlaylists",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 715,
+      "endLine": 717,
+      "bodyHash": "781d1a905c578767",
+      "bodyLen": 58
+    },
+    {
+      "name": "refreshInternetRadios",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 719,
+      "endLine": 721,
+      "bodyHash": "f66f341cb8137c85",
+      "bodyLen": 57
+    },
+    {
+      "name": "refreshFavorites",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 723,
+      "endLine": 725,
+      "bodyHash": "299ed11f65612cce",
+      "bodyLen": 53
+    },
+    {
+      "name": "toggleFavoriteAlbum",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 727,
+      "endLine": 729,
+      "bodyHash": "268d9d839ef30d40",
+      "bodyLen": 61
+    },
+    {
+      "name": "toggleFavoriteArtist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 731,
+      "endLine": 733,
+      "bodyHash": "89d3b4a5b5bebc33",
+      "bodyLen": 63
+    },
+    {
+      "name": "playFavoriteAlbums",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 735,
+      "endLine": 737,
+      "bodyHash": "c717bb027294fdd7",
+      "bodyLen": 61
+    },
+    {
+      "name": "playFavoriteArtists",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 739,
+      "endLine": 741,
+      "bodyHash": "f43d2a6a9659b491",
+      "bodyLen": 63
+    },
+    {
+      "name": "toggleFavorite",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 743,
+      "endLine": 745,
+      "bodyHash": "0e22ce601ccfc7c2",
+      "bodyLen": 56
+    },
+    {
+      "name": "fetchServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 747,
+      "endLine": 749,
+      "bodyHash": "c38f59d9eaf6e7ee",
+      "bodyLen": 58
+    },
+    {
+      "name": "createServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 751,
+      "endLine": 753,
+      "bodyHash": "851702d2356dc035",
+      "bodyLen": 70
+    },
+    {
+      "name": "refreshSmartPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 762,
+      "endLine": 764,
+      "bodyHash": "2ff46ff85dc0c50a",
+      "bodyLen": 67
+    },
+    {
+      "name": "deleteServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 766,
+      "endLine": 768,
+      "bodyHash": "ba229c0d2011da2b",
+      "bodyLen": 58
+    },
+    {
+      "name": "renameServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 770,
+      "endLine": 772,
+      "bodyHash": "7f7b92a802b92213",
+      "bodyLen": 64
+    },
+    {
+      "name": "addToServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 774,
+      "endLine": 776,
+      "bodyHash": "7bfef45b4b7446b6",
+      "bodyLen": 73
+    },
+    {
+      "name": "addTracksToServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 778,
+      "endLine": 780,
+      "bodyHash": "d901296a57eebda4",
+      "bodyLen": 79
+    },
+    {
+      "name": "removeFromServerPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 782,
+      "endLine": 784,
+      "bodyHash": "7f3e8609cf5ed472",
+      "bodyLen": 81
+    },
+    {
+      "name": "moveServerPlaylistSong",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 786,
+      "endLine": 798,
+      "bodyHash": "22167e7284d8188d",
+      "bodyLen": 135
+    },
+    {
+      "name": "playFavorites",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 800,
+      "endLine": 802,
+      "bodyHash": "5bc46f1ee62eb49c",
+      "bodyLen": 54
+    },
+    {
+      "name": "playAllFavorites",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 804,
+      "endLine": 806,
+      "bodyHash": "3a5ec0779a945dac",
+      "bodyLen": 54
+    },
+    {
+      "name": "search",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 808,
+      "endLine": 810,
+      "bodyHash": "2401b8d3b45a971d",
+      "bodyLen": 52
+    },
+    {
+      "name": "searchAll",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 812,
+      "endLine": 817,
+      "bodyHash": "7855f51a0a796562",
+      "bodyLen": 118
+    },
+    {
+      "name": "searchSimilarTracks",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 821,
+      "endLine": 823,
+      "bodyHash": "45c05fddd7b503cb",
+      "bodyLen": 75
+    },
+    {
+      "name": "loadGenres",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 825,
+      "endLine": 827,
+      "bodyHash": "b2ca7ed40f3d8ecf",
+      "bodyLen": 52
+    },
+    {
+      "name": "loadArtists",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 829,
+      "endLine": 831,
+      "bodyHash": "3590d21dfeb4947c",
+      "bodyLen": 60
+    },
+    {
+      "name": "getGenreSongs",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 833,
+      "endLine": 839,
+      "bodyHash": "484b2d740bf46e5c",
+      "bodyLen": 75
+    },
+    {
+      "name": "playGenre",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 841,
+      "endLine": 843,
+      "bodyHash": "14f207412eccdf89",
+      "bodyLen": 65
+    },
+    {
+      "name": "addGenreToQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 845,
+      "endLine": 847,
+      "bodyHash": "ae35c158ad34d628",
+      "bodyLen": 62
+    },
+    {
+      "name": "playGenreNext",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 849,
+      "endLine": 851,
+      "bodyHash": "3ddaff2fc1d87a93",
+      "bodyLen": 60
+    },
+    {
+      "name": "playTracks",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 853,
+      "endLine": 871,
+      "bodyHash": "1ffdb61bd70a9fc1",
+      "bodyLen": 130
+    },
+    {
+      "name": "getMix",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 873,
+      "endLine": 875,
+      "bodyHash": "9c4acb4d2832ae76",
+      "bodyLen": 40
+    },
+    {
+      "name": "ensureMix",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 877,
+      "endLine": 879,
+      "bodyHash": "4a2f09a606dd1b78",
+      "bodyLen": 43
+    },
+    {
+      "name": "replaceMixWithHydrated",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 881,
+      "endLine": 883,
+      "bodyHash": "b4af00ce5db5765f",
+      "bodyLen": 62
+    },
+    {
+      "name": "hydrateMixTracks",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 885,
+      "endLine": 887,
+      "bodyHash": "ff76e8b9ae771e02",
+      "bodyLen": 51
+    },
+    {
+      "name": "playMix",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 889,
+      "endLine": 891,
+      "bodyHash": "498cecb50abecd9d",
+      "bodyLen": 42
+    },
+    {
+      "name": "slimStoredMix",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 893,
+      "endLine": 895,
+      "bodyHash": "d5cfa702b83f0186",
+      "bodyLen": 43
+    },
+    {
+      "name": "removeFromQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 897,
+      "endLine": 899,
+      "bodyHash": "0467ab460d7a2d73",
+      "bodyLen": 47
+    },
+    {
+      "name": "playNext",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 902,
+      "endLine": 904,
+      "bodyHash": "eb17ab8583e16ab8",
+      "bodyLen": 40
+    },
+    {
+      "name": "addToQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 907,
+      "endLine": 909,
+      "bodyHash": "a24afceb6e8e358f",
+      "bodyLen": 42
+    },
+    {
+      "name": "addTracksToQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 912,
+      "endLine": 914,
+      "bodyHash": "7ba19ba981b2508e",
+      "bodyLen": 49
+    },
+    {
+      "name": "playTracksNext",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 917,
+      "endLine": 919,
+      "bodyHash": "9c5c64afe7b8ea00",
+      "bodyLen": 47
+    },
+    {
+      "name": "moveInQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 921,
+      "endLine": 923,
+      "bodyHash": "87bbccb8d8ba7e7c",
+      "bodyLen": 46
+    },
+    {
+      "name": "clearQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 926,
+      "endLine": 928,
+      "bodyHash": "c40857f53dd5d0b0",
+      "bodyLen": 37
+    },
+    {
+      "name": "playQueueIndex",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 930,
+      "endLine": 932,
+      "bodyHash": "9cf508aa685cb412",
+      "bodyLen": 46
+    },
+    {
+      "name": "armStartPosition",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 934,
+      "endLine": 936,
+      "bodyHash": "25a7ab41e384168d",
+      "bodyLen": 58
+    },
+    {
+      "name": "applyRemoteQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 938,
+      "endLine": 942,
+      "bodyHash": "6a0efed14c822a67",
+      "bodyLen": 148
+    },
+    {
+      "name": "toggleQueue",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 944,
+      "endLine": 946,
+      "bodyHash": "10c7a4133151fc7c",
+      "bodyLen": 38
+    },
+    {
+      "name": "playAlbum",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 948,
+      "endLine": 950,
+      "bodyHash": "e2ed06e1ffcf98b2",
+      "bodyLen": 45
+    },
+    {
+      "name": "playTrackById",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 952,
+      "endLine": 954,
+      "bodyHash": "fa32b60e23b18e18",
+      "bodyLen": 59
+    },
+    {
+      "name": "playOpenUri",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 956,
+      "endLine": 958,
+      "bodyHash": "76a0b676f38bb951",
+      "bodyLen": 53
+    },
+    {
+      "name": "playRandomRadio",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 960,
+      "endLine": 962,
+      "bodyHash": "7bc9558a737db515",
+      "bodyLen": 54
+    },
+    {
+      "name": "startRandomRadio",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 964,
+      "endLine": 966,
+      "bodyHash": "1ce559aaf3d16a69",
+      "bodyLen": 55
+    },
+    {
+      "name": "playRandomTracks",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 973,
+      "endLine": 978,
+      "bodyHash": "353ebfe198209636",
+      "bodyLen": 142
+    },
+    {
+      "name": "playLibraryShuffle",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 980,
+      "endLine": 982,
+      "bodyHash": "825a1bfad4fe1f3d",
+      "bodyLen": 52
+    },
+    {
+      "name": "playPersonalRadio",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 984,
+      "endLine": 986,
+      "bodyHash": "ffb67d81457bec71",
+      "bodyLen": 56
+    },
+    {
+      "name": "clearContinuousMode",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 988,
+      "endLine": 991,
+      "bodyHash": "7e47fc3f15c6ed6d",
+      "bodyLen": 71
+    },
+    {
+      "name": "playRandomInternetRadio",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 993,
+      "endLine": 995,
+      "bodyHash": "9b04f0bf6959326c",
+      "bodyLen": 57
+    },
+    {
+      "name": "playInternetRadio",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 997,
+      "endLine": 1002,
+      "bodyHash": "10309b1fc78308d8",
+      "bodyLen": 141
+    },
+    {
+      "name": "playInternetRadios",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1004,
+      "endLine": 1006,
+      "bodyHash": "3844b62648079f9d",
+      "bodyLen": 65
+    },
+    {
+      "name": "pause",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1008,
+      "endLine": 1010,
+      "bodyHash": "b71f0717577d9679",
+      "bodyLen": 44
+    },
+    {
+      "name": "togglePlay",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1012,
+      "endLine": 1014,
+      "bodyHash": "8dcc6e6e3e5a2184",
+      "bodyLen": 56
+    },
+    {
+      "name": "requestPlayCurrent",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1016,
+      "endLine": 1018,
+      "bodyHash": "cef7c0969a8e068e",
+      "bodyLen": 52
+    },
+    {
+      "name": "markTrackTranscoded",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1020,
+      "endLine": 1022,
+      "bodyHash": "7ffb6799eb651570",
+      "bodyLen": 60
+    },
+    {
+      "name": "playCurrent",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1024,
+      "endLine": 1026,
+      "bodyHash": "faae488e7f8e36f0",
+      "bodyLen": 65
+    },
+    {
+      "name": "isSupersededPlaybackError",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1028,
+      "endLine": 1030,
+      "bodyHash": "4ef72c1c482f83d6",
+      "bodyLen": 73
+    },
+    {
+      "name": "onPlaybackStarted",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1032,
+      "endLine": 1038,
+      "bodyHash": "635c182570400d72",
+      "bodyLen": 72
+    },
+    {
+      "name": "playCurrentWork",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1040,
+      "endLine": 1052,
+      "bodyHash": "0889bd7870b1b5fc",
+      "bodyLen": 122
+    },
+    {
+      "name": "loadTrackSource",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1054,
+      "endLine": 1060,
+      "bodyHash": "dbacf2561d0e2397",
+      "bodyLen": 74
+    },
+    {
+      "name": "enrichCurrentTrack",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1062,
+      "endLine": 1064,
+      "bodyHash": "255480dd6c576eb6",
+      "bodyLen": 74
+    },
+    {
+      "name": "recordNowPlaying",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1066,
+      "endLine": 1068,
+      "bodyHash": "7b545feee4131a4f",
+      "bodyLen": 63
+    },
+    {
+      "name": "trackStreamUrl",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1070,
+      "endLine": 1072,
+      "bodyHash": "fed7374b038aafd5",
+      "bodyLen": 60
+    },
+    {
+      "name": "isDownloaded",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1074,
+      "endLine": 1076,
+      "bodyHash": "4c014cf0cd0ac5cc",
+      "bodyLen": 53
+    },
+    {
+      "name": "loadDownloads",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1078,
+      "endLine": 1080,
+      "bodyHash": "74b53a2dd25cd8db",
+      "bodyLen": 46
+    },
+    {
+      "name": "loadCacheSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1082,
+      "endLine": 1084,
+      "bodyHash": "794bb7628b611c0b",
+      "bodyLen": 50
+    },
+    {
+      "name": "updateCacheSettings",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1086,
+      "endLine": 1088,
+      "bodyHash": "2d1ea5e5b688e4fd",
+      "bodyLen": 60
+    },
+    {
+      "name": "clearDownloadCache",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1090,
+      "endLine": 1092,
+      "bodyHash": "9c64de126c879d13",
+      "bodyLen": 51
+    },
+    {
+      "name": "maybeCacheTrack",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1094,
+      "endLine": 1096,
+      "bodyHash": "0b2f5753cc9e4422",
+      "bodyLen": 47
+    },
+    {
+      "name": "runCacheStrategy",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1098,
+      "endLine": 1100,
+      "bodyHash": "819708b793ffe889",
+      "bodyLen": 49
+    },
+    {
+      "name": "collectStrategyTracks",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1102,
+      "endLine": 1104,
+      "bodyHash": "1b8f6e8004f5bbe3",
+      "bodyLen": 55
+    },
+    {
+      "name": "prefetchCache",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1106,
+      "endLine": 1108,
+      "bodyHash": "2dcd7375360c93f4",
+      "bodyLen": 45
+    },
+    {
+      "name": "downloadCurrentOr",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1110,
+      "endLine": 1112,
+      "bodyHash": "f412f397b596e8a0",
+      "bodyLen": 55
+    },
+    {
+      "name": "removeDownload",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1114,
+      "endLine": 1116,
+      "bodyHash": "6cbbfffe707c585d",
+      "bodyLen": 54
+    },
+    {
+      "name": "toggleDownload",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1118,
+      "endLine": 1120,
+      "bodyHash": "58e8183fc9aa960e",
+      "bodyLen": 52
+    },
+    {
+      "name": "cancelOfflineDownload",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1130,
+      "endLine": 1132,
+      "bodyHash": "7a49424e9449e7bd",
+      "bodyLen": 48
+    },
+    {
+      "name": "downloadTracks",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1134,
+      "endLine": 1137,
+      "bodyHash": "5a4f00a9f444377d",
+      "bodyLen": 55
+    },
+    {
+      "name": "sequentialNextIndex",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1141,
+      "endLine": 1148,
+      "bodyHash": "511b3c5e75b0893c",
+      "bodyLen": 207
+    },
+    {
+      "name": "prefetchAround",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1150,
+      "endLine": 1166,
+      "bodyHash": "c1e02b7bf5b99bb5",
+      "bodyLen": 600
+    },
+    {
+      "name": "maybePrepareNext",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1168,
+      "endLine": 1196,
+      "bodyHash": "834d92a34b3aab4c",
+      "bodyLen": 993
+    },
+    {
+      "name": "maybeStartCrossfade",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1198,
+      "endLine": 1247,
+      "bodyHash": "3751035933dc797a",
+      "bodyLen": 1720
+    },
+    {
+      "name": "cycleRepeat",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1249,
+      "endLine": 1251,
+      "bodyHash": "253228c9920f6c72",
+      "bodyLen": 50
+    },
+    {
+      "name": "next",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1253,
+      "endLine": 1255,
+      "bodyHash": "e512abfc47ed07d0",
+      "bodyLen": 43
+    },
+    {
+      "name": "previous",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1257,
+      "endLine": 1259,
+      "bodyHash": "9e3c4bfacf7701a4",
+      "bodyLen": 47
+    },
+    {
+      "name": "setVolume",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1261,
+      "endLine": 1263,
+      "bodyHash": "0b5ebe81b7f8c598",
+      "bodyLen": 53
+    },
+    {
+      "name": "adjustVolume",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1265,
+      "endLine": 1267,
+      "bodyHash": "684dc6f2d00025d1",
+      "bodyLen": 56
+    },
+    {
+      "name": "seekBy",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1269,
+      "endLine": 1271,
+      "bodyHash": "642a3cda90003682",
+      "bodyLen": 52
+    },
+    {
+      "name": "seek",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1273,
+      "endLine": 1275,
+      "bodyHash": "fbce1f02c7e9e351",
+      "bodyLen": 50
+    },
+    {
+      "name": "setEqPreset",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1277,
+      "endLine": 1279,
+      "bodyHash": "bf29d6d83aae08ad",
+      "bodyLen": 43
+    },
+    {
+      "name": "setEqBandParam",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1281,
+      "endLine": 1283,
+      "bodyHash": "8e536204daabe422",
+      "bodyLen": 50
+    },
+    {
+      "name": "toggleEq",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1285,
+      "endLine": 1287,
+      "bodyHash": "c28b333eb9736156",
+      "bodyLen": 39
+    },
+    {
+      "name": "setNativePlaybackEnabled",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1289,
+      "endLine": 1291,
+      "bodyHash": "1a8e4c25ead8c7ae",
+      "bodyLen": 66
+    },
+    {
+      "name": "setNativeBackend",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1293,
+      "endLine": 1295,
+      "bodyHash": "222ad24d041b43cb",
+      "bodyLen": 58
+    },
+    {
+      "name": "startSmoothProgress",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1297,
+      "endLine": 1316,
+      "bodyHash": "7ceece2c39059161",
+      "bodyLen": 686
+    },
+    {
+      "name": "stopSmoothProgress",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1318,
+      "endLine": 1321,
+      "bodyHash": "459d4ea5b31c0043",
+      "bodyLen": 75
+    },
+    {
+      "name": "startProgressTracking",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1323,
+      "endLine": 1337,
+      "bodyHash": "3e3db4a6d7aa6f79",
+      "bodyLen": 484
+    },
+    {
+      "name": "syncMediaSession",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1339,
+      "endLine": 1380,
+      "bodyHash": "14c57312f561d6e9",
+      "bodyLen": 1099
+    },
+    {
+      "name": "onTrackEnded",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1382,
+      "endLine": 1384,
+      "bodyHash": "ed4a9a80490d3667",
+      "bodyLen": 54
+    },
+    {
+      "name": "maybeRefillContinuousQueue",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1386,
+      "endLine": 1388,
+      "bodyHash": "ee94adcae3ee9de3",
+      "bodyLen": 68
+    },
+    {
+      "name": "refillLibraryQueue",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1390,
+      "endLine": 1392,
+      "bodyHash": "be8661132fe4b582",
+      "bodyLen": 65
+    },
+    {
+      "name": "refillPersonalQueue",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1394,
+      "endLine": 1396,
+      "bodyHash": "3700ca8e3e5dfeb9",
+      "bodyLen": 66
+    },
+    {
+      "name": "appendTracksToQueue",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1398,
+      "endLine": 1400,
+      "bodyHash": "474f2727156e3feb",
+      "bodyLen": 67
+    },
+    {
+      "name": "appendRandomSongsToQueue",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1402,
+      "endLine": 1404,
+      "bodyHash": "90c530af083d2294",
+      "bodyLen": 71
+    },
+    {
+      "name": "seedShuffleUpcoming",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1406,
+      "endLine": 1413,
+      "bodyHash": "7984f34dde963a16",
+      "bodyLen": 220
+    },
+    {
+      "name": "ensureShuffleUpcoming",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1415,
+      "endLine": 1429,
+      "bodyHash": "faeea2c424abee4c",
+      "bodyLen": 319
+    },
+    {
+      "name": "advanceShuffleIndex",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1431,
+      "endLine": 1449,
+      "bodyHash": "d640f6b08ec5b42f",
+      "bodyLen": 540
+    },
+    {
+      "name": "advanceTrack",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1451,
+      "endLine": 1466,
+      "bodyHash": "52a9382a90270503",
+      "bodyLen": 411
+    },
+    {
+      "name": "stopAtQueueEnd",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1468,
+      "endLine": 1474,
+      "bodyHash": "6b32b4eadbfc5fdf",
+      "bodyLen": 150
+    },
+    {
+      "name": "skipFailedTrack",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1476,
+      "endLine": 1478,
+      "bodyHash": "4a7e75f95e54a490",
+      "bodyLen": 63
+    },
+    {
+      "name": "recordPlayCompletion",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1480,
+      "endLine": 1501,
+      "bodyHash": "d8789091b23cc647",
+      "bodyLen": 578
+    },
+    {
+      "name": "saveProgress",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1503,
+      "endLine": 1513,
+      "bodyHash": "5df3e1d8a85d6131",
+      "bodyLen": 82
+    },
+    {
+      "name": "addToPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1515,
+      "endLine": 1517,
+      "bodyHash": "d203edbb6fc3eefa",
+      "bodyLen": 66
+    },
+    {
+      "name": "addTracksToPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1519,
+      "endLine": 1521,
+      "bodyHash": "3ccbc64476e611fd",
+      "bodyLen": 73
+    },
+    {
+      "name": "createPlaylist",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1523,
+      "endLine": 1525,
+      "bodyHash": "0dcd5fc450021c9f",
+      "bodyLen": 55
+    },
+    {
+      "name": "entryToSong",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1527,
+      "endLine": 1529,
+      "bodyHash": "db919d4bc77a30ef",
+      "bodyLen": 42
+    },
+    {
+      "name": "favoriteToSong",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1531,
+      "endLine": 1533,
+      "bodyHash": "34b8f055c625f5c1",
+      "bodyLen": 44
+    },
+    {
+      "name": "persistPlaybackSnapshot",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1535,
+      "endLine": 1537,
+      "bodyHash": "55f1b31106712e27",
+      "bodyLen": 38
+    },
+    {
+      "name": "flushPlaybackState",
+      "kind": "method",
+      "visibility": "public",
+      "startLine": 1539,
+      "endLine": 1541,
+      "bodyHash": "a18ba2e859ff49a1",
+      "bodyLen": 59
+    },
+    {
+      "name": "persistPlaybackState",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1543,
+      "endLine": 1545,
+      "bodyHash": "2ec0046224824203",
+      "bodyLen": 54
+    },
+    {
+      "name": "restorePlayback",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1547,
+      "endLine": 1549,
+      "bodyHash": "9eca622019c9ab22",
+      "bodyLen": 57
+    },
+    {
+      "name": "resolveTracksForRestore",
+      "kind": "method",
+      "visibility": "private",
+      "startLine": 1551,
+      "endLine": 1604,
+      "bodyHash": "3500df693f699d85",
+      "bodyLen": 1561
+    }
+  ]
+}

@@ -1,0 +1,35 @@
+# Local pre-commit gate. Install once: go install github.com/evilmartians/lefthook@v1.11.13
+# Then: lefthook install
+# Skip for an emergency commit: LEFTHOOK=0 git commit ...
+
+pre-commit:
+  parallel: true
+  commands:
+    go-fmt:
+      glob: "*.go"
+      exclude: "(^vendor/|^frontend/|^build/android/wails-v3/|^build/tools/)"
+      run: |
+        unformatted=$(gofmt -l {staged_files})
+        if [ -n "$unformatted" ]; then
+          echo "gofmt needed:" >&2
+          echo "$unformatted" >&2
+          echo "Run: task fmt" >&2
+          exit 1
+        fi
+    go-lint:
+      glob: "*.go"
+      exclude: "(^vendor/|^frontend/|^build/android/wails-v3/|^build/tools/)"
+      run: task lint:go
+    goreleaser-check:
+      glob: ".goreleaser.yaml"
+      run: goreleaser check
+    frontend-format:
+      root: frontend
+      glob: "*.{js,ts,svelte,css,json,md}"
+      exclude: "(^bindings/|^dist/|^node_modules/|^coverage/)"
+      run: pnpm exec prettier --check {staged_files}
+    frontend-lint:
+      root: frontend
+      glob: "*.{js,ts,svelte}"
+      exclude: "(^bindings/|^dist/|^node_modules/)"
+      run: pnpm exec eslint {staged_files}

@@ -1,0 +1,61 @@
+{
+  "file": "frontend/src/pages/NowPlayingPage.svelte",
+  "generatedAt": "2026-08-29T12:52:24.209Z",
+  "methodCount": 6,
+  "methods": [
+    {
+      "name": "exportCurrentLyrics",
+      "kind": "function",
+      "visibility": "public",
+      "startLine": 152,
+      "endLine": 157,
+      "bodyHash": "d989f9c0bbc8ec9d",
+      "bodyLen": 190
+    },
+    {
+      "name": "onDragStart",
+      "kind": "function",
+      "visibility": "public",
+      "startLine": 159,
+      "endLine": 161,
+      "bodyHash": "d9c31329eb14725f",
+      "bodyLen": 28
+    },
+    {
+      "name": "onDragOver",
+      "kind": "function",
+      "visibility": "public",
+      "startLine": 163,
+      "endLine": 166,
+      "bodyHash": "2679855629eb9d67",
+      "bodyLen": 56
+    },
+    {
+      "name": "onDrop",
+      "kind": "function",
+      "visibility": "public",
+      "startLine": 168,
+      "endLine": 174,
+      "bodyHash": "7f1bb0e0b2992dab",
+      "bodyLen": 143
+    },
+    {
+      "name": "onDragEnd",
+      "kind": "function",
+      "visibility": "public",
+      "startLine": 176,
+      "endLine": 179,
+      "bodyHash": "d8e02f4eac3ad5b2",
+      "bodyLen": 45
+    },
+    {
+      "name": "onTvShortcut",
+      "kind": "function",
+      "visibility": "public",
+      "startLine": 181,
+      "endLine": 200,
+      "bodyHash": "b0b8982838167640",
+      "bodyLen": 504
+    }
+  ]
+}

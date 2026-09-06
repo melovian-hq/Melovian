@@ -1,0 +1,90 @@
+# SPDX-FileCopyrightText: 2026 Quad4 Software
+# SPDX-License-Identifier: Apache-2.0
+
+services:
+  melovian:
+    build:
+      context: ..
+      dockerfile: docker/Dockerfile
+      args:
+        VERSION: ${VERSION:-dev}
+        REVISION: ${REVISION:-unknown}
+        CREATED: ${CREATED:-}
+        SOURCE: ${SOURCE:-}
+    image: melovian:web
+    restart: unless-stopped
+    ports:
+      - "8080:8080"
+    environment:
+      MELOVIAN_DATA: /data
+      MELOVIAN_LISTEN: 0.0.0.0:8080
+      MELOVIAN_DATABASE_URL: ${MELOVIAN_DATABASE_URL:-}
+      MELOVIAN_AUTH_SECRET: ${MELOVIAN_AUTH_SECRET:-}
+      MELOVIAN_DEMO_MODE: ${MELOVIAN_DEMO_MODE:-}
+      MELOVIAN_ALLOWED_IPS: ${MELOVIAN_ALLOWED_IPS:-}
+      MELOVIAN_TRUST_PROXY: ${MELOVIAN_TRUST_PROXY:-}
+      MELOVIAN_PUBLIC_URL: ${MELOVIAN_PUBLIC_URL:-}
+      MELOVIAN_CORS_ORIGINS: ${MELOVIAN_CORS_ORIGINS:-}
+      CACHE_ENABLED: ${CACHE_ENABLED:-true}
+      MELOVIAN_LOCAL_LIBRARY: ${MELOVIAN_LOCAL_LIBRARY:-}
+      MELOVIAN_LOCAL_LIBRARY_PATH: ${MELOVIAN_LOCAL_LIBRARY_PATH:-}
+      MELOVIAN_OIDC_ISSUER: ${MELOVIAN_OIDC_ISSUER:-}
+      MELOVIAN_OIDC_CLIENT_ID: ${MELOVIAN_OIDC_CLIENT_ID:-}
+      MELOVIAN_OIDC_CLIENT_SECRET: ${MELOVIAN_OIDC_CLIENT_SECRET:-}
+      MELOVIAN_OIDC_REDIRECT_URL: ${MELOVIAN_OIDC_REDIRECT_URL:-}
+      MELOVIAN_OIDC_SCOPES: ${MELOVIAN_OIDC_SCOPES:-}
+      NAVIDROME_SERVER: ${NAVIDROME_SERVER:-}
+      NAVIDROME_USER: ${NAVIDROME_USER:-}
+      NAVIDROME_PASSWORD: ${NAVIDROME_PASSWORD:-}
+      MELOVIAN_SENTRY_DSN: ${MELOVIAN_SENTRY_DSN:-}
+      SENTRY_DSN: ${SENTRY_DSN:-}
+      MELOVIAN_SENTRY_FRONTEND_DSN: ${MELOVIAN_SENTRY_FRONTEND_DSN:-}
+      SENTRY_FRONTEND_DSN: ${SENTRY_FRONTEND_DSN:-}
+      MELOVIAN_SENTRY_ENVIRONMENT: ${MELOVIAN_SENTRY_ENVIRONMENT:-}
+      SENTRY_ENVIRONMENT: ${SENTRY_ENVIRONMENT:-}
+      MELOVIAN_SENTRY_RELEASE: ${MELOVIAN_SENTRY_RELEASE:-}
+      SENTRY_RELEASE: ${SENTRY_RELEASE:-}
+      MELOVIAN_SENTRY_TRACES_SAMPLE_RATE: ${MELOVIAN_SENTRY_TRACES_SAMPLE_RATE:-}
+      SENTRY_TRACES_SAMPLE_RATE: ${SENTRY_TRACES_SAMPLE_RATE:-}
+    volumes:
+      - melovian-data:/data
+    networks:
+      - melovian
+    security_opt:
+      - no-new-privileges:true
+    cap_drop:
+      - ALL
+    read_only: true
+    tmpfs:
+      - /tmp:size=64m,mode=1777
+
+  # Optional Postgres backend. SQLite remains the default when MELOVIAN_DATABASE_URL is unset.
+  #   docker compose --profile postgres up -d
+  #   MELOVIAN_DATABASE_URL=postgres://melovian:melovian@postgres:5432/melovian?sslmode=disable
+  postgres:
+    profiles: ["postgres"]
+    image: postgres:16-alpine
+    restart: unless-stopped
+    environment:
+      POSTGRES_USER: melovian
+      POSTGRES_PASSWORD: melovian
+      POSTGRES_DB: melovian
+    volumes:
+      - melovian-postgres:/var/lib/postgresql/data
+    networks:
+      - melovian
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U melovian -d melovian"]
+      interval: 5s
+      timeout: 5s
+      retries: 10
+
+networks:
+  melovian:
+    name: melovian
+
+volumes:
+  melovian-data:
+    name: melovian-data
+  melovian-postgres:
+    name: melovian-postgres

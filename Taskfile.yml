@@ -1,0 +1,349 @@
+version: '3'
+
+vars:
+  APP_NAME: "melovian"
+  BIN_DIR: "bin"
+  PACKAGE_MANAGER: '{{.PACKAGE_MANAGER | default "pnpm"}}'
+  VITE_PORT: '{{.WAILS_VITE_PORT | default 9245}}'
+
+includes:
+  common: ./build/Taskfile.yml
+  windows: ./build/windows/Taskfile.yml
+  darwin: ./build/darwin/Taskfile.yml
+  linux: ./build/linux/Taskfile.yml
+  ios: ./build/ios/Taskfile.yml
+  android: ./build/android/Taskfile.yml
+
+tasks:
+  setup:
+    desc: Bootstrap .env, frontend deps, and toolchain hints
+    summary: Copy .env if needed, install frontend deps, print toolchain hints
+    cmds:
+      - task: common:setup
+
+  build:
+    desc: Build the desktop application for this OS
+    summary: Builds the application
+    cmds:
+      - task: "{{OS}}:build"
+
+  package:
+    desc: Package a production desktop build for this OS
+    summary: Packages a production build of the application
+    cmds:
+      - task: "{{OS}}:package"
+
+  package:appimage:
+    desc: Build a Linux AppImage with bundled libmpv
+    summary: Builds a Linux AppImage with bundled libmpv (FUSE 3)
+    cmds:
+      - task: linux:package:appimage
+
+  run:
+    desc: Run the packaged desktop application
+    summary: Runs the application
+    cmds:
+      - task: "{{OS}}:run"
+
+  dev:
+    desc: Desktop app with Vite hot reload (Wails)
+    summary: Runs the application in development mode
+    cmds:
+      - wails3 dev -config ./build/config.yml -port {{.VITE_PORT}}
+
+  dev:server:
+    desc: Server-mode API plus Vite with /api proxy
+    summary: Runs HTTP server and Vite without the Wails GUI
+    cmds:
+      - task: common:dev:server
+
+  setup:docker:
+    desc: Build Docker image used for cross-compilation
+    summary: Builds Docker image for cross-compilation (~800MB download)
+    cmds:
+      - task: common:setup:docker
+
+  stop:docker:
+    desc: Stop the Docker Compose stack
+    summary: Stops the Docker compose stack
+    dir: docker
+    cmds:
+      - docker compose down
+
+  build:server:
+    desc: Build the headless HTTP server binary
+    summary: Builds the application in server mode (no GUI, HTTP server only)
+    cmds:
+      - task: common:build:server
+
+  build:server:cross:
+    desc: Cross-compile server binaries for release targets
+    summary: Cross-compiles server binaries for all release OS/arch targets
+    cmds:
+      - task: common:build:server:cross
+
+  release:check:
+    desc: Validate the GoReleaser configuration
+    summary: Runs goreleaser check on .goreleaser.yaml
+    cmds:
+      - goreleaser check
+
+  release:snapshot:
+    desc: Build all GoReleaser artifacts locally without publishing
+    summary: Runs goreleaser release in snapshot mode (no tag, no publish)
+    cmds:
+      - goreleaser release --snapshot --clean
+
+  package:frontend:
+    desc: Zip frontend/dist for release
+    summary: Zips frontend/dist for release
+    cmds:
+      - task: common:package:frontend
+
+  demo:export:
+    desc: Export democatalog fixtures for the static frontend demo
+    summary: Export democatalog fixtures for the static frontend demo
+    cmds:
+      - go run ./internal/democatalog/cmd/export -out frontend/public/demo
+
+  build:frontend:demo:
+    desc: Build frontend as a static demo (no Go server)
+    summary: Build frontend as a static demo (no Go server)
+    cmds:
+      - task: demo:export
+      - |
+        set -euo pipefail
+        export VITE_STATIC_DEMO=true
+        export VITE_BASE="${VITE_BASE:-/}"
+        task common:build:frontend
+
+  run:server:
+    desc: Build and run the headless HTTP server
+    summary: Runs the application in server mode
+    cmds:
+      - task: common:run:server
+
+  build:docker:
+    desc: Build the server-mode Docker image
+    summary: Builds a Docker image for server mode deployment
+    cmds:
+      - task: common:build:docker
+
+  run:docker:
+    desc: Build and run the Docker image
+    summary: Builds and runs the Docker image
+    cmds:
+      - task: common:run:docker
+
+  test:
+    desc: Run backend and frontend unit tests
+    summary: Run backend and frontend tests
+    cmds:
+      - task: common:test
+
+  go:vendor:
+    desc: Refresh ./vendor after Go module changes
+    summary: Vendor Go modules into ./vendor
+    cmds:
+      - task: common:go:vendor
+
+  generate:bindings:
+    desc: Regenerate Wails TypeScript bindings
+    summary: Regenerates frontend/bindings from Go services
+    cmds:
+      - task: common:generate:bindings
+
+  test:bindings-drift:
+    desc: Fail when committed Wails bindings differ from generated output
+    summary: Fail when committed Wails bindings differ from generated output
+    cmds:
+      - task: common:test:bindings-drift
+
+  test:fuzz:
+    desc: Run Go fuzz smoke tests
+    summary: Run Go fuzz smoke tests
+    cmds:
+      - task: common:test:fuzz
+
+  test:property:
+    desc: Run frontend property and contract tests
+    summary: Run frontend property and contract tests
+    cmds:
+      - task: common:test:property
+
+  test:acceptance:
+    desc: Run acceptance tests (frontend + Go)
+    summary: Run acceptance tests (frontend + Go)
+    cmds:
+      - task: common:test:acceptance
+
+  test:exploratory:
+    desc: Run exploratory tests (frontend + Go fuzz exploration)
+    summary: Run exploratory tests (frontend + Go fuzz exploration)
+    cmds:
+      - task: common:test:exploratory
+
+  test:oracle:
+    desc: Run oracle and invariant tests
+    summary: Run oracle and invariant tests
+    cmds:
+      - task: common:test:oracle
+
+  test:mutation:
+    desc: Run mutation tests (frontend Stryker + Go harness)
+    summary: Run mutation tests (frontend Stryker + Go mutation harness)
+    cmds:
+      - task: common:test:mutation
+
+  test:coverage:
+    desc: Run coverage gates (frontend + Go floors)
+    summary: Run coverage gates (frontend Vitest thresholds + Go package floors)
+    cmds:
+      - task: common:test:coverage
+
+  test:frontend:
+    desc: Run frontend Vitest suite
+    summary: Run frontend Vitest suite
+    cmds:
+      - task: common:test:frontend
+
+  test:memory:
+    desc: Run memory regression and leak-oriented tests
+    summary: Run memory regression and leak-oriented tests
+    cmds:
+      - task: common:test:memory
+
+  test:perf:
+    desc: Run frontend performance smoke tests
+    summary: Run frontend performance smoke tests
+    cmds:
+      - task: common:test:perf
+
+  test:e2e:
+    desc: Build server and run Playwright e2e suite
+    summary: Build server and run Playwright e2e suite against demo mode
+    cmds:
+      - task: common:test:e2e
+
+  test:e2e:smoke:
+    desc: Build server and run Playwright smoke e2e project
+    summary: Build server and run Playwright smoke e2e project
+    cmds:
+      - task: common:test:e2e:smoke
+
+  verify:
+    desc: Local pre-merge gate (format, lint, race tests, typecheck)
+    summary: Run full verification (format, lint, tests, typecheck)
+    cmds:
+      - task: common:verify
+
+  bench:
+    desc: Run Go allocation benchmarks
+    summary: Run Go allocation benchmarks
+    cmds:
+      - task: common:bench
+
+  lighthouse:
+    desc: Run Lighthouse CI on static demo frontend build (all demo-reachable pages)
+    summary: Run Lighthouse CI on static demo frontend build (all demo-reachable pages)
+    cmds:
+      - task: build:frontend:demo
+      - task: common:lighthouse
+
+  showcase:
+    desc: Capture demo-mode screenshots into ./showcase
+    summary: Capture demo-mode screenshots into ./showcase
+    deps:
+      - task: build:server
+    cmds:
+      - cd scripts/showcase && pnpm install
+      - cd scripts/showcase && pnpm exec playwright install chromium
+      - node scripts/showcase/capture.mjs
+
+  check:
+    desc: Run frontend svelte-check
+    summary: Run frontend svelte-check
+    cmds:
+      - task: common:check:frontend
+
+  lint:
+    desc: Run frontend ESLint and golangci-lint
+    summary: Run frontend ESLint and Go lint
+    cmds:
+      - task: common:lint:frontend
+      - task: common:lint:go
+
+  lint:frontend:
+    desc: Run frontend ESLint
+    summary: Run frontend ESLint
+    cmds:
+      - task: common:lint:frontend
+
+  lint:fix:
+    desc: Run frontend ESLint with --fix
+    summary: Run frontend ESLint with --fix
+    cmds:
+      - task: common:lint:frontend:fix
+
+  lint:go:
+    desc: Run golangci-lint
+    summary: Run golangci-lint on first-party Go packages
+    cmds:
+      - task: common:lint:go
+
+  format:
+    desc: Format Go (gofmt) and frontend (Prettier)
+    summary: Format Go and frontend sources
+    cmds:
+      - task: common:format:go
+      - task: common:format:frontend
+
+  fmt:
+    desc: Format Go sources with gofmt
+    summary: Format first-party Go sources with gofmt
+    cmds:
+      - task: common:format:go
+
+  format:frontend:
+    desc: Format frontend sources with Prettier
+    summary: Format frontend sources with Prettier
+    cmds:
+      - task: common:format:frontend
+
+  format:check:
+    desc: Check Go and frontend formatting (CI gate)
+    summary: Check Go and frontend formatting without writing
+    cmds:
+      - task: common:format:check
+
+  toolchain:mte:
+    desc: Build or reuse the mobile MTE Go toolchain
+    summary: Build or reuse the mobile MTE Go toolchain
+    cmds:
+      - bash build/scripts/ensure-go-mte.sh
+
+  build:android:
+    desc: Build a debug Android APK (arm64)
+    summary: Build a debug Android APK (arm64)
+    cmds:
+      - task: android:build
+        vars:
+          ARCH: arm64
+
+  build:android:emu:
+    desc: Build a debug Android APK for the host emulator ABI
+    summary: Build a debug Android APK for the host emulator ABI
+    cmds:
+      - task: android:build
+
+  package:android:
+    desc: Package a production Android APK (arm64)
+    summary: Package a production Android APK (arm64)
+    cmds:
+      - task: android:package
+
+  run:android:
+    desc: Build, install, and launch on the Android emulator
+    summary: Build, install, and launch on the Android emulator
+    cmds:
+      - task: android:run
