@@ -1,0 +1,101 @@
+# Local env and secrets
+.env
+.env.*
+!.env.example
+/.envrc
+
+# Runtime data
+bin/
+data/
+*.db
+*.db-shm
+*.db-wal
+
+# Go
+*.exe
+*.exe~
+*.dll
+*.so
+*.dylib
+*.test
+*.out
+coverage.out
+
+# Vendored modules must keep platform binaries and embedded DBs
+!vendor/
+!vendor/**
+!vendor/**/*.dll
+!vendor/**/*.db
+!third_party/wails-webview2loader/**/*.dll
+
+# Frontend
+frontend/coverage/
+frontend/dist/
+frontend/node_modules/
+frontend/.lighthouseci/
+frontend/reports/
+frontend/.stryker-tmp/
+frontend/e2e/.tmp/
+frontend/test-results/
+frontend/playwright-report/
+frontend/blob-report/
+frontend/.build-version
+frontend/playwright/.cache/
+
+# Mutation testing
+.gremlins/
+
+# Task
+.task/
+
+# GoReleaser
+/dist/
+
+# Wails / platform build outputs
+build/linux/appimage/build/
+build/windows/nsis/MicrosoftEdgeWebview2Setup.exe
+build/windows/msix/*.msix
+build/darwin/build/
+build/ios/build/
+build/ios/DerivedData/
+
+# Android
+build/android/.gradle/
+build/android/build/
+build/android/app/build/
+build/android/app/src/main/jniLibs/
+build/android/local.properties
+build/android/wails-v3
+build/android/go.android.mod
+build/android/go.android.sum
+build/android/overlay.json
+build/android/gen/
+build/android/patches/overlay.json
+*.apk
+*.aab
+
+# iOS generated overlay / Xcode output
+build/ios/xcode/
+build/ios/patches/webview_window_ios.m
+
+# Local MTE Go toolchain (desktop/server keep system Go)
+build/tools/
+
+# Showcase capture scratch
+showcase/.demo-data/
+showcase/server.log
+scripts/showcase/node_modules/
+
+# IDE and OS
+.idea/
+.vscode/*
+!.vscode/extensions.json
+!.vscode/settings.json
+.cursor/
+.windsurf/
+.codeium/
+.aider/
+*.swp
+*.swo
+.DS_Store
+Thumbs.db

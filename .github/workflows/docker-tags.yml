@@ -1,0 +1,25 @@
+# Publishes GHCR images for version tags without path filters.
+# Branch/PR Docker builds stay in docker.yml (path-filtered).
+name: Docker tags
+
+on:
+  push:
+    tags:
+      - "v*"
+
+concurrency:
+  group: docker-tags-${{ github.ref }}
+  cancel-in-progress: false
+
+permissions:
+  contents: read
+
+jobs:
+  build:
+    name: Build and push
+    uses: ./.github/workflows/docker.yml
+    permissions:
+      contents: read
+      packages: write
+      attestations: write
+      id-token: write

@@ -1,0 +1,772 @@
+name: CI
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - "*.go"
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - vendor/**
+      - frontend/**
+      - internal/**
+      - services/**
+      - cmd/**
+      - build/**
+      - docker/**
+      - extensions/**
+      - scripts/**
+      - third_party/**
+      - ".golangci.yml"
+      - "lefthook.yml"
+      - "mise.toml"
+      - ".nvmrc"
+      - ".editorconfig"
+      - ".devcontainer/**"
+      - "Taskfile.yml"
+      - ".github/workflows/ci.yml"
+      - ".github/actions/**"
+  pull_request:
+    paths:
+      - "*.go"
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - vendor/**
+      - frontend/**
+      - internal/**
+      - services/**
+      - cmd/**
+      - build/**
+      - docker/**
+      - extensions/**
+      - scripts/**
+      - third_party/**
+      - ".golangci.yml"
+      - "lefthook.yml"
+      - "mise.toml"
+      - ".nvmrc"
+      - ".editorconfig"
+      - ".devcontainer/**"
+      - "Taskfile.yml"
+      - ".github/workflows/ci.yml"
+      - ".github/actions/**"
+  workflow_dispatch:
+    inputs:
+      run_fuzz:
+        description: Run Go fuzz smoke tests
+        type: boolean
+        default: true
+      run_bindings_drift:
+        description: Check Wails bindings drift
+        type: boolean
+        default: true
+
+concurrency:
+  group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  bindings-drift:
+    name: Bindings drift
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    if: >-
+      ${{
+        github.event_name != 'workflow_dispatch'
+        || github.event.inputs.run_bindings_drift != 'false'
+      }}
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-frontend: "false"
+          install-wails: "true"
+
+      - name: Check bindings drift
+        run: task test:bindings-drift
+
+  go-test:
+    name: Go tests (${{ matrix.os }})
+    runs-on: ${{ matrix.os }}
+    timeout-minutes: 30
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - os: ubuntu-latest
+            race: true
+          - os: macos-latest
+            race: false
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-frontend: "false"
+
+      - name: Run Go tests with race detector
+        if: matrix.race
+        run: go test -race ./...
+
+      - name: Run Go tests
+        if: ${{ !matrix.race }}
+        run: go test ./...
+
+  fuzz:
+    name: Fuzz smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    if: >-
+      ${{
+        (github.event_name != 'workflow_dispatch' || github.event.inputs.run_fuzz != 'false')
+      }}
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-frontend: "false"
+
+      - name: Run fuzz smoke tests
+        run: task test:fuzz
+
+  frontend-lint:
+    name: Frontend lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run ESLint
+        run: task lint:frontend
+
+  go-lint:
+    name: Go lint
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-frontend: "false"
+          install-golangci: "true"
+
+      - name: Run golangci-lint
+        run: task lint:go
+
+  format-check:
+    name: Format check
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Check Go and frontend formatting
+        run: task format:check
+
+  frontend-check:
+    name: Frontend typecheck
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run svelte-check
+        run: task check
+
+  frontend-contracts:
+    name: Frontend contracts
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run property and contract tests
+        run: task test:property
+
+  frontend-test:
+    name: Frontend unit tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run Vitest
+        run: task test:frontend
+
+  acceptance:
+    name: Acceptance tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run acceptance suites
+        run: task test:acceptance
+
+  e2e-smoke:
+    name: E2E smoke
+    runs-on: ubuntu-latest
+    timeout-minutes: 40
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Build server binary
+        run: task build:server
+
+      - name: Install Playwright Chromium
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Run e2e smoke suite
+        working-directory: frontend
+        run: pnpm test:e2e:smoke
+
+      - name: Upload Playwright report
+        if: failure()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: playwright-e2e-smoke-report
+          path: |
+            frontend/playwright-report
+            frontend/test-results
+          if-no-files-found: ignore
+          retention-days: 7
+
+  exploratory-oracle:
+    name: Exploratory and oracle
+    runs-on: ubuntu-latest
+    timeout-minutes: 25
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run exploratory tests
+        run: task test:exploratory
+
+      - name: Run oracle tests
+        run: task test:oracle
+
+  mutation:
+    name: Mutation tests
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run mutation tests
+        run: task test:mutation
+
+  coverage:
+    name: Coverage floors
+    runs-on: ubuntu-latest
+    timeout-minutes: 30
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run coverage gates
+        run: task test:coverage
+
+      - name: Upload coverage reports
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: coverage-reports
+          path: |
+            frontend/coverage
+            coverage.out
+          if-no-files-found: ignore
+          retention-days: 7
+
+  bench:
+    name: Benchmarks
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-frontend: "false"
+
+      - name: Run Go benchmarks
+        run: task bench | tee bench.txt
+
+      - name: Upload benchmark output
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: go-benchmarks
+          path: bench.txt
+          if-no-files-found: error
+          retention-days: 14
+
+  memory-perf:
+    name: Memory and perf
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Run memory regression tests
+        run: task test:memory
+
+      - name: Run frontend perf smoke
+        run: task test:perf
+
+  lighthouse:
+    name: Lighthouse
+    runs-on: ubuntu-latest
+    timeout-minutes: 45
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+
+      - name: Install Chromium for Lighthouse
+        working-directory: frontend
+        run: pnpm exec playwright install --with-deps chromium
+
+      - name: Resolve Chrome path
+        id: chrome
+        working-directory: frontend
+        run: |
+          echo "path=$(pnpm exec node -e "console.log(require('@playwright/test').chromium.executablePath())")" >> "$GITHUB_OUTPUT"
+
+      - name: Run Lighthouse CI
+        env:
+          CHROME_PATH: ${{ steps.chrome.outputs.path }}
+        run: task lighthouse
+
+      - name: Upload Lighthouse report
+        if: always()
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: lighthouse-report
+          path: frontend/.lighthouseci
+          if-no-files-found: ignore
+          retention-days: 7
+
+  android-apk:
+    name: Android APK
+    runs-on: ubuntu-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-wails: "true"
+
+      - name: Setup Android SDK
+        uses: ./.github/actions/setup-android
+
+      - name: Cache mobile MTE Go toolchain
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: build/tools/go-mte
+          key: go-mte-${{ runner.os }}-${{ hashFiles('build/patches/go/mte-ios.patch', 'build/scripts/ensure-go-mte.sh') }}
+
+      - name: Ensure mobile MTE Go toolchain
+        run: task toolchain:mte
+
+      - name: Build debug APK
+        run: task build:android
+
+      - name: Upload APK
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: android-debug-apk
+          path: bin/*.apk
+          if-no-files-found: error
+          retention-days: 7
+
+  ios-simulator:
+    name: iOS simulator
+    runs-on: macos-latest
+    timeout-minutes: 90
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup development environment
+        uses: ./.github/actions/setup-dev
+        with:
+          install-wails: "true"
+
+      - name: Cache mobile MTE Go toolchain
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: build/tools/go-mte
+          key: go-mte-${{ runner.os }}-${{ hashFiles('build/patches/go/mte-ios.patch', 'build/scripts/ensure-go-mte.sh') }}
+
+      - name: Ensure mobile MTE Go toolchain
+        run: task toolchain:mte
+
+      - name: Package iOS simulator app
+        run: task ios:package
+
+      - name: Package ad-hoc IPA
+        run: task ios:package:ipa IOS_PLATFORM=device CODESIGN_IDENTITY="-"
+        continue-on-error: true
+
+  ci:
+    name: CI
+    runs-on: ubuntu-latest
+    needs:
+      - bindings-drift
+      - go-test
+      - fuzz
+      - frontend-lint
+      - go-lint
+      - format-check
+      - frontend-check
+      - frontend-contracts
+      - frontend-test
+      - acceptance
+      - e2e-smoke
+      - exploratory-oracle
+      - mutation
+      - coverage
+      - bench
+      - memory-perf
+      - lighthouse
+      - android-apk
+      - ios-simulator
+    if: always()
+    permissions:
+      contents: read
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Require all CI jobs
+        shell: bash
+        env:
+          BINDINGS_DRIFT: ${{ needs.bindings-drift.result }}
+          GO_TEST: ${{ needs.go-test.result }}
+          FUZZ: ${{ needs.fuzz.result }}
+          FRONTEND_LINT: ${{ needs.frontend-lint.result }}
+          GO_LINT: ${{ needs.go-lint.result }}
+          FORMAT_CHECK: ${{ needs.format-check.result }}
+          FRONTEND_CHECK: ${{ needs.frontend-check.result }}
+          FRONTEND_CONTRACTS: ${{ needs.frontend-contracts.result }}
+          FRONTEND_TEST: ${{ needs.frontend-test.result }}
+          ACCEPTANCE: ${{ needs.acceptance.result }}
+          E2E_SMOKE: ${{ needs.e2e-smoke.result }}
+          EXPLORATORY_ORACLE: ${{ needs.exploratory-oracle.result }}
+          MUTATION: ${{ needs.mutation.result }}
+          COVERAGE: ${{ needs.coverage.result }}
+          BENCH: ${{ needs.bench.result }}
+          MEMORY_PERF: ${{ needs.memory-perf.result }}
+          LIGHTHOUSE: ${{ needs.lighthouse.result }}
+          ANDROID_APK: ${{ needs.android-apk.result }}
+          IOS_SIMULATOR: ${{ needs.ios-simulator.result }}
+          RUN_BINDINGS_DRIFT: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_bindings_drift != 'false' }}
+          RUN_FUZZ: ${{ github.event_name != 'workflow_dispatch' || github.event.inputs.run_fuzz != 'false' }}
+        run: |
+          set -euo pipefail
+
+          require_success() {
+            local name="$1"
+            local result="$2"
+            if [ "$result" = "skipped" ]; then
+              echo "$name: skipped"
+              return 0
+            fi
+            if [ "$result" != "success" ]; then
+              echo "$name failed with result: $result" >&2
+              exit 1
+            fi
+            echo "$name: success"
+          }
+
+          if [ "$RUN_BINDINGS_DRIFT" = "true" ]; then
+            require_success "bindings-drift" "$BINDINGS_DRIFT"
+          else
+            echo "bindings-drift: skipped by workflow input"
+          fi
+
+          require_success "go-test" "$GO_TEST"
+
+          if [ "$RUN_FUZZ" = "true" ]; then
+            require_success "fuzz" "$FUZZ"
+          else
+            echo "fuzz: skipped by workflow input"
+          fi
+
+          require_success "frontend-lint" "$FRONTEND_LINT"
+          require_success "go-lint" "$GO_LINT"
+          require_success "format-check" "$FORMAT_CHECK"
+          require_success "frontend-check" "$FRONTEND_CHECK"
+          require_success "frontend-contracts" "$FRONTEND_CONTRACTS"
+          require_success "frontend-test" "$FRONTEND_TEST"
+          require_success "acceptance" "$ACCEPTANCE"
+          require_success "e2e-smoke" "$E2E_SMOKE"
+          require_success "exploratory-oracle" "$EXPLORATORY_ORACLE"
+          require_success "mutation" "$MUTATION"
+          require_success "coverage" "$COVERAGE"
+          require_success "bench" "$BENCH"
+          require_success "memory-perf" "$MEMORY_PERF"
+          require_success "lighthouse" "$LIGHTHOUSE"
+          require_success "android-apk" "$ANDROID_APK"
+          require_success "ios-simulator" "$IOS_SIMULATOR"

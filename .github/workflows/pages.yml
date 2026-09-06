@@ -1,0 +1,87 @@
+# Deploys the static frontend demo (dummy catalog, no Go server) to GitHub Pages.
+name: Pages demo
+
+on:
+  push:
+    branches:
+      - main
+      - master
+    paths:
+      - frontend/**
+      - internal/democatalog/**
+      - go.mod
+      - go.sum
+      - vendor/**
+      - Taskfile.yml
+      - build/Taskfile.yml
+      - .github/workflows/pages.yml
+      - .github/actions/**
+  workflow_dispatch:
+
+permissions:
+  contents: read
+  pages: write
+  id-token: write
+
+concurrency:
+  group: pages-demo
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: Build static demo
+    runs-on: ubuntu-latest
+    timeout-minutes: 20
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build
+        with:
+          install-linux-deps: "false"
+          install-nsis: "false"
+          install-macos-deps: "false"
+
+      - name: Export demo catalog fixtures
+        run: go run ./internal/democatalog/cmd/export -out frontend/public/demo
+
+      - name: Build static demo frontend
+        working-directory: frontend
+        env:
+          VITE_STATIC_DEMO: "true"
+          VITE_BASE: /${{ github.event.repository.name }}/
+          VITE_APP_VERSION: ${{ github.sha }}
+        run: pnpm run build
+
+      - name: Upload Pages artifact
+        uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0
+        with:
+          path: frontend/dist
+
+  deploy:
+    name: Deploy to GitHub Pages
+    needs: build
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    environment:
+      name: github-pages
+      url: ${{ steps.deployment.outputs.page_url }}
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Deploy
+        id: deployment
+        uses: actions/deploy-pages@d6db90164ac5ed86f2b6aed7e0febac5b3c0c03e # v4.0.5

@@ -1,0 +1,97 @@
+# CodeQL advanced setup for Go and the Svelte/TypeScript frontend.
+# Pins CodeQL Action to a full commit SHA per secure-use guidance.
+name: CodeQL
+
+on:
+  push:
+    branches:
+      - master
+      - main
+    paths:
+      - "*.go"
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - vendor/**
+      - frontend/**
+      - internal/**
+      - services/**
+      - cmd/**
+      - .github/workflows/codeql.yml
+  pull_request:
+    branches:
+      - master
+      - main
+    paths:
+      - "*.go"
+      - "**/*.go"
+      - go.mod
+      - go.sum
+      - vendor/**
+      - frontend/**
+      - internal/**
+      - services/**
+      - cmd/**
+      - .github/workflows/codeql.yml
+  schedule:
+    - cron: "17 5 * * 1"
+  workflow_dispatch:
+
+concurrency:
+  group: codeql-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
+  cancel-in-progress: true
+
+permissions:
+  contents: read
+
+jobs:
+  analyze:
+    name: Analyze (${{ matrix.language }})
+    runs-on: ubuntu-latest
+    timeout-minutes: 60
+    permissions:
+      contents: read
+      security-events: write
+      actions: read
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - language: go
+            build-mode: manual
+          - language: javascript-typescript
+            build-mode: none
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          persist-credentials: false
+
+      - name: Setup Go
+        if: matrix.language == 'go'
+        uses: actions/setup-go@924ae3a1cded613372ab5595356fb5720e22ba16 # v6.5.0
+        with:
+          go-version-file: go.mod
+          cache: true
+
+      - name: Initialize CodeQL
+        uses: github/codeql-action/init@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          languages: ${{ matrix.language }}
+          build-mode: ${{ matrix.build-mode }}
+          queries: security-extended
+
+      - name: Build Go (server tags)
+        if: matrix.language == 'go'
+        run: go build -tags server -o /tmp/melovian-codeql .
+
+      - name: Perform CodeQL analysis
+        uses: github/codeql-action/analyze@cdf488f595d80d6e07e03d4674febd5ab45fa938 # v4.37.9
+        with:
+          category: "/language:${{ matrix.language }}"

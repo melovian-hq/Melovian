@@ -1,0 +1,259 @@
+name: Build artifacts
+
+on:
+  workflow_call:
+    inputs:
+      version:
+        description: Version label used in artifact file names
+        required: true
+        type: string
+      ref:
+        description: Git ref to build (tag, branch, or SHA)
+        required: false
+        type: string
+        default: ""
+
+permissions:
+  contents: read
+
+concurrency:
+  group: build-artifacts-${{ github.workflow }}-${{ github.run_id }}
+  cancel-in-progress: true
+
+jobs:
+  build:
+    name: ${{ matrix.name }}
+    runs-on: ${{ matrix.runner }}
+    timeout-minutes: ${{ matrix.timeout_minutes }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - id: linux-amd64
+            name: Linux amd64
+            runner: ubuntu-latest
+            timeout_minutes: 45
+            linux_deps: true
+            macos_deps: false
+            install_nsis: false
+            docker_setup: false
+            task: linux:build
+            package: linux-binary
+            build_shell: bash
+          - id: linux-appimage
+            name: Linux AppImage
+            runner: ubuntu-latest
+            timeout_minutes: 60
+            linux_deps: false
+            macos_deps: false
+            install_nsis: false
+            docker_setup: true
+            task: linux:create:appimage:docker
+            package: linux-appimage
+            build_shell: bash
+          - id: windows-amd64
+            name: Windows amd64
+            runner: windows-latest
+            timeout_minutes: 45
+            linux_deps: false
+            macos_deps: false
+            install_nsis: true
+            docker_setup: false
+            task: windows:package
+            package: windows
+            build_shell: bash
+          - id: macos-universal
+            name: macOS universal
+            runner: macos-latest
+            timeout_minutes: 60
+            linux_deps: false
+            macos_deps: true
+            install_nsis: false
+            docker_setup: false
+            task: darwin:package:universal
+            package: macos
+            build_shell: bash
+          - id: frontend-zip
+            name: Frontend zip
+            runner: ubuntu-latest
+            timeout_minutes: 20
+            linux_deps: false
+            macos_deps: false
+            install_nsis: false
+            docker_setup: false
+            task: package:frontend
+            package: frontend
+            build_shell: bash
+          - id: android-arm64
+            name: Android arm64 APK
+            runner: ubuntu-latest
+            timeout_minutes: 90
+            linux_deps: false
+            macos_deps: false
+            install_nsis: false
+            docker_setup: false
+            android: true
+            task: build:android
+            package: android
+            build_shell: bash
+          - id: ios-ipa
+            name: iOS IPA
+            runner: macos-latest
+            timeout_minutes: 90
+            linux_deps: false
+            macos_deps: true
+            install_nsis: false
+            docker_setup: false
+            ios: true
+            task: ios:package:ipa
+            package: ios
+            build_shell: bash
+
+    steps:
+      - name: Harden Runner
+        uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
+        if: runner.os == 'Linux'
+        with:
+          egress-policy: audit
+
+      - name: Checkout
+        uses: actions/checkout@9c091bb21b7c1c1d1991bb908d89e4e9dddfe3e0 # v7.0.0
+        with:
+          ref: ${{ inputs.ref || github.sha }}
+          persist-credentials: false
+
+      - name: Setup build environment
+        uses: ./.github/actions/setup-build
+        with:
+          install-linux-deps: ${{ matrix.linux_deps && 'true' || 'false' }}
+          install-nsis: ${{ matrix.install_nsis && 'true' || 'false' }}
+          install-macos-deps: ${{ matrix.macos_deps && 'true' || 'false' }}
+
+      - name: Setup Android SDK
+        if: matrix.android
+        uses: ./.github/actions/setup-android
+
+      - name: Cache mobile MTE Go toolchain
+        if: matrix.android || matrix.ios
+        uses: actions/cache@0057852bfaa89a56745cba8c7296529d2fc39830 # v4.3.0
+        with:
+          path: build/tools/go-mte
+          key: go-mte-${{ runner.os }}-${{ hashFiles('build/patches/go/mte-ios.patch', 'build/scripts/ensure-go-mte.sh') }}
+
+      - name: Ensure mobile MTE Go toolchain
+        if: matrix.android || matrix.ios
+        run: task toolchain:mte
+
+      - name: Build AppImage Docker image
+        if: matrix.docker_setup
+        shell: bash
+        run: task linux:setup:appimage:docker
+
+      - name: Build
+        shell: ${{ matrix.build_shell }}
+        env:
+          IOS_PLATFORM: ${{ matrix.ios && 'device' || '' }}
+          CODESIGN_IDENTITY: ${{ matrix.ios && '-' || '' }}
+          VERSION: ${{ inputs.version }}
+        run: task ${{ matrix.task }}
+
+      - name: Package Linux binary
+        if: matrix.package == 'linux-binary'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          ARCHIVE="melovian-${VERSION}-linux-amd64.tar.gz"
+          tar -C bin -czf "${ARCHIVE}" melovian
+          mv "${ARCHIVE}" "bin/${ARCHIVE}"
+
+      - name: Package AppImage
+        if: matrix.package == 'linux-appimage'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          APPIMAGE="$(find bin -maxdepth 1 -name 'melovian-*.AppImage' -print -quit)"
+          if [ -z "${APPIMAGE}" ]; then
+            echo "AppImage artifact not found in bin/" >&2
+            ls -la bin >&2 || true
+            exit 1
+          fi
+          mv "${APPIMAGE}" "bin/melovian-${VERSION}-linux-x86_64.AppImage"
+
+      - name: Package Windows artifacts
+        if: matrix.package == 'windows'
+        shell: pwsh
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          $ErrorActionPreference = "Stop"
+          $version = $env:VERSION
+          $archive = "melovian-$version-windows-amd64.zip"
+          $staging = New-Item -ItemType Directory -Force -Path "dist/windows"
+          Copy-Item "bin/melovian.exe" $staging.FullName
+          $installer = Get-ChildItem -Path bin -Filter "*-installer.exe" | Select-Object -First 1
+          if ($installer) {
+            Copy-Item $installer.FullName $staging.FullName
+          }
+          Compress-Archive -Path "$($staging.FullName)/*" -DestinationPath "bin/$archive" -Force
+
+      - name: Package macOS app bundle
+        if: matrix.package == 'macos'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          ARCHIVE="melovian-${VERSION}-macos-universal.zip"
+          ditto -c -k --sequesterRsrc --keepParent "bin/melovian.app" "bin/${ARCHIVE}"
+
+      - name: Confirm frontend zip
+        if: matrix.package == 'frontend'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          test -f "bin/melovian-${VERSION}-frontend.zip"
+
+      - name: Package Android APK
+        if: matrix.package == 'android'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          APK="$(find bin -maxdepth 1 -name '*.apk' -print -quit)"
+          if [ -z "${APK}" ]; then
+            echo "APK not found in bin/" >&2
+            ls -la bin >&2 || true
+            exit 1
+          fi
+          mv "${APK}" "bin/melovian-${VERSION}-android-arm64.apk"
+
+      - name: Package iOS IPA
+        if: matrix.package == 'ios'
+        shell: bash
+        env:
+          VERSION: ${{ inputs.version }}
+        run: |
+          set -euo pipefail
+          IPA="$(find bin -maxdepth 1 -name '*.ipa' -print -quit)"
+          if [ -z "${IPA}" ]; then
+            echo "IPA not found in bin/" >&2
+            ls -la bin >&2 || true
+            exit 1
+          fi
+          mv "${IPA}" "bin/melovian-${VERSION}-ios.ipa"
+
+      - name: Upload artifact
+        uses: actions/upload-artifact@ea165f8d65b6e75b540449e92b4886f43607fa02 # v4.6.2
+        with:
+          name: ${{ matrix.id }}
+          path: |
+            bin/melovian-${{ inputs.version }}-*
+          if-no-files-found: error
+          retention-days: 14

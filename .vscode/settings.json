@@ -1,0 +1,24 @@
+{
+  "editor.formatOnSave": true,
+  "editor.defaultFormatter": "esbenp.prettier-vscode",
+  "[go]": {
+    "editor.defaultFormatter": "golang.go",
+    "editor.formatOnSave": true
+  },
+  "[svelte]": {
+    "editor.defaultFormatter": "svelte.svelte-vscode"
+  },
+  "eslint.workingDirectories": ["frontend"],
+  "prettier.prettierPath": "./frontend/node_modules/prettier",
+  "prettier.configPath": "./frontend/prettier.config.js",
+  "svelte.enable-ts-plugin": true,
+  "files.watcherExclude": {
+    "**/vendor/**": true,
+    "**/frontend/dist/**": true,
+    "**/frontend/node_modules/**": true,
+    "**/build/android/wails-v3/**": true,
+    "**/bin/**": true
+  },
+  "go.lintTool": "golangci-lint",
+  "go.lintFlags": ["--fast"]
+}
