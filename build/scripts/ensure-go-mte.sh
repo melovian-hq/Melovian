@@ -17,8 +17,10 @@
 set -euo pipefail
 
 root="$(cd "$(dirname "$0")/../.." && pwd)"
-# Tip commit after both Android MTE CLs. Override with GO_MTE_REF if needed.
-default_ref="1ad6b283d410fb05be4ba63aaacb25b560d23839"
+# Tip commit after both Android MTE CLs and after the fix for the
+# "hasUncommon: methods not computed" compile ICE (golang/go issue 80450,
+# CL 701299 reverted then relanded with a fix). Override with GO_MTE_REF.
+default_ref="5c1ad454f5138e68f78937a94765f19062cce0c8"
 ref="${GO_MTE_REF:-${default_ref}}"
 toolchain_dir="${GO_MTE_DIR:-${root}/build/tools/go-mte}"
 patch_file="${root}/build/patches/go/mte-ios.patch"
