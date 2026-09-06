@@ -17,7 +17,7 @@ func Download(ctx context.Context, client *http.Client, url string, w io.Writer,
 	if client == nil {
 		client = &http.Client{Timeout: 30 * time.Minute}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return 0, err
 	}
@@ -73,7 +73,7 @@ func DownloadBytes(ctx context.Context, client *http.Client, url string) ([]byte
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}

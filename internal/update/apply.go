@@ -36,6 +36,22 @@ func binaryEntry(name, slug string) bool {
 	return strings.HasPrefix(base, slug) && !strings.Contains(base, ".")
 }
 
+// safeJoin joins destDir and an archive entry's base name, rejecting any
+// entry whose cleaned path would escape destDir. The entry name is never
+// used verbatim: only its base name survives.
+func safeJoin(destDir, name string) (string, error) {
+	clean := filepath.Clean("/" + name)
+	base := filepath.Base(clean)
+	if base == "." || base == ".." || base == "/" || strings.ContainsRune(base, os.PathSeparator) {
+		return "", fmt.Errorf("unsafe archive entry name: %q", name)
+	}
+	out := filepath.Join(destDir, base)
+	if rel, err := filepath.Rel(destDir, out); err != nil || strings.HasPrefix(rel, "..") {
+		return "", fmt.Errorf("archive entry escapes destination: %q", name)
+	}
+	return out, nil
+}
+
 func extractTarGz(path, destDir, slug string) (string, error) {
 	f, err := os.Open(path)
 	if err != nil {
@@ -60,7 +76,11 @@ func extractTarGz(path, destDir, slug string) (string, error) {
 			continue
 		}
 		if binaryEntry(hdr.Name, slug) {
-			return writeExtracted(tr, destDir, filepath.Base(hdr.Name), hdr.FileInfo().Mode())
+			out, err := safeJoin(destDir, hdr.Name)
+			if err != nil {
+				return "", err
+			}
+			return writeExtracted(tr, out, hdr.FileInfo().Mode())
 		}
 		if fallback == "" {
 			fallback = hdr.Name
@@ -86,7 +106,12 @@ func extractZip(path, destDir, slug string) (string, error) {
 		if err != nil {
 			return "", err
 		}
-		out, werr := writeExtracted(rc, destDir, filepath.Base(f.Name), f.Mode())
+		outPath, err := safeJoin(destDir, f.Name)
+		if err != nil {
+			rc.Close()
+			return "", err
+		}
+		out, werr := writeExtracted(rc, outPath, f.Mode())
 		rc.Close()
 		if werr != nil {
 			return "", werr
@@ -96,11 +121,10 @@ func extractZip(path, destDir, slug string) (string, error) {
 	return "", fmt.Errorf("no %s binary found in archive", slug)
 }
 
-func writeExtracted(r io.Reader, destDir, name string, mode os.FileMode) (string, error) {
+func writeExtracted(r io.Reader, out string, mode os.FileMode) (string, error) {
 	if mode == 0 {
 		mode = 0o755
 	}
-	out := filepath.Join(destDir, name)
 	w, err := os.OpenFile(out, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode.Perm()|0o700)
 	if err != nil {
 		return "", err

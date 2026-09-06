@@ -59,7 +59,7 @@ func ServiceFiles(init InitSystem, spec ServiceSpec) ([]UnitFile, error) {
 }
 
 // ServicePaths returns the files install-service would write, for removal.
-func ServicePaths(init InitSystem, service string) []string {
+func ServicePaths(init InitSystem, _ string) []string {
 	name := unitName
 	switch init {
 	case InitSystemd:
@@ -78,7 +78,7 @@ func ServicePaths(init InitSystem, service string) []string {
 }
 
 // EnableInstructions prints the commands the operator runs after install.
-func EnableInstructions(init InitSystem, service string) string {
+func EnableInstructions(init InitSystem, _ string) string {
 	switch init {
 	case InitSystemd:
 		return "To enable:\n" +

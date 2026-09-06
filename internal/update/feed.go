@@ -13,20 +13,20 @@ import (
 	"time"
 )
 
-// atomFeed is the minimal slice of an Atom document needed to enumerate
+// feed is the minimal slice of an Atom document needed to enumerate
 // release entries. GitHub publishes releases newest-first.
-type atomFeed struct {
-	Entries []atomEntry `xml:"entry"`
+type feed struct {
+	Entries []feedEntry `xml:"entry"`
 }
 
-type atomEntry struct {
+type feedEntry struct {
 	Title   string     `xml:"title"`
 	ID      string     `xml:"id"`
 	Updated time.Time  `xml:"updated"`
-	Links   []atomLink `xml:"link"`
+	Links   []feedLink `xml:"link"`
 }
 
-type atomLink struct {
+type feedLink struct {
 	Rel  string `xml:"rel,attr"`
 	Href string `xml:"href,attr"`
 }
@@ -34,7 +34,7 @@ type atomLink struct {
 // tag extracts the release tag from an Atom entry. GitHub entry IDs look
 // like "tag:github.com,2008:Repository/12345" and the alternate link ends
 // with "/releases/tag/vX.Y.Z". The link is authoritative.
-func (e atomEntry) tag() string {
+func (e feedEntry) tag() string {
 	for _, l := range e.Links {
 		if l.Rel != "" && l.Rel != "alternate" {
 			continue
@@ -52,7 +52,7 @@ func (e atomEntry) tag() string {
 	return ""
 }
 
-func (e atomEntry) notesURL() string {
+func (e feedEntry) notesURL() string {
 	for _, l := range e.Links {
 		if l.Rel == "" || l.Rel == "alternate" {
 			return l.Href
@@ -61,12 +61,12 @@ func (e atomEntry) notesURL() string {
 	return ""
 }
 
-// FetchFeed downloads and parses the releases Atom feed.
-func FetchFeed(ctx context.Context, client *http.Client, feedURL string) (*atomFeed, error) {
+// fetchFeed downloads and parses the releases Atom feed.
+func fetchFeed(ctx context.Context, client *http.Client, feedURL string) (*feed, error) {
 	if client == nil {
 		client = &http.Client{Timeout: 15 * time.Second}
 	}
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, feedURL, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
@@ -84,18 +84,18 @@ func FetchFeed(ctx context.Context, client *http.Client, feedURL string) (*atomF
 	if err != nil {
 		return nil, fmt.Errorf("read update feed: %w", err)
 	}
-	var feed atomFeed
-	if err := xml.Unmarshal(body, &feed); err != nil {
+	var f feed
+	if err := xml.Unmarshal(body, &f); err != nil {
 		return nil, fmt.Errorf("parse update feed: %w", err)
 	}
-	return &feed, nil
+	return &f, nil
 }
 
 // entriesToReleases converts feed entries to ReleaseInfo, dropping entries
 // without a parseable tag.
-func entriesToReleases(feed *atomFeed) []ReleaseInfo {
-	out := make([]ReleaseInfo, 0, len(feed.Entries))
-	for _, e := range feed.Entries {
+func entriesToReleases(f *feed) []ReleaseInfo {
+	out := make([]ReleaseInfo, 0, len(f.Entries))
+	for _, e := range f.Entries {
 		tag := e.tag()
 		if tag == "" {
 			continue
@@ -115,11 +115,11 @@ func entriesToReleases(feed *atomFeed) []ReleaseInfo {
 	return out
 }
 
-// LatestFromFeed returns the newest release acceptable for the channel.
+// latestFromFeed returns the newest release acceptable for the channel.
 // Feed order is newest-first but prerelease filtering may reorder, so the
 // list is compared rather than truncated.
-func LatestFromFeed(feed *atomFeed, channel Channel) *ReleaseInfo {
-	rels := entriesToReleases(feed)
+func latestFromFeed(f *feed, channel Channel) *ReleaseInfo {
+	rels := entriesToReleases(f)
 	var best *ReleaseInfo
 	for i := range rels {
 		r := rels[i]
@@ -134,11 +134,11 @@ func LatestFromFeed(feed *atomFeed, channel Channel) *ReleaseInfo {
 	return best
 }
 
-// FindInFeed locates a specific version in the feed. The version may be
+// findInFeed locates a specific version in the feed. The version may be
 // given with or without the leading "v".
-func FindInFeed(feed *atomFeed, version string) *ReleaseInfo {
+func findInFeed(f *feed, version string) *ReleaseInfo {
 	want := strings.TrimPrefix(strings.TrimSpace(version), "v")
-	for _, r := range entriesToReleases(feed) {
+	for _, r := range entriesToReleases(f) {
 		if r.Version == want {
 			c := r
 			return &c
@@ -150,18 +150,18 @@ func FindInFeed(feed *atomFeed, version string) *ReleaseInfo {
 // Check queries the update feed and reports whether a newer release exists.
 func Check(ctx context.Context, currentVersion string, opts Options) (*CheckResult, error) {
 	report(opts.OnProgress, Progress{Stage: StageCheck, Message: "Checking for updates"})
-	feed, err := FetchFeed(ctx, opts.HTTPClient, FeedURL)
+	f, err := fetchFeed(ctx, opts.HTTPClient, FeedURL)
 	if err != nil {
 		return nil, err
 	}
 	var latest *ReleaseInfo
 	if opts.TargetVersion != "" {
-		latest = FindInFeed(feed, opts.TargetVersion)
+		latest = findInFeed(f, opts.TargetVersion)
 		if latest == nil {
 			return nil, fmt.Errorf("release %q not found in update feed", opts.TargetVersion)
 		}
 	} else {
-		latest = LatestFromFeed(feed, opts.Channel)
+		latest = latestFromFeed(f, opts.Channel)
 	}
 	res := &CheckResult{Current: currentVersion, CheckedAt: time.Now()}
 	if latest == nil || !IsNewer(currentVersion, latest.Version) {

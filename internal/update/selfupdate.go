@@ -46,28 +46,20 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 		}
 	}
 
-	res, err := Check(ctx, currentVersion, opts)
+	latest, upToDate, err := resolveTarget(ctx, currentVersion, opts)
 	if err != nil {
 		return nil, err
 	}
-	if res.UpToDate && opts.TargetVersion == "" {
+	if upToDate {
 		report(opts.OnProgress, Progress{Stage: StageDone, Message: "Already up to date"})
 		return &ApplyResult{Version: currentVersion, Path: target, Method: "none"}, nil
 	}
-	latest := res.Latest
-	if latest == nil {
-		return nil, fmt.Errorf("no release found for %q", opts.TargetVersion)
-	}
 
-	rel, relErr := FetchRelease(ctx, client, latest.Tag)
+	rel, relErr := fetchRelease(ctx, client, latest.Tag)
 	if relErr != nil {
 		// The Atom feed already proved the tag exists. A missing asset list
 		// only blocks the delta/preferred-name lookup, not the download.
 		rel = nil
-	}
-	releaseURL := latest.NotesURL
-	if rel != nil && rel.HTMLURL != "" {
-		releaseURL = rel.HTMLURL
 	}
 
 	sums, err := fetchVerifiedChecksums(ctx, client, rel, latest.Tag)
@@ -97,7 +89,7 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 		Path:            target,
 		Method:          method,
 		BytesDownloaded: downloaded,
-		ReleaseURL:      releaseURL,
+		ReleaseURL:      releaseURL(rel, latest),
 	}
 	if !opts.NoRestart && strings.TrimSpace(opts.RestartCommand) != "" {
 		report(opts.OnProgress, Progress{Stage: StageRestart, Message: "Restarting " + brand.Slug})
@@ -108,6 +100,22 @@ func Apply(ctx context.Context, currentVersion string, opts Options) (*ApplyResu
 	}
 	report(opts.OnProgress, Progress{Stage: StageDone, Message: "Updated to " + latest.Version})
 	return result, nil
+}
+
+// resolveTarget picks the release to install: the pinned TargetVersion when
+// given, else the newest release on the channel.
+func resolveTarget(ctx context.Context, currentVersion string, opts Options) (*ReleaseInfo, bool, error) {
+	res, err := Check(ctx, currentVersion, opts)
+	if err != nil {
+		return nil, false, err
+	}
+	if res.UpToDate && opts.TargetVersion == "" {
+		return nil, true, nil
+	}
+	if res.Latest == nil {
+		return nil, false, fmt.Errorf("no release found for %q", opts.TargetVersion)
+	}
+	return res.Latest, false, nil
 }
 
 // fetchVerifiedChecksums downloads the checksums manifest and its detached

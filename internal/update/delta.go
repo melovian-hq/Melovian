@@ -64,37 +64,44 @@ func ApplyPatch(oldData, patch []byte) ([]byte, error) {
 	newData := make([]byte, newSize)
 	var oldPos, newPos int64
 	for newPos < newSize {
-		var triple [24]byte
-		if _, err := io.ReadFull(ctrlR, triple[:]); err != nil {
-			return nil, fmt.Errorf("read control entry: %w", err)
+		var err error
+		oldPos, newPos, err = patchStep(oldData, newData, oldPos, newPos, newSize, ctrlR, diffR, extraR)
+		if err != nil {
+			return nil, err
 		}
-		addLen := offtin(triple[0:8])
-		extraLen := offtin(triple[8:16])
-		seekAdj := offtin(triple[16:24])
-		if addLen < 0 || extraLen < 0 || newPos+addLen > newSize {
-			return nil, errors.New("corrupt control entry")
-		}
-		if _, err := io.ReadFull(diffR, newData[newPos:newPos+addLen]); err != nil {
-			return nil, fmt.Errorf("read diff data: %w", err)
-		}
-		for i := int64(0); i < addLen; i++ {
-			op := oldPos + i
-			if op >= 0 && op < int64(len(oldData)) {
-				newData[newPos+i] += oldData[op]
-			}
-		}
-		newPos += addLen
-		oldPos += addLen
-		if newPos+extraLen > newSize {
-			return nil, errors.New("corrupt control entry")
-		}
-		if _, err := io.ReadFull(extraR, newData[newPos:newPos+extraLen]); err != nil {
-			return nil, fmt.Errorf("read extra data: %w", err)
-		}
-		newPos += extraLen
-		oldPos += seekAdj
 	}
 	return newData, nil
+}
+
+// patchStep applies one control triple: add addLen diff bytes, copy
+// extraLen literal bytes, seek the old cursor by seekAdj.
+func patchStep(oldData, newData []byte, oldPos, newPos, newSize int64, ctrlR, diffR, extraR io.Reader) (int64, int64, error) {
+	var triple [24]byte
+	if _, err := io.ReadFull(ctrlR, triple[:]); err != nil {
+		return 0, 0, fmt.Errorf("read control entry: %w", err)
+	}
+	addLen := offtin(triple[0:8])
+	extraLen := offtin(triple[8:16])
+	seekAdj := offtin(triple[16:24])
+	if addLen < 0 || extraLen < 0 || newPos+addLen > newSize || newPos+extraLen > newSize {
+		return 0, 0, errors.New("corrupt control entry")
+	}
+	if _, err := io.ReadFull(diffR, newData[newPos:newPos+addLen]); err != nil {
+		return 0, 0, fmt.Errorf("read diff data: %w", err)
+	}
+	for i := int64(0); i < addLen; i++ {
+		if op := oldPos + i; op >= 0 && op < int64(len(oldData)) {
+			newData[newPos+i] += oldData[op]
+		}
+	}
+	newPos += addLen
+	oldPos += addLen
+	if _, err := io.ReadFull(extraR, newData[newPos:newPos+extraLen]); err != nil {
+		return 0, 0, fmt.Errorf("read extra data: %w", err)
+	}
+	newPos += extraLen
+	oldPos += seekAdj
+	return oldPos, newPos, nil
 }
 
 func openPatchStreams(ctrl, diff, extra []byte) (io.Reader, io.Reader, io.Reader, error) {

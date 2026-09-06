@@ -93,7 +93,7 @@ func (f updateFlag) Set(s string) error {
 	return nil
 }
 
-func (f updateFlag) IsBoolFlag() bool { return true }
+func (updateFlag) IsBoolFlag() bool { return true }
 
 func NewServerCLI() *ServerCLI {
 	return &ServerCLI{visited: make(map[string]bool)}

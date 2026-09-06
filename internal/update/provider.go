@@ -34,7 +34,7 @@ func NewAtomProvider() *AtomProvider {
 }
 
 // Name implements updater.Provider.
-func (p *AtomProvider) Name() string { return "atom" }
+func (*AtomProvider) Name() string { return "atom" }
 
 func (p *AtomProvider) client() *http.Client {
 	if p.HTTPClient != nil {
@@ -47,15 +47,15 @@ func (p *AtomProvider) client() *http.Client {
 // and *ErrManualOnly when the release has no in-place-swappable asset for
 // this platform (installers, AppImage, container images).
 func (p *AtomProvider) Check(ctx context.Context, req updater.CheckRequest) (*updater.Release, error) {
-	feed, err := FetchFeed(ctx, p.client(), FeedURL)
+	feed, err := fetchFeed(ctx, p.client(), FeedURL)
 	if err != nil {
 		return nil, err
 	}
-	latest := LatestFromFeed(feed, p.Channel)
+	latest := latestFromFeed(feed, p.Channel)
 	if latest == nil || !IsNewer(req.CurrentVersion, latest.Version) {
 		return nil, nil
 	}
-	rel, relErr := FetchRelease(ctx, p.client(), latest.Tag)
+	rel, relErr := fetchRelease(ctx, p.client(), latest.Tag)
 	if relErr != nil {
 		return nil, fmt.Errorf("enumerate assets for %s: %w", latest.Tag, relErr)
 	}

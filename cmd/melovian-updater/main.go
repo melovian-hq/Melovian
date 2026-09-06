@@ -172,7 +172,7 @@ func cmdInstallService(args []string) error {
 			fmt.Printf("=== %s ===\n%s\n", f.Path, f.Content)
 			continue
 		}
-		if err := os.MkdirAll(filepath.Dir(f.Path), 0o755); err != nil {
+		if err := os.MkdirAll(filepath.Dir(f.Path), 0o750); err != nil {
 			return err
 		}
 		if err := os.WriteFile(f.Path, []byte(f.Content), f.Mode); err != nil {

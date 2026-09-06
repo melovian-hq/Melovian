@@ -103,7 +103,7 @@ func (s *Server) loadUpdateSettings(userID string) (UpdateSettings, error) {
 // canApplyUpdate reports whether this process may self-update: never inside
 // a container (the operator pulls a new image) and only when the binary is
 // writable.
-func (s *Server) canApplyUpdate() bool {
+func canApplyUpdate() bool {
 	if inContainer() {
 		return false
 	}
@@ -147,7 +147,7 @@ func (s *Server) updateStatusPayload(userID string) map[string]any {
 		"signed":         update.Pinned(),
 		"channel":        settings.Channel,
 		"autoUpdate":     settings.AutoUpdate,
-		"canApply":       s.canApplyUpdate(),
+		"canApply":       canApplyUpdate(),
 		"serverMode":     s.cfg.ServerMode,
 		"inContainer":    inContainer(),
 		"checking":       s.upd.checking,
@@ -301,7 +301,7 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteJSON(w, status, payload)
 		return
 	}
-	if !s.canApplyUpdate() {
+	if !canApplyUpdate() {
 		http.Error(w, "self-update is not available on this install (container or read-only binary); update via your package manager or image", http.StatusConflict)
 		return
 	}

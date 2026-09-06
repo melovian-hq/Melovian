@@ -28,13 +28,13 @@ type ghRelease struct {
 	Assets  []Asset `json:"assets"`
 }
 
-// FetchRelease returns release metadata for a tag.
-func FetchRelease(ctx context.Context, client *http.Client, tag string) (*ghRelease, error) {
+// fetchRelease returns release metadata for a tag.
+func fetchRelease(ctx context.Context, client *http.Client, tag string) (*ghRelease, error) {
 	if client == nil {
 		client = &http.Client{Timeout: 20 * time.Second}
 	}
 	url := fmt.Sprintf("%s/repos/%s/releases/tags/%s", APIBase, RepoSlug, tag)
-	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, nil)
+	req, err := http.NewRequestWithContext(ctx, http.MethodGet, url, http.NoBody)
 	if err != nil {
 		return nil, err
 	}
