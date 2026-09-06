@@ -11,5 +11,7 @@ find "$root/frontend/bindings" -name '*.ts' -print0 2>/dev/null | while IFS= rea
   if grep -q 'skipcq' "$file"; then
     continue
   fi
-  sed -i '/^import \* as /i // skipcq: JS-C1003' "$file"
+  sed -i.bak '/^import \* as /i\
+// skipcq: JS-C1003' "$file"
+  rm -f "$file.bak"
 done
