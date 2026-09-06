@@ -261,8 +261,10 @@ tasks:
           fg="${rest##*:}"
           mkdir -p "$RES/mipmap-${density}"
           {{.MAGICK}} "$FLAT" -resize "${size}x${size}" "$RES/mipmap-${density}/ic_launcher.png"
+          # Shell arithmetic keeps -draw portable across IM6 and IM7.
+          half=$((size / 2))
           {{.MAGICK}} "$FLAT" -resize "${size}x${size}" \
-            \( +clone -threshold -1 -negate -fill white -draw "circle %[fx:int(w/2)],%[fx:int(h/2)] %[fx:int(w/2)],0" \) \
+            \( +clone -threshold -1 -negate -fill white -draw "circle ${half},${half} ${half},0" \) \
             -alpha off -compose copy_opacity -composite \
             -background '#090909' -alpha remove -alpha off \
             "$RES/mipmap-${density}/ic_launcher_round.png"

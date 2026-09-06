@@ -7,8 +7,9 @@ const { urls } = require("./lighthouse-urls.cjs");
 module.exports = {
   ci: {
     collect: {
-      // One run per URL. Coverage is breadth (all demo-reachable pages), not median stability.
-      numberOfRuns: 1,
+      // Three runs per URL. Single-run numeric metrics (notably CLS) are
+      // flaky on shared CI runners; the assert matrix aggregates by median.
+      numberOfRuns: 3,
       startServerCommand: "pnpm preview --host 127.0.0.1 --port 4173",
       startServerReadyPattern: "Local:",
       startServerReadyTimeout: 120000,

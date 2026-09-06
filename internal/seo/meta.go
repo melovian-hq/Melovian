@@ -203,7 +203,7 @@ func upsertMeta(htmlStr, attr string, values map[string]string) string {
 		if present[key] {
 			continue
 		}
-		missing.WriteString(fmt.Sprintf(`  <meta %s="%s" content="%s" />`+"\n", attr, html.EscapeString(key), html.EscapeString(val)))
+		fmt.Fprintf(&missing, `  <meta %s="%s" content="%s" />`+"\n", attr, html.EscapeString(key), html.EscapeString(val))
 	}
 	if missing.Len() > 0 {
 		htmlStr = insertBeforeHeadClose(htmlStr, strings.TrimRight(missing.String(), "\n"))
