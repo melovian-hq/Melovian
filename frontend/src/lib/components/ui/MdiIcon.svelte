@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { iconData } from "./icon-data";
 
   const ICONS: Record<string, string> = {
     check: "mdi:check",
@@ -115,7 +116,10 @@
     "aria-hidden": ariaHidden,
   }: Props = $props();
 
-  const icon = $derived(ICONS[name] ?? name);
+  const iconName = $derived(ICONS[name] ?? name);
+  // Bundled icon data keeps icons synchronous. Passing a string falls back
+  // to the Iconify API, which renders late and shifts surrounding layout.
+  const icon = $derived(iconData[iconName] ?? iconName);
 </script>
 
 <Icon
