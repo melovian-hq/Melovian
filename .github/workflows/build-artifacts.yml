@@ -149,6 +149,12 @@ jobs:
         if: matrix.android || matrix.ios
         run: task toolchain:mte
 
+      - name: Select Xcode with iOS SDK
+        if: matrix.ios
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcrun --sdk iphonesimulator --show-sdk-path
+
       - name: Build AppImage Docker image
         if: matrix.docker_setup
         shell: bash

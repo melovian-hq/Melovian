@@ -699,6 +699,11 @@ jobs:
       - name: Ensure mobile MTE Go toolchain
         run: task toolchain:mte
 
+      - name: Select Xcode with iOS SDK
+        run: |
+          sudo xcode-select -s /Applications/Xcode.app/Contents/Developer
+          xcrun --sdk iphonesimulator --show-sdk-path
+
       - name: Package iOS simulator app
         run: task ios:package
 
