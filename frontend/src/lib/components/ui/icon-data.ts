@@ -1,4 +1,4 @@
-// Generated from @iconify/json sets. Regenerate with scripts/gen-icon-data.mjs.
+// Generated from @iconify/json sets. Regenerate with scripts/gen-icon-data.cjs.
 import type { IconifyIcon } from "@iconify/svelte";
 
 export const iconData: Record<string, IconifyIcon> = {

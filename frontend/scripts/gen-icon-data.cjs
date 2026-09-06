@@ -1,9 +1,9 @@
 // Regenerate src/lib/components/ui/icon-data.ts from icon names used in the
 // codebase (the ICONS map in MdiIcon.svelte plus icon="prefix:name" literals)
 // and the local @iconify/json sets. Run from frontend/:
-//   node scripts/gen-icon-data.mjs
-import { readFileSync, readdirSync, writeFileSync } from "node:fs";
-import { join } from "node:path";
+//   node scripts/gen-icon-data.cjs
+const { readFileSync, readdirSync, writeFileSync } = require("node:fs");
+const { join } = require("node:path");
 
 const mdiSrc = readFileSync("src/lib/components/ui/MdiIcon.svelte", "utf8");
 const match = mdiSrc.match(
@@ -24,9 +24,9 @@ while (stack.length) {
     if (entry.isDirectory()) stack.push(p);
     else if (entry.name.endsWith(".svelte")) {
       for (const m of readFileSync(p, "utf8").matchAll(
-        /icon="([a-z0-9-]+:[a-z0-9-]+)"/g,
+        /icon="([a-z0-9-]+:[a-z0-9-]+)"|iconData\[["']([a-z0-9-]+:[a-z0-9-]+)["']\]/g,
       )) {
-        names.add(m[1]);
+        names.add(m[1] ?? m[2]);
       }
     }
   }
@@ -81,7 +81,7 @@ if (missing.length) {
 
 writeFileSync(
   "src/lib/components/ui/icon-data.ts",
-  "// Generated from @iconify/json sets. Regenerate with scripts/gen-icon-data.mjs.\n" +
+  "// Generated from @iconify/json sets. Regenerate with scripts/gen-icon-data.cjs.\n" +
     'import type { IconifyIcon } from "@iconify/svelte";\n\n' +
     `export const iconData: Record<string, IconifyIcon> = ${JSON.stringify(data, null, 1)};\n`,
 );
