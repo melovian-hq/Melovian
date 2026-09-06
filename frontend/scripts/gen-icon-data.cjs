@@ -20,10 +20,10 @@ const stack = ["src"];
 while (stack.length) {
   const dir = stack.pop();
   for (const entry of readdirSync(dir, { withFileTypes: true })) {
-    const p = join(dir, entry.name);
-    if (entry.isDirectory()) stack.push(p);
+    const entryPath = join(dir, entry.name);
+    if (entry.isDirectory()) stack.push(entryPath);
     else if (entry.name.endsWith(".svelte")) {
-      for (const m of readFileSync(p, "utf8").matchAll(
+      for (const m of readFileSync(entryPath, "utf8").matchAll(
         /icon="([a-z0-9-]+:[a-z0-9-]+)"|iconData\[["']([a-z0-9-]+:[a-z0-9-]+)["']\]/g,
       )) {
         names.add(m[1] ?? m[2]);
@@ -76,7 +76,7 @@ for (const value of missing.slice()) {
   missing.splice(missing.indexOf(value), 1);
 }
 if (missing.length) {
-  console.warn("icons without local data (runtime API fallback):", missing);
+  console.warn("icons without local data (runtime API fallback):", missing); // skipcq: JS-0002
 }
 
 writeFileSync(
@@ -85,4 +85,4 @@ writeFileSync(
     'import type { IconifyIcon } from "@iconify/svelte";\n\n' +
     `export const iconData: Record<string, IconifyIcon> = ${JSON.stringify(data, null, 1)};\n`,
 );
-console.log(`wrote ${Object.keys(data).length} icons`);
+console.log(`wrote ${Object.keys(data).length} icons`); // skipcq: JS-0002
