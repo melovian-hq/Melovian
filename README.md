@@ -139,6 +139,36 @@ Release tags also ship desktop apps (Linux tar + AppImage, Windows zip, macOS un
 
 Client and server exchange version headers (`X-Melovian-Client-Version`, `X-Melovian-Server-Version`) and a capability list. Newer frontends hide unsupported features on older servers. Versions below the declared minimum show a blocking message.
 
+### Updates
+
+Melovian checks the releases Atom feed for new versions and verifies every
+download against the release checksums, which are signed with an Ed25519 key
+compiled into official builds (`UPDATE_PUBLIC_KEY` / `UPDATE_SIGNING_KEY`
+secrets). Update status and a check button live under Settings, About.
+
+**Server**
+
+```bash
+melovian-server --update            # latest stable
+melovian-server --update v0.2.0     # specific version
+```
+
+The `melovian-updater` helper ships next to the server binary and can install
+a periodic update job for systemd, OpenRC, runit, or dinit:
+
+```bash
+melovian-updater install-service --init systemd --service melovian
+```
+
+When a release ships a delta patch for your current version, the updater
+applies it instead of downloading the full archive. Docker and container
+installs never self-update; pull a new image instead.
+
+**Desktop**
+
+Auto-updates are opt-in. Toggle them in Settings, About, or use the check
+button for a manual update with in-app download progress.
+
 More packaging options (Android, iOS, AppImage): [docs/en/build.md](docs/en/build.md).
 
 ## Docker (web)

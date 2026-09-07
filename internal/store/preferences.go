@@ -24,6 +24,7 @@ const PrefKeyVideoSettings = "video_settings"
 const PrefKeyRockskySettings = "rocksky_settings"
 const PrefKeyLastFMSettings = "lastfm_settings"
 const PrefKeyListenBrainzSettings = "listenbrainz_settings"
+const PrefKeyUpdateSettings = "update_settings"
 
 func (s *PreferencesStore) Get(userID, key string) (string, error) {
 	var value string

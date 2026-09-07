@@ -71,6 +71,7 @@ type Server struct {
 	oidcRuntimeValue   *oidcRuntime
 	sentryCfg          appconfig.SentryConfig
 	db                 *store.DB
+	upd                updateState
 }
 
 func NewServer(cfg appconfig.Config, db *store.DB) *Server {
@@ -176,6 +177,7 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	s.registerNotificationRoutes()
 	s.registerPartyRoutes()
 	s.registerJukeboxRoutes()
+	s.registerUpdateRoutes()
 
 	handler := s.buildAPIHandler()
 	s.server = &http.Server{

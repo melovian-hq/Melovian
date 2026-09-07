@@ -7,10 +7,12 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+// skipcq: JS-C1003
 import * as application$0 from "../../github.com/wailsapp/wails/v3/pkg/application/models.js";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+// skipcq: JS-C1003
 import * as $models from "./models.js";
 
 export function GetGraphicsEnvironment(): $CancellablePromise<$models.GraphicsEnvironment> {

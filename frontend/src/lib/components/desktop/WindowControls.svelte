@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from "@iconify/svelte";
+  import { iconData } from "$lib/components/ui/icon-data";
   import { nativeDesktopAvailable } from "$lib/config/runtime";
   import {
     loadDesktopIntegrationSettings,
@@ -57,7 +58,7 @@
       onclick={() => void minimize()}
       aria-label="Minimize"
     >
-      <Icon icon="lucide:minus" width={14} height={14} />
+      <Icon icon={iconData["lucide:minus"]} width={14} height={14} />
     </button>
     <button
       type="button"
@@ -65,7 +66,7 @@
       onclick={() => void toggleMaximize()}
       aria-label="Maximize"
     >
-      <Icon icon="lucide:square" width={12} height={12} />
+      <Icon icon={iconData["lucide:square"]} width={12} height={12} />
     </button>
     <button
       type="button"
@@ -73,7 +74,7 @@
       onclick={() => void closeWindow()}
       aria-label="Close"
     >
-      <Icon icon="lucide:x" width={14} height={14} />
+      <Icon icon={iconData["lucide:x"]} width={14} height={14} />
     </button>
   </div>
 {/if}

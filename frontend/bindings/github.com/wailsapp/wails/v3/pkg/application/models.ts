@@ -7,9 +7,11 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+// skipcq: JS-C1003
 import * as updater$0 from "../updater/models.js";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+// skipcq: JS-C1003
 import * as slog$0 from "../../../../../../log/slog/models.js";
 
 export class App {

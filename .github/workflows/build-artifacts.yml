@@ -166,6 +166,9 @@ jobs:
           IOS_PLATFORM: ${{ matrix.ios && 'device' || '' }}
           CODESIGN_IDENTITY: ${{ matrix.ios && '-' || '' }}
           VERSION: ${{ inputs.version }}
+          # Compiles the release signing public key into desktop binaries so
+          # in-app updates verify against the same trust root as servers.
+          UPDATE_PUBLIC_KEY: ${{ secrets.UPDATE_PUBLIC_KEY }}
         run: task ${{ matrix.task }}
 
       - name: Package Linux binary

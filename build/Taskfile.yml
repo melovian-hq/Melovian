@@ -191,6 +191,7 @@ tasks:
       - frontend/bindings/**/*
     cmds:
       - wails3 generate bindings -f '{{.BUILD_FLAGS}}' -clean=true{{if eq .OBFUSCATED "true"}} -obfuscated{{end}} -ts
+      - bash build/scripts/bindings-postprocess.sh
 
   generate:icons:
     summary: Generates Windows `.ico` and Mac `.icns` from an image; on macOS, `-iconcomposerinput appicon.icon -macassetdir darwin` also produces `Assets.car` from a `.icon` file (skipped on other platforms).
@@ -572,7 +573,7 @@ tasks:
           VERSION:
             ref: .VERSION
     cmds:
-      - go build -tags server {{.BUILD_FLAGS}} -ldflags "-X melovian/internal/compat.Version={{.VERSION}}" -o {{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}
+      - go build -tags server {{.BUILD_FLAGS}} -ldflags "-X melovian/internal/compat.Version={{.VERSION}} -X melovian/internal/update.ReleasePublicKey=${UPDATE_PUBLIC_KEY}" -o {{.BIN_DIR}}/{{.APP_NAME}}-server{{exeExt}}
     vars:
       BUILD_FLAGS: "{{.BUILD_FLAGS}}"
       VERSION:

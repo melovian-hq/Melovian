@@ -7,6 +7,7 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+// skipcq: JS-C1003
 import * as pcmsink$0 from "../internal/pcmsink/models.js";
 
 /**

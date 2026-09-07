@@ -20,7 +20,7 @@ builds:
     tags:
       - server
     ldflags:
-      - -s -w -X melovian/internal/compat.Version={{.Version}}
+      - -s -w -X melovian/internal/compat.Version={{.Version}} -X melovian/internal/update.ReleasePublicKey={{ .Env.UPDATE_PUBLIC_KEY }}
     goos:
       - linux
       - freebsd
@@ -72,6 +72,30 @@ builds:
         goarch: riscv64
     mod_timestamp: "{{ .CommitTimestamp }}"
 
+  # melovian-updater: standalone update agent for servers. It checks the
+  # release feed, applies signed updates, and can install a periodic unit
+  # for systemd, OpenRC, runit, or dinit.
+  - id: updater
+    binary: melovian-updater
+    main: ./cmd/melovian-updater
+    env:
+      - CGO_ENABLED=0
+    flags:
+      - -trimpath
+    ldflags:
+      - -s -w -X melovian/internal/compat.Version={{.Version}} -X melovian/internal/update.ReleasePublicKey={{ .Env.UPDATE_PUBLIC_KEY }}
+    goos:
+      - linux
+      - freebsd
+      - openbsd
+      - netbsd
+      - windows
+      - darwin
+    goarch:
+      - amd64
+      - arm64
+    mod_timestamp: "{{ .CommitTimestamp }}"
+
 archives:
   - id: server
     ids:
@@ -80,6 +104,22 @@ archives:
     # melovian-v0.1.0-server-linux-armv7.tar.gz
     name_template: >-
       melovian-{{ .Tag }}-server-{{ .Os }}-{{ .Arch }}{{ if .Arm }}v{{ .Arm }}{{ end }}
+    formats:
+      - tar.gz
+    format_overrides:
+      - goos: windows
+        formats:
+          - zip
+    files:
+      - LICENSE
+      - README.md
+      - NOTICE
+
+  - id: updater
+    ids:
+      - updater
+    name_template: >-
+      melovian-{{ .Tag }}-updater-{{ .Os }}-{{ .Arch }}
     formats:
       - tar.gz
     format_overrides:

@@ -21,6 +21,7 @@ if [ -d frontend/bindings ]; then
 fi
 
 wails3 generate bindings -clean=true -ts
+bash build/scripts/bindings-postprocess.sh
 
 if [ -d frontend/bindings ]; then
   find frontend/bindings -type f | sort | while read -r file; do

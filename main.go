@@ -8,6 +8,7 @@ package main
 import (
 	"context"
 	"embed"
+	"encoding/json"
 	"fmt"
 	"log/slog"
 	"os"
@@ -73,6 +74,8 @@ func main() {
 	mediaSvc := services.NewMediaService(nil)
 	mediaSvc.SetDataDir(cfg.DataDir)
 	audioSvc := services.NewAudioService()
+	updateSvc := services.NewUpdateService()
+	wireUpdatePrefs(updateSvc, db)
 
 	app := application.New(application.Options{
 		Name:        brand.Name,
@@ -81,6 +84,7 @@ func main() {
 		Services: []application.Service{
 			application.NewService(mediaSvc),
 			application.NewService(audioSvc),
+			application.NewService(updateSvc),
 		},
 		Assets: application.AssetOptions{
 			Handler: &api.CombinedHandler{
@@ -98,6 +102,12 @@ func main() {
 	})
 
 	mediaSvc.SetApp(app)
+	updateSvc.SetApp(app)
+	apiServer.SetUpdateHooks(&api.DesktopUpdateHooks{
+		Apply:   updateSvc.ApplyUpdate,
+		Restart: updateSvc.RestartToApply,
+		Status:  updateSvc.GetStatus,
+	})
 	if len(appIcon) > 0 {
 		app.SetIcon(appIcon)
 	}
@@ -137,6 +147,7 @@ func main() {
 	}
 
 	err = app.Run()
+
 	slog.Info("application run loop ended")
 	services.ShutdownMediaService(mediaSvc)
 	audioSvc.Shutdown()
@@ -144,5 +155,44 @@ func main() {
 	if err != nil {
 		slog.Error("application exited with error", "err", err)
 		os.Exit(1)
+	}
+}
+
+// wireUpdatePrefs connects the update service to the local preferences
+// store. Desktop installs are single-user, so the empty user scope holds
+// the auto-update opt-in and release channel.
+func wireUpdatePrefs(updateSvc *services.UpdateService, db *store.DB) {
+	prefs := store.NewPreferencesStore(db)
+	read := func() (map[string]any, error) {
+		raw, err := prefs.Get("", store.PrefKeyUpdateSettings)
+		if err != nil {
+			return map[string]any{}, nil
+		}
+		var m map[string]any
+		if err := json.Unmarshal([]byte(raw), &m); err != nil {
+			return map[string]any{}, nil
+		}
+		return m, nil
+	}
+	updateSvc.LoadAutoUpdate = func() (bool, string) {
+		m, err := read()
+		if err != nil {
+			return false, "stable"
+		}
+		auto, _ := m["autoUpdate"].(bool)
+		channel, _ := m["channel"].(string)
+		if channel == "" {
+			channel = "stable"
+		}
+		return auto, channel
+	}
+	updateSvc.SaveAutoUpdate = func(enabled bool) error {
+		m, _ := read()
+		m["autoUpdate"] = enabled
+		data, err := json.Marshal(m)
+		if err != nil {
+			return err
+		}
+		return prefs.Set("", store.PrefKeyUpdateSettings, string(data))
 	}
 }
