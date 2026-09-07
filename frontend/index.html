@@ -2,10 +2,20 @@
 <html lang="en" data-theme="dark">
   <head>
     <meta charset="UTF-8" />
-    <link rel="icon" type="image/svg+xml" href="/favicon.svg" />
-    <link rel="icon" type="image/png" sizes="32x32" href="/favicon-32.png" />
-    <link rel="icon" type="image/png" sizes="192x192" href="/favicon-192.png" />
-    <link rel="apple-touch-icon" href="/apple-touch-icon.png" />
+    <link rel="icon" type="image/svg+xml" href="%BASE_URL%favicon.svg" />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="32x32"
+      href="%BASE_URL%favicon-32.png"
+    />
+    <link
+      rel="icon"
+      type="image/png"
+      sizes="192x192"
+      href="%BASE_URL%favicon-192.png"
+    />
+    <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
@@ -23,14 +33,14 @@
       property="og:description"
       content="Music player for local libraries and Subsonic-compatible servers"
     />
-    <meta property="og:image" content="/og.png" />
+    <meta property="og:image" content="%VITE_APP_ORIGIN%%BASE_URL%og.png" />
     <meta name="twitter:card" content="summary_large_image" />
     <meta name="twitter:title" content="%VITE_APP_NAME%" />
     <meta
       name="twitter:description"
       content="Music player for local libraries and Subsonic-compatible servers"
     />
-    <meta name="twitter:image" content="/og.png" />
+    <meta name="twitter:image" content="%VITE_APP_ORIGIN%%BASE_URL%og.png" />
     <title>%VITE_APP_NAME%</title>
     <script>
       (function () {
@@ -191,7 +201,7 @@
           root.innerHTML =
             '<div style="min-height:100vh;display:grid;place-items:center;padding:1.5rem;font-family:system-ui,sans-serif">' +
             '<div style="width:min(100%,40rem);padding:1.5rem;border:1px solid #27272a;border-radius:0.75rem;background:#111113">' +
-            '<img src="/logo.png" alt="%VITE_APP_NAME%" width="48" height="48" style="display:block;margin:0 0 1rem;border-radius:0.5rem" />' +
+            '<img src="%BASE_URL%logo.webp" alt="%VITE_APP_NAME%" width="48" height="48" style="display:block;margin:0 0 1rem;border-radius:0.5rem" />' +
             '<p style="margin:0 0 0.5rem;color:#f87171;font-size:0.75rem;letter-spacing:0.08em;text-transform:uppercase">Startup error</p>' +
             '<h1 style="margin:0 0 0.75rem;font-size:1.5rem">' +
             title +
@@ -241,7 +251,7 @@
 
         function shipBootLog(message, source, stack) {
           try {
-            fetch("/api/client-log", {
+            fetch("%BASE_URL%api/client-log", {
               method: "POST",
               credentials: "same-origin",
               headers: { "Content-Type": "application/json" },

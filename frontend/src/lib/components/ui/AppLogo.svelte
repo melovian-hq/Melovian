@@ -11,7 +11,7 @@
 </script>
 
 <img
-  src="/logo.png"
+  src="{import.meta.env.BASE_URL}logo.webp"
   {alt}
   class="app-logo {className}"
   style:width="{size}px"

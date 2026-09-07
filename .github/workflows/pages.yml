@@ -60,7 +60,14 @@ jobs:
           VITE_STATIC_DEMO: "true"
           VITE_BASE: /${{ github.event.repository.name }}/
           VITE_APP_VERSION: ${{ github.sha }}
+          VITE_APP_ORIGIN: https://${{ github.repository_owner }}.github.io
         run: pnpm run build
+
+      - name: Add SPA fallback for deep links
+        # Pages serves 404.html for unknown paths. The router reads
+        # window.location.pathname, so copying index.html restores deep links
+        # like /Melovian/music.
+        run: cp frontend/dist/index.html frontend/dist/404.html
 
       - name: Upload Pages artifact
         uses: actions/upload-pages-artifact@7b1f4a764d45c48632c6b24a0339c27f5614fb0b # v4.0.0

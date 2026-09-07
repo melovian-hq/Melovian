@@ -116,6 +116,8 @@ tasks:
         export VITE_STATIC_DEMO=true
         export VITE_BASE="${VITE_BASE:-/}"
         task common:build:frontend
+        # SPA fallback so deep links work on static hosts (GitHub Pages).
+        cp frontend/dist/index.html frontend/dist/404.html
 
   run:server:
     desc: Build and run the headless HTTP server
