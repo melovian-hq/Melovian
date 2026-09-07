@@ -21,6 +21,8 @@ process.env.VITE_APP_NAME ??= "Melovian";
 process.env.VITE_APP_SLUG ??= "melovian";
 process.env.VITE_APP_DESCRIPTION ??=
   "Music player for local libraries and Subsonic-compatible servers";
+// Absolute origin for og:image tags. Set to the deploy origin on Pages.
+process.env.VITE_APP_ORIGIN ??= "";
 
 /** Match Go/server stamps: env, live git, optional .build-version, then package.json. */
 function resolveAppVersion(): string {

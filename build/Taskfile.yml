@@ -278,7 +278,7 @@ tasks:
     sources:
       - "{{.ROOT_DIR}}/build/branding/logo.png"
     generates:
-      - "{{.ROOT_DIR}}/frontend/public/logo.png"
+      - "{{.ROOT_DIR}}/frontend/public/logo.webp"
       - "{{.ROOT_DIR}}/frontend/public/favicon-32.png"
       - "{{.ROOT_DIR}}/frontend/public/favicon-192.png"
       - "{{.ROOT_DIR}}/frontend/public/apple-touch-icon.png"
@@ -288,7 +288,7 @@ tasks:
       - |
         SRC="{{.ROOT_DIR}}/build/branding/logo.png"
         PUB="{{.ROOT_DIR}}/frontend/public"
-        {{.MAGICK}} "$SRC" -resize 512x512 -strip -define png:compression-level=9 "$PUB/logo.png"
+        {{.MAGICK}} "$SRC" -resize 512x512 -strip -quality 90 "$PUB/logo.webp"
         {{.MAGICK}} "$SRC" -resize 32x32 -strip "$PUB/favicon-32.png"
         {{.MAGICK}} "$SRC" -resize 192x192 -strip "$PUB/favicon-192.png"
         {{.MAGICK}} "$SRC" -resize 180x180 -strip "$PUB/apple-touch-icon.png"
