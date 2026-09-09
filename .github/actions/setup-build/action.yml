@@ -41,7 +41,12 @@ runs:
     - name: Install NSIS
       if: inputs.install-nsis == 'true'
       shell: pwsh
-      run: choco install nsis -y --no-progress
+      run: |
+        $ErrorActionPreference = "Stop"
+        choco install nsis -y --no-progress
+        $nsisPath = "C:\Program Files (x86)\NSIS"
+        $env:PATH = "$nsisPath;$env:PATH"
+        Add-Content -Path $env:GITHUB_PATH -Value $nsisPath
 
     - name: Install macOS build dependencies
       if: inputs.install-macos-deps == 'true'

@@ -215,7 +215,7 @@ tasks:
       - "{{.ROOT_DIR}}/build/appicon.png"
       - "{{.ROOT_DIR}}/build/ios/icon.png"
     cmds:
-      - "{{.MAGICK}} \"{{.ROOT_DIR}}/build/branding/logo.png\" -resize 512x512 -strip \"{{.ROOT_DIR}}/build/appicon.png\""
+      - "{{.MAGICK}} \"{{.ROOT_DIR}}/build/branding/logo.png\" -resize 512x512 \"{{.ROOT_DIR}}/build/appicon.png\""
       - "{{.MAGICK}} \"{{.ROOT_DIR}}/build/appicon.png\" \"{{.ROOT_DIR}}/build/ios/icon.png\""
 
   generate:linux-icons:
