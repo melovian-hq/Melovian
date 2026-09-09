@@ -209,14 +209,12 @@ tasks:
 
   generate:appicon:
     summary: Generates build/appicon.png from the branding logo
-    sources:
-      - "{{.ROOT_DIR}}/build/branding/logo.png"
-    generates:
-      - "{{.ROOT_DIR}}/build/appicon.png"
-      - "{{.ROOT_DIR}}/build/ios/icon.png"
+    status:
+      - test -f "{{.ROOT_DIR}}/build/appicon.png"
+      - test -f "{{.ROOT_DIR}}/build/ios/icon.png"
     cmds:
-      - 'cp "{{.ROOT_DIR}}/build/branding/logo.png" "{{.ROOT_DIR}}/build/appicon.png"'
-      - 'cp "{{.ROOT_DIR}}/build/appicon.png" "{{.ROOT_DIR}}/build/ios/icon.png"'
+      - "{{.MAGICK}} \"{{.ROOT_DIR}}/build/branding/logo.png\" -resize 512x512 \"{{.ROOT_DIR}}/build/appicon.png\""
+      - "{{.MAGICK}} \"{{.ROOT_DIR}}/build/appicon.png\" \"{{.ROOT_DIR}}/build/ios/icon.png\""
 
   generate:linux-icons:
     summary: Generates Linux hicolor icon sizes from appicon.png
