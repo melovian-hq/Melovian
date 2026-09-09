@@ -19,7 +19,8 @@
     "allowJs": true,
     "checkJs": true,
     "isolatedModules": true,
-    "ignoreDeprecations": "6.0"
+    "ignoreDeprecations": "6.0",
+    "types": ["node"]
   },
   "include": ["src/**/*.ts", "src/**/*.js", "src/**/*.svelte", "bindings"]
 }
