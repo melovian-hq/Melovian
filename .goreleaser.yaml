@@ -132,8 +132,11 @@ archives:
       - NOTICE
 
 checksum:
-  name_template: melovian-{{ .Tag }}-checksums.txt
-  algorithm: sha256
+  # Disabled so release-extras.sh can generate and upload the augmented
+  # checksums manifest (raw binary hashes, deltas, signature) as one asset.
+  # Otherwise GoReleaser uploads an immutable checksums file that the
+  # post-step cannot clobber.
+  disable: true
 
 snapshot:
   version_template: "{{ incpatch .Version }}-snapshot"
