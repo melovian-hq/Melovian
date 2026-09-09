@@ -23,10 +23,8 @@ TAG="${1:?usage: release-extras.sh <tag> [dist-dir]}"
 DIST="${2:-dist}"
 SUMS="${DIST}/melovian-${TAG}-checksums.txt"
 
-if [[ ! -f "${SUMS}" ]]; then
-  echo "checksums file not found: ${SUMS}" >&2
-  exit 1
-fi
+mkdir -p "${DIST}"
+
 
 extract_bin() {
   local archive="$1" outdir="$2"
