@@ -2,7 +2,7 @@ version: '3'
 
 vars:
   MAGICK:
-    sh: 'command -v magick || command -v convert || true'
+    sh: 'command -v magick >/dev/null 2>&1 && echo magick || { command -v convert >/dev/null 2>&1 && echo convert; }'
 
 tasks:
   go:mod:tidy:
