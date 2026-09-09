@@ -50,6 +50,7 @@ frontend/playwright/.cache/
 
 # GoReleaser
 /dist/
+/artifacts/
 
 # Wails / platform build outputs
 build/linux/appimage/build/
