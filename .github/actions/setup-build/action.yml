@@ -35,7 +35,8 @@ runs:
           libmpv-dev \
           pkg-config \
           gcc \
-          libc6-dev
+          libc6-dev \
+          imagemagick
 
     - name: Install NSIS
       if: inputs.install-nsis == 'true'
@@ -45,4 +46,13 @@ runs:
     - name: Install macOS build dependencies
       if: inputs.install-macos-deps == 'true'
       shell: bash
-      run: brew install librsvg
+      run: |
+        set -euo pipefail
+        brew install librsvg imagemagick
+
+    - name: Install Windows image dependencies
+      if: runner.os == 'Windows'
+      shell: pwsh
+      run: |
+        $ErrorActionPreference = "Stop"
+        choco install imagemagick -y --no-progress
