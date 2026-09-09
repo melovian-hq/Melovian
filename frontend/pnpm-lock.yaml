@@ -7,6 +7,7 @@ settings:
 overrides:
   cookie@<0.7.0: 0.7.2
   fast-uri: 3.1.7
+  js-yaml@<3.15.2: 3.15.2
   nanoid@<3.3.18: 3.3.18
   puppeteer-core@^24: 25.10.0
   qs: 6.16.0
@@ -3013,10 +3014,10 @@ packages:
         integrity: sha512-RdJUflcE3cUzKiMqQgsCu06FPu9UdIJO0beYbPhHN4k6apgJtifcoCtT9bcxOpYBtpD2kCM6Sbzg4CausW/PKQ==,
       }
 
-  js-yaml@3.15.1:
+  js-yaml@3.15.2:
     resolution:
       {
-        integrity: sha512-S99WuO3HlhO3XN41EtYUNl9zzXjoJx7QvmipxsJVxtCBT0YHEFy+iOJhjSvrmV12nYhWpZaM8lPHkJm0yUMbag==,
+        integrity: sha512-6EuL879VkRA+1Cz578mKMiKvjPNEuk6+r1JaFzoSWejZmtf7xWbIyw1e3KkxlkzTIt9Taw6JBhEppG7utc1P+w==,
       }
     hasBin: true
 
@@ -5669,7 +5670,7 @@ snapshots:
     dependencies:
       debug: 4.4.3
       isomorphic-fetch: 3.0.0
-      js-yaml: 3.15.1
+      js-yaml: 3.15.2
       lighthouse: 12.6.1(proxy-agent@6.5.0)
       tree-kill: 1.2.2
     transitivePeerDependencies:
@@ -7006,7 +7007,7 @@ snapshots:
 
   js-tokens@4.0.0: {}
 
-  js-yaml@3.15.1:
+  js-yaml@3.15.2:
     dependencies:
       argparse: 1.0.10
       esprima: 4.0.1
