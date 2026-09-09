@@ -53,11 +53,11 @@ func (c *smtcController) init() error {
 		return err
 	}
 	controls := controlsRaw.ToIDispatch()
-	_ = oleutil.PutProperty(controls, "IsEnabled", true)
-	_ = oleutil.PutProperty(controls, "IsPlayEnabled", true)
-	_ = oleutil.PutProperty(controls, "IsPauseEnabled", true)
-	_ = oleutil.PutProperty(controls, "IsNextEnabled", true)
-	_ = oleutil.PutProperty(controls, "IsPreviousEnabled", true)
+	_, _ = oleutil.PutProperty(controls, "IsEnabled", true)
+	_, _ = oleutil.PutProperty(controls, "IsPlayEnabled", true)
+	_, _ = oleutil.PutProperty(controls, "IsPauseEnabled", true)
+	_, _ = oleutil.PutProperty(controls, "IsNextEnabled", true)
+	_, _ = oleutil.PutProperty(controls, "IsPreviousEnabled", true)
 
 	c.player = player
 	c.controls = controls
@@ -79,15 +79,15 @@ func (c *smtcController) Update(state PlaybackState) error {
 	c.mu.Unlock()
 
 	if state.TrackID == "" {
-		_ = oleutil.PutProperty(c.controls, "PlaybackStatus", 4)
+		_, _ = oleutil.PutProperty(c.controls, "PlaybackStatus", 4)
 		return nil
 	}
 
 	display, err := oleutil.GetProperty(c.controls, "DisplayUpdater")
 	if err == nil {
 		updater := display.ToIDispatch()
-		_ = oleutil.PutProperty(updater, "Type", 1)
-		_ = oleutil.PutProperty(updater, "MusicProperties", map[string]any{
+		_, _ = oleutil.PutProperty(updater, "Type", 1)
+		_, _ = oleutil.PutProperty(updater, "MusicProperties", map[string]any{
 			"Title":  state.Title,
 			"Artist": state.Artist,
 			"Album":  state.Album,
@@ -100,24 +100,24 @@ func (c *smtcController) Update(state PlaybackState) error {
 	if state.Playing {
 		status = 4
 	}
-	_ = oleutil.PutProperty(c.controls, "PlaybackStatus", status)
+	_, _ = oleutil.PutProperty(c.controls, "PlaybackStatus", status)
 
 	if state.DurationMs > 0 {
 		timeline, err := oleutil.GetProperty(c.controls, "TimelineProperties")
 		if err == nil {
 			tl := timeline.ToIDispatch()
-			_ = oleutil.PutProperty(tl, "StartTime", time.Unix(0, 0))
-			_ = oleutil.PutProperty(tl, "EndTime", time.Unix(0, int64(state.DurationMs)*int64(time.Millisecond)))
-			_ = oleutil.PutProperty(tl, "Position", time.Unix(0, int64(state.PositionMs)*int64(time.Millisecond)))
+			_, _ = oleutil.PutProperty(tl, "StartTime", time.Unix(0, 0))
+			_, _ = oleutil.PutProperty(tl, "EndTime", time.Unix(0, int64(state.DurationMs)*int64(time.Millisecond)))
+			_, _ = oleutil.PutProperty(tl, "Position", time.Unix(0, int64(state.PositionMs)*int64(time.Millisecond)))
 			_, _ = oleutil.CallMethod(c.controls, "UpdateTimelineProperties", tl)
 			tl.Release()
 		}
 	}
 
-	_ = oleutil.PutProperty(c.controls, "IsPlayEnabled", state.CanPlay)
-	_ = oleutil.PutProperty(c.controls, "IsPauseEnabled", state.CanPause)
-	_ = oleutil.PutProperty(c.controls, "IsNextEnabled", state.CanGoNext)
-	_ = oleutil.PutProperty(c.controls, "IsPreviousEnabled", state.CanGoPrevious)
+	_, _ = oleutil.PutProperty(c.controls, "IsPlayEnabled", state.CanPlay)
+	_, _ = oleutil.PutProperty(c.controls, "IsPauseEnabled", state.CanPause)
+	_, _ = oleutil.PutProperty(c.controls, "IsNextEnabled", state.CanGoNext)
+	_, _ = oleutil.PutProperty(c.controls, "IsPreviousEnabled", state.CanGoPrevious)
 	return nil
 }
 

@@ -19,7 +19,7 @@ func tryLoadLibrary() error {
 	names := []string{"mpv-2.dll", "mpv-1.dll", "libmpv.dll"}
 	var lastErr error
 	for _, name := range names {
-		handle, err := windows.LoadLibrary(windows.StringToUTF16Ptr(name))
+		handle, err := windows.LoadLibrary(name)
 		if err != nil {
 			lastErr = err
 			continue

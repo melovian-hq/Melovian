@@ -23,10 +23,10 @@ func tryLoadLibrary() error {
 		if dir == "" {
 			continue
 		}
-		_ = windows.SetDllDirectory(windows.StringToUTF16Ptr(dir))
+		_ = windows.SetDllDirectory(dir)
 		for _, name := range names {
 			path := filepath.Join(dir, name)
-			handle, err := windows.LoadLibrary(windows.StringToUTF16Ptr(path))
+			handle, err := windows.LoadLibrary(path)
 			if err != nil {
 				lastErr = err
 				continue
@@ -37,7 +37,7 @@ func tryLoadLibrary() error {
 	}
 
 	for _, name := range names {
-		handle, err := windows.LoadLibrary(windows.StringToUTF16Ptr(name))
+		handle, err := windows.LoadLibrary(name)
 		if err != nil {
 			lastErr = err
 			continue
