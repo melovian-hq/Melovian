@@ -129,3 +129,11 @@ jobs:
         run: |
           set -euo pipefail
           bash build/scripts/release-extras.sh "${UPDATE_TAG}" dist
+
+      - name: Publish release
+        env:
+          GH_TOKEN: ${{ secrets.GITHUB_TOKEN }}
+          UPDATE_TAG: ${{ needs.resolve.outputs.tag }}
+        run: |
+          set -euo pipefail
+          gh release edit "${UPDATE_TAG}" --draft=false

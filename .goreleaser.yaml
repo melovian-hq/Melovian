@@ -176,6 +176,10 @@ changelog:
 release:
   name_template: Melovian {{ .Tag }}
   prerelease: auto
+  # Create the release as a draft so the post-GoReleaser step can add
+  # checksums, signatures, and delta patches before publishing.
+  draft: true
+  replace_existing_draft: true
   # Desktop, mobile, and frontend artifacts are produced by build-artifacts.yml
   # and downloaded into ./artifacts by the release workflow before this runs.
   extra_files:
