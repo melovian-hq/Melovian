@@ -1,6 +1,6 @@
 # SPDX-FileCopyrightText: 2026 Quad4 Software
 # SPDX-License-Identifier: Apache-2.0
-FROM golang:1.26-bookworm
+FROM golang:1.26-trixie
 
 ARG TARGETARCH
 
