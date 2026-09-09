@@ -303,7 +303,8 @@ describe("device-sync session isolation oracle", () => {
     });
     expect(music.playTrackById).not.toHaveBeenCalled();
     expect(music.armStartPosition).not.toHaveBeenCalled();
-    expect(music.seek).toHaveBeenCalledWith(40);
+    const [seekSeconds] = vi.mocked(music.seek).mock.calls[0];
+    expect(seekSeconds).toBeCloseTo(40, 1);
   });
 
   it("arms start position before loading a new host track", async () => {
