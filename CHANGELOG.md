@@ -6,8 +6,6 @@ The project is still alpha. Things can change before a stable release.
 
 ## 0.1.0 (not released yet)
 
-First alpha cut. Copyright 2026 Quad4 Software.
-
 **Play music**
 
 - Desktop app on Linux, Windows, and macOS
