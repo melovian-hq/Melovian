@@ -34,6 +34,14 @@ type UpdateService struct {
 	initErr string
 	rel     *updater.Release
 
+	// bgCancel and bgWG manage the detached feed check started by
+	// SetAutoUpdate. checkRunning dedups it so repeated toggles never
+	// stack concurrent checks. stopped is set by Shutdown.
+	bgCancel     context.CancelFunc
+	bgWG         sync.WaitGroup
+	checkRunning bool
+	stopped      bool
+
 	// LoadAutoUpdate returns (enabled, channel). Set from main.go.
 	LoadAutoUpdate func() (bool, string)
 	// SaveAutoUpdate persists the opt-in flag. Set from main.go.
@@ -111,8 +119,7 @@ func (s *UpdateService) CheckForUpdates(ctx context.Context) map[string]any {
 	s.rel = rel
 	s.mu.Unlock()
 	if err != nil {
-		var manual *update.ErrManualOnly
-		if errors.As(err, &manual) {
+		if manual, ok := errors.AsType[*update.ErrManualOnly](err); ok {
 			return s.statusPayloadManual(manual.ReleaseURL)
 		}
 		return s.statusPayload(err)
@@ -133,8 +140,7 @@ func (s *UpdateService) ApplyUpdate(ctx context.Context) map[string]any {
 	s.mu.Unlock()
 	if rel == nil {
 		if _, err := u.Check(ctx); err != nil {
-			var manual *update.ErrManualOnly
-			if errors.As(err, &manual) {
+			if manual, ok := errors.AsType[*update.ErrManualOnly](err); ok {
 				return s.statusPayloadManual(manual.ReleaseURL)
 			}
 			return s.statusPayload(err)
@@ -182,11 +188,57 @@ func (s *UpdateService) SetAutoUpdate(enabled bool) error {
 		// CheckInterval is fixed at Init. Emulate a fresh periodic loop by
 		// doing a check now. Subsequent ticks need a restart of the app or
 		// a fresh Init, so persist the flag and run one immediate check.
-		go func() { _, _ = u.Check(context.Background()) }()
+		s.startCheck(func(ctx context.Context) { _, _ = u.Check(ctx) })
 	} else {
+		s.stopCheck()
 		u.StopPeriodicCheck()
 	}
 	return nil
+}
+
+// startCheck runs check on a detached, cancellable context. A check that
+// is already running is left alone so repeated SetAutoUpdate calls never
+// stack concurrent feed fetches.
+func (s *UpdateService) startCheck(check func(context.Context)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	if s.stopped || s.checkRunning {
+		return
+	}
+	if s.bgCancel != nil {
+		s.bgCancel()
+	}
+	ctx, cancel := context.WithCancel(context.Background())
+	s.bgCancel = cancel
+	s.checkRunning = true
+	s.bgWG.Go(func() {
+		check(ctx)
+		s.mu.Lock()
+		s.checkRunning = false
+		s.mu.Unlock()
+	})
+}
+
+// stopCheck cancels the in-flight detached check, if any.
+func (s *UpdateService) stopCheck() {
+	s.mu.Lock()
+	if s.bgCancel != nil {
+		s.bgCancel()
+		s.bgCancel = nil
+	}
+	s.mu.Unlock()
+}
+
+// Shutdown cancels background update work and waits for it to drain.
+func (s *UpdateService) Shutdown() {
+	s.mu.Lock()
+	s.stopped = true
+	if s.bgCancel != nil {
+		s.bgCancel()
+		s.bgCancel = nil
+	}
+	s.mu.Unlock()
+	s.bgWG.Wait()
 }
 
 func (s *UpdateService) statusPayload(err error) map[string]any {

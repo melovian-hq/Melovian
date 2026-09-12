@@ -157,11 +157,16 @@ func (p *pcmPlayer) Close() {
 }
 
 // AudioService exposes native playback to the frontend when libmpv or libvlc is available.
+//
+// Lock order is opMu then mu. opMu serializes player operations while mu
+// guards the backend, standby, and config fields. Code holding mu must
+// never acquire opMu.
 type AudioService struct {
 	mu          sync.Mutex
 	opMu        sync.Mutex
 	backend     audioBackend
 	standby     audioBackend
+	activating  bool // a crossfade swap is running outside opMu
 	preparedURL string
 	volume      float64
 	caps        AudioCapabilities
@@ -507,31 +512,31 @@ func (s *AudioService) LoadURL(url string) error {
 
 // Play starts or resumes native playback.
 func (s *AudioService) Play() error {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	backend := s.backend
 	s.mu.Unlock()
-	s.opMu.Lock()
-	defer s.opMu.Unlock()
 	return backend.Play()
 }
 
 // Pause pauses native playback.
 func (s *AudioService) Pause() {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	backend := s.backend
 	s.mu.Unlock()
-	s.opMu.Lock()
-	defer s.opMu.Unlock()
 	backend.Pause()
 }
 
 // Seek moves playback to the given time in seconds.
 func (s *AudioService) Seek(seconds float64) error {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	backend := s.backend
 	s.mu.Unlock()
-	s.opMu.Lock()
-	defer s.opMu.Unlock()
 	return backend.Seek(seconds)
 }
 
@@ -555,21 +560,21 @@ func (s *AudioService) SetVolume(volume float64) {
 
 // GetState returns the current native playback state.
 func (s *AudioService) GetState() AudioPlaybackState {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	backend := s.backend
 	s.mu.Unlock()
-	s.opMu.Lock()
-	defer s.opMu.Unlock()
 	return backend.GetState()
 }
 
 // ClearEnded resets the ended latch after the frontend handles track completion.
 func (s *AudioService) ClearEnded() {
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
 	backend := s.backend
 	s.mu.Unlock()
-	s.opMu.Lock()
-	defer s.opMu.Unlock()
 	backend.ClearEnded()
 }
 
@@ -612,20 +617,22 @@ func (s *AudioService) HasPrepared(url string) bool {
 
 // ActivatePrepared swaps the standby player into the primary slot.
 // When crossfadeSec > 0, volumes are ramped between the two players.
+// The timed fade runs without opMu so other playback ops stay responsive;
+// the final swap re-locks and is dropped if teardown ran during the fade.
 func (s *AudioService) ActivatePrepared(crossfadeSec float64) error {
 	s.opMu.Lock()
-	defer s.opMu.Unlock()
 
 	s.mu.Lock()
-	standby := s.standby
-	primary := s.backend
-	preparedURL := s.preparedURL
-	volume := s.volume
-	s.mu.Unlock()
-
-	if standby == nil || preparedURL == "" {
+	if s.activating || s.standby == nil || s.preparedURL == "" {
+		s.mu.Unlock()
+		s.opMu.Unlock()
 		return errNativeUnavailable
 	}
+	s.activating = true
+	standby := s.standby
+	primary := s.backend
+	volume := s.volume
+	s.mu.Unlock()
 
 	if crossfadeSec < 0 {
 		crossfadeSec = 0
@@ -633,10 +640,17 @@ func (s *AudioService) ActivatePrepared(crossfadeSec float64) error {
 
 	if err := standby.Play(); err != nil {
 		s.mu.Lock()
+		s.activating = false
 		s.clearPreparedLocked()
 		s.mu.Unlock()
+		s.opMu.Unlock()
 		return err
 	}
+
+	// opMu stays released for the fade so Play, Pause, and GetState are
+	// not blocked for the whole ramp. Players ignore SetVolume after
+	// Close, so teardown racing the loop is safe.
+	s.opMu.Unlock()
 
 	if crossfadeSec > 0 {
 		steps := max(int(crossfadeSec*20), 1)
@@ -653,17 +667,27 @@ func (s *AudioService) ActivatePrepared(crossfadeSec float64) error {
 		standby.SetVolume(volume)
 	}
 
-	primary.Pause()
-	primary.SetVolume(volume)
-
+	s.opMu.Lock()
+	defer s.opMu.Unlock()
 	s.mu.Lock()
+	s.activating = false
+	if s.standby != standby || s.backend != primary {
+		// Shutdown, ClearPrepared, or a backend rebuild tore this pair
+		// down mid-fade. Drop the standby instead of reviving it.
+		s.mu.Unlock()
+		standby.Close()
+		return nil
+	}
 	s.backend = standby
 	s.standby = nil
 	s.preparedURL = ""
-	old := primary
+	volume = s.volume
 	s.mu.Unlock()
 
-	old.Close()
+	standby.SetVolume(volume)
+	primary.Pause()
+	primary.SetVolume(volume)
+	primary.Close()
 	return nil
 }
 
