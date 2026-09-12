@@ -21,6 +21,7 @@
   import { coverArtUrl } from "$lib/subsonic";
   import LibraryUnavailable from "$lib/components/music/LibraryUnavailable.svelte";
   import { libraryUnavailable } from "$lib/music/library-gate";
+  import { Tabs } from "bits-ui";
 
   type FavoritesTab = "tracks" | "albums" | "artists";
 
@@ -235,42 +236,36 @@
   />
 
   <div class="favorites-toolbar">
-    <div class="favorites-tabs" role="tablist" aria-label="Favorite categories">
-      <button
-        type="button"
-        role="tab"
-        class="favorites-tabs__btn"
-        class:favorites-tabs__btn--active={activeTab === "tracks"}
-        aria-selected={activeTab === "tracks"}
-        onclick={() => (activeTab = "tracks")}
-      >
-        Songs
-        <span class="favorites-tabs__count">{music.favoriteTracks.length}</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="favorites-tabs__btn"
-        class:favorites-tabs__btn--active={activeTab === "albums"}
-        aria-selected={activeTab === "albums"}
-        onclick={() => (activeTab = "albums")}
-      >
-        Albums
-        <span class="favorites-tabs__count">{music.favoriteAlbums.length}</span>
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="favorites-tabs__btn"
-        class:favorites-tabs__btn--active={activeTab === "artists"}
-        aria-selected={activeTab === "artists"}
-        onclick={() => (activeTab = "artists")}
-      >
-        Artists
-        <span class="favorites-tabs__count">{music.favoriteArtists.length}</span
-        >
-      </button>
-    </div>
+    <Tabs.Root
+      style="display: contents"
+      bind:value={
+        () => activeTab,
+        (value) => {
+          activeTab = value as FavoritesTab;
+        }
+      }
+    >
+      <Tabs.List class="favorites-tabs" aria-label="Favorite categories">
+        <Tabs.Trigger value="tracks" class="favorites-tabs__btn">
+          Songs
+          <span class="favorites-tabs__count"
+            >{music.favoriteTracks.length}</span
+          >
+        </Tabs.Trigger>
+        <Tabs.Trigger value="albums" class="favorites-tabs__btn">
+          Albums
+          <span class="favorites-tabs__count"
+            >{music.favoriteAlbums.length}</span
+          >
+        </Tabs.Trigger>
+        <Tabs.Trigger value="artists" class="favorites-tabs__btn">
+          Artists
+          <span class="favorites-tabs__count"
+            >{music.favoriteArtists.length}</span
+          >
+        </Tabs.Trigger>
+      </Tabs.List>
+    </Tabs.Root>
 
     <LocalSearchBox
       bind:value={searchQuery}
@@ -401,13 +396,13 @@
     gap: var(--jb-space-3);
   }
 
-  .favorites-tabs {
+  :global(.favorites-tabs) {
     display: flex;
     flex-wrap: wrap;
     gap: var(--jb-space-2);
   }
 
-  .favorites-tabs__btn {
+  :global(.favorites-tabs__btn) {
     display: inline-flex;
     align-items: center;
     gap: var(--jb-space-2);
@@ -421,17 +416,17 @@
     cursor: pointer;
   }
 
-  .favorites-tabs__btn:hover {
+  :global(.favorites-tabs__btn:hover) {
     background: var(--jb-surface-hover);
     color: var(--jb-text);
   }
 
-  .favorites-tabs__btn--active {
+  :global(.favorites-tabs__btn[data-state="active"]) {
     background: var(--jb-text);
     color: var(--jb-bg);
   }
 
-  .favorites-tabs__btn--active:hover {
+  :global(.favorites-tabs__btn[data-state="active"]:hover) {
     background: var(--jb-text);
     color: var(--jb-bg);
   }
@@ -507,14 +502,14 @@
       align-items: stretch;
     }
 
-    .favorites-tabs {
+    :global(.favorites-tabs) {
       overflow-x: auto;
       flex-wrap: nowrap;
       padding-bottom: var(--jb-space-1);
       scrollbar-width: thin;
     }
 
-    .favorites-tabs__btn {
+    :global(.favorites-tabs__btn) {
       flex-shrink: 0;
     }
 

@@ -39,6 +39,7 @@
   import type { MusicShare } from "$lib/music/api";
   import type { SmartPlaylistDraft } from "$lib/music/smart-playlist/types";
   import { APP_NAME, StorageKeys } from "$lib/brand";
+  import { Tabs } from "bits-ui";
 
   type PlaylistKind = "server" | "local";
 
@@ -458,30 +459,26 @@
   </header>
 
   {#if showKindToggle}
-    <div class="playlists-kind" role="tablist" aria-label="Playlist source">
-      <button
-        type="button"
-        role="tab"
-        class="playlists-kind__btn"
-        class:playlists-kind__btn--active={playlistKind === "server"}
-        aria-selected={playlistKind === "server"}
-        onclick={() => (playlistKind = "server")}
-      >
-        <SourceIcon kind="server" size={16} />
-        Server
-      </button>
-      <button
-        type="button"
-        role="tab"
-        class="playlists-kind__btn"
-        class:playlists-kind__btn--active={playlistKind === "local"}
-        aria-selected={playlistKind === "local"}
-        onclick={() => (playlistKind = "local")}
-      >
-        <MdiIcon name="folderOpen" size={16} />
-        Local
-      </button>
-    </div>
+    <Tabs.Root
+      style="display: contents"
+      bind:value={
+        () => playlistKind,
+        (value) => {
+          playlistKind = value as PlaylistKind;
+        }
+      }
+    >
+      <Tabs.List class="playlists-kind" aria-label="Playlist source">
+        <Tabs.Trigger value="server" class="playlists-kind__btn">
+          <SourceIcon kind="server" size={16} />
+          Server
+        </Tabs.Trigger>
+        <Tabs.Trigger value="local" class="playlists-kind__btn">
+          <MdiIcon name="folderOpen" size={16} />
+          Local
+        </Tabs.Trigger>
+      </Tabs.List>
+    </Tabs.Root>
   {/if}
 
   <LocalSearchBox
@@ -534,22 +531,28 @@
             Local playlists
           {/if}
         </h2>
-        <div class="playlists-view" role="tablist" aria-label="Playlist layout">
-          {#each VIEW_OPTIONS as option (option.id)}
-            <button
-              type="button"
-              role="tab"
-              class="playlists-view__btn"
-              class:playlists-view__btn--active={playlistView === option.id}
-              aria-selected={playlistView === option.id}
-              aria-label={option.label}
-              title={option.label}
-              onclick={() => (playlistView = option.id)}
-            >
-              <MdiIcon name={option.icon} size={17} />
-            </button>
-          {/each}
-        </div>
+        <Tabs.Root
+          style="display: contents"
+          bind:value={
+            () => playlistView,
+            (value) => {
+              playlistView = value as PlaylistViewMode;
+            }
+          }
+        >
+          <Tabs.List class="playlists-view" aria-label="Playlist layout">
+            {#each VIEW_OPTIONS as option (option.id)}
+              <Tabs.Trigger
+                value={option.id}
+                class="playlists-view__btn"
+                aria-label={option.label}
+                title={option.label}
+              >
+                <MdiIcon name={option.icon} size={17} />
+              </Tabs.Trigger>
+            {/each}
+          </Tabs.List>
+        </Tabs.Root>
       </div>
       <form
         class="playlists-create playlists-create--inline"
@@ -741,7 +744,7 @@
     display: none;
   }
 
-  .playlists-kind {
+  :global(.playlists-kind) {
     display: inline-flex;
     gap: var(--jb-space-1);
     padding: 0.2rem;
@@ -751,7 +754,7 @@
     background: var(--jb-surface);
   }
 
-  .playlists-kind__btn {
+  :global(.playlists-kind__btn) {
     display: inline-flex;
     align-items: center;
     gap: var(--jb-space-2);
@@ -765,7 +768,7 @@
     cursor: pointer;
   }
 
-  .playlists-kind__btn--active {
+  :global(.playlists-kind__btn[data-state="active"]) {
     background: var(--jb-bg-muted);
     color: var(--jb-text);
     box-shadow: var(--jb-shadow-sm);
@@ -800,7 +803,7 @@
     font-weight: 700;
   }
 
-  .playlists-view {
+  :global(.playlists-view) {
     display: inline-flex;
     gap: 0.15rem;
     padding: 0.15rem;
@@ -809,7 +812,7 @@
     background: var(--jb-bg-muted);
   }
 
-  .playlists-view__btn {
+  :global(.playlists-view__btn) {
     display: inline-grid;
     place-items: center;
     width: 2rem;
@@ -825,11 +828,11 @@
       box-shadow var(--jb-transition);
   }
 
-  .playlists-view__btn:hover {
+  :global(.playlists-view__btn:hover) {
     color: var(--jb-text);
   }
 
-  .playlists-view__btn--active {
+  :global(.playlists-view__btn[data-state="active"]) {
     background: var(--jb-surface);
     color: var(--jb-music-accent);
     box-shadow: var(--jb-shadow-sm);

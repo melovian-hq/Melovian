@@ -12,6 +12,7 @@
   import { type SubsonicAlbum } from "$lib/subsonic";
   import { filterByLocalSearch } from "$lib/utils/local-search";
   import { rejectUnknownAlbums } from "$lib/music/unknown-metadata";
+  import { Tabs } from "bits-ui";
 
   type AlbumSort = "alphabeticalByName" | "newest" | "frequent";
 
@@ -108,23 +109,27 @@
   <div class="albums-page__intro">
     <PageHeader title="Albums" subtitle="Browse albums from your server." />
 
-    <div class="albums-page__sort" role="tablist" aria-label="Album sort">
-      {#each SORT_OPTIONS as option (option.id)}
-        <button
-          type="button"
-          role="tab"
-          class="albums-page__sort-btn"
-          class:albums-page__sort-btn--active={sort === option.id}
-          aria-selected={sort === option.id}
-          disabled={unavailable}
-          onclick={() => {
-            sort = option.id;
-          }}
-        >
-          {option.label}
-        </button>
-      {/each}
-    </div>
+    <Tabs.Root
+      style="display: contents"
+      bind:value={
+        () => sort,
+        (value) => {
+          sort = value as AlbumSort;
+        }
+      }
+    >
+      <Tabs.List class="albums-page__sort" aria-label="Album sort">
+        {#each SORT_OPTIONS as option (option.id)}
+          <Tabs.Trigger
+            value={option.id}
+            class="albums-page__sort-btn"
+            disabled={unavailable}
+          >
+            {option.label}
+          </Tabs.Trigger>
+        {/each}
+      </Tabs.List>
+    </Tabs.Root>
   </div>
 
   <LocalSearchBox
@@ -198,13 +203,13 @@
     margin-bottom: 0;
   }
 
-  .albums-page__sort {
+  :global(.albums-page__sort) {
     display: flex;
     flex-wrap: wrap;
     gap: var(--jb-space-2);
   }
 
-  .albums-page__sort-btn {
+  :global(.albums-page__sort-btn) {
     padding: 0.4rem 0.85rem;
     border-radius: var(--jb-radius-full);
     border: 1px solid var(--jb-border);
@@ -215,7 +220,7 @@
     cursor: pointer;
   }
 
-  .albums-page__sort-btn--active {
+  :global(.albums-page__sort-btn[data-state="active"]) {
     border-color: var(--jb-music-accent);
     background: var(--jb-music-accent-muted);
     color: var(--jb-music-accent);
@@ -237,14 +242,14 @@
   }
 
   @media (max-width: 768px) {
-    .albums-page__sort {
+    :global(.albums-page__sort) {
       overflow-x: auto;
       flex-wrap: nowrap;
       padding-bottom: var(--jb-space-1);
       scrollbar-width: thin;
     }
 
-    .albums-page__sort-btn {
+    :global(.albums-page__sort-btn) {
       flex-shrink: 0;
     }
   }

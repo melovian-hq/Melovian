@@ -1,4 +1,6 @@
 <script lang="ts">
+  import { Switch } from "bits-ui";
+
   interface Props {
     checked?: boolean;
     label?: string;
@@ -14,33 +16,25 @@
     disabled = false,
     onchange,
   }: Props = $props();
-
-  function toggle() {
-    if (disabled) return;
-    checked = !checked;
-    onchange?.(checked);
-  }
 </script>
 
-<button
-  type="button"
-  class="toggle"
-  class:toggle--on={checked}
+<Switch.Root
+  bind:checked
   {disabled}
-  onclick={toggle}
   aria-label={ariaLabel ?? label}
-  aria-pressed={checked}
+  onCheckedChange={(value) => onchange?.(value)}
+  class={checked ? "toggle toggle--on" : "toggle"}
 >
   <span class="toggle__track">
-    <span class="toggle__thumb"></span>
+    <Switch.Thumb class="toggle__thumb" />
   </span>
   {#if label}
     <span class="toggle__label">{label}</span>
   {/if}
-</button>
+</Switch.Root>
 
 <style>
-  .toggle {
+  :global(.toggle) {
     display: inline-flex;
     align-items: center;
     gap: var(--jb-space-2);
@@ -52,7 +46,7 @@
     font-size: 0.875rem;
   }
 
-  .toggle:disabled {
+  :global(.toggle:disabled) {
     opacity: 0.5;
     cursor: not-allowed;
   }
@@ -66,11 +60,11 @@
     transition: background var(--jb-transition);
   }
 
-  .toggle--on .toggle__track {
+  :global(.toggle--on) .toggle__track {
     background: var(--jb-accent);
   }
 
-  .toggle__thumb {
+  :global(.toggle__thumb) {
     position: absolute;
     top: 2px;
     left: 2px;
@@ -82,7 +76,7 @@
     box-shadow: var(--jb-shadow-sm);
   }
 
-  .toggle--on .toggle__thumb {
+  :global(.toggle--on .toggle__thumb) {
     transform: translateX(1rem);
   }
 

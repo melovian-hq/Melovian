@@ -26,6 +26,7 @@
   } from "$lib/music/stats-utils";
   import type { ListenEvent } from "$lib/subsonic/types";
   import { coverArtUrl, type SubsonicSong } from "$lib/subsonic";
+  import { Tabs } from "bits-ui";
 
   const PAGE_SIZE = 100;
   const SEARCH_DEBOUNCE_MS = 250;
@@ -287,41 +288,31 @@
   />
 
   <div class="history-toolbar">
-    <div
-      class="history-toolbar__periods"
-      role="tablist"
-      aria-label="Time period"
+    <Tabs.Root
+      style="display: contents"
+      bind:value={
+        () => period,
+        (value) => {
+          period = value as StatsPeriod;
+        }
+      }
     >
-      {#each Object.entries(STATS_PERIOD_LABELS) as [id, label] (id)}
-        <button
-          type="button"
-          role="tab"
-          class="history-toolbar__period"
-          class:history-toolbar__period--active={period === id}
-          aria-selected={period === id}
-          onclick={() => {
-            period = id as StatsPeriod;
-          }}
-        >
-          {label}
-        </button>
-      {/each}
-      {#each listenYears as year (year)}
-        <button
-          type="button"
-          role="tab"
-          class="history-toolbar__period history-toolbar__period--year"
-          class:history-toolbar__period--active={period ===
-            statsPeriodForYear(year)}
-          aria-selected={period === statsPeriodForYear(year)}
-          onclick={() => {
-            period = statsPeriodForYear(year);
-          }}
-        >
-          {year}
-        </button>
-      {/each}
-    </div>
+      <Tabs.List class="history-toolbar__periods" aria-label="Time period">
+        {#each Object.entries(STATS_PERIOD_LABELS) as [id, label] (id)}
+          <Tabs.Trigger value={id} class="history-toolbar__period">
+            {label}
+          </Tabs.Trigger>
+        {/each}
+        {#each listenYears as year (year)}
+          <Tabs.Trigger
+            value={statsPeriodForYear(year)}
+            class="history-toolbar__period history-toolbar__period--year"
+          >
+            {year}
+          </Tabs.Trigger>
+        {/each}
+      </Tabs.List>
+    </Tabs.Root>
 
     <LocalSearchBox
       bind:value={searchQuery}
@@ -400,13 +391,13 @@
     gap: var(--jb-space-3);
   }
 
-  .history-toolbar__periods {
+  :global(.history-toolbar__periods) {
     display: flex;
     flex-wrap: wrap;
     gap: var(--jb-space-2);
   }
 
-  .history-toolbar__period {
+  :global(.history-toolbar__period) {
     border: none;
     border-radius: var(--jb-radius-full);
     background: var(--jb-surface);
@@ -420,22 +411,22 @@
       color var(--jb-transition);
   }
 
-  .history-toolbar__period:hover {
+  :global(.history-toolbar__period:hover) {
     background: var(--jb-surface-hover);
     color: var(--jb-text);
   }
 
-  .history-toolbar__period--active {
+  :global(.history-toolbar__period[data-state="active"]) {
     background: var(--jb-text);
     color: var(--jb-bg);
   }
 
-  .history-toolbar__period--active:hover {
+  :global(.history-toolbar__period[data-state="active"]:hover) {
     background: var(--jb-text);
     color: var(--jb-bg);
   }
 
-  .history-toolbar__period--year {
+  :global(.history-toolbar__period--year) {
     font-variant-numeric: tabular-nums;
   }
 
@@ -480,14 +471,14 @@
       align-items: stretch;
     }
 
-    .history-toolbar__periods {
+    :global(.history-toolbar__periods) {
       overflow-x: auto;
       flex-wrap: nowrap;
       padding-bottom: var(--jb-space-1);
       scrollbar-width: thin;
     }
 
-    .history-toolbar__period {
+    :global(.history-toolbar__period) {
       flex-shrink: 0;
     }
 

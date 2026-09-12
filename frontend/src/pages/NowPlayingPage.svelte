@@ -31,6 +31,7 @@
   import { syncRelatedTracks } from "$lib/music/now-playing-related";
   import { overlayFade } from "$lib/router/page-motion";
   import { fade } from "svelte/transition";
+  import { Tabs } from "bits-ui";
 
   type SideTab = "queue" | "related" | "lyrics" | "video";
 
@@ -208,44 +209,52 @@
           class="now-playing-side__queue"
           class:now-playing-side__queue--full={liveStream}
         >
-          <div
-            class="now-playing-side__tabs"
-            role="tablist"
-            aria-label="Queue panels"
+          <Tabs.Root
+            style="display: contents"
+            bind:value={
+              () => activeTab,
+              (value) => {
+                activeTab = value as SideTab;
+              }
+            }
           >
-            {#each tabs as tab (tab.id)}
-              <button
-                type="button"
-                role="tab"
-                class="now-playing-side__tab"
-                class:now-playing-side__tab--active={activeTab === tab.id}
-                aria-selected={activeTab === tab.id}
-                onclick={() => (activeTab = tab.id)}
-              >
-                {tab.label}
-              </button>
-            {/each}
-          </div>
+            <Tabs.List class="now-playing-side__tabs" aria-label="Queue panels">
+              {#each tabs as tab (tab.id)}
+                <Tabs.Trigger value={tab.id} class="now-playing-side__tab">
+                  {tab.label}
+                </Tabs.Trigger>
+              {/each}
+            </Tabs.List>
 
-          <div class="now-playing-side__panel" role="tabpanel">
-            {#key activeTab}
-              <div class="now-playing-side__panel-body" in:fade={overlayFade()}>
-                {#if activeTab === "queue"}
-                  <NowPlayingQueueTab
-                    ontrackmenu={(menu) => {
-                      trackMenu = menu;
-                    }}
-                  />
-                {:else if activeTab === "lyrics"}
-                  <NowPlayingLyricsTab />
-                {:else if activeTab === "related"}
-                  <NowPlayingRelatedTab {relatedTracks} {relatedLoading} />
-                {:else if activeTab === "video"}
-                  <VideoWatchPanel {track} embedded />
-                {/if}
-              </div>
-            {/key}
-          </div>
+            {#each tabs as tab (tab.id)}
+              {#if activeTab === tab.id}
+                <Tabs.Content
+                  value={tab.id}
+                  class="now-playing-side__panel"
+                  tabindex={-1}
+                >
+                  <div
+                    class="now-playing-side__panel-body"
+                    in:fade={overlayFade()}
+                  >
+                    {#if tab.id === "queue"}
+                      <NowPlayingQueueTab
+                        ontrackmenu={(menu) => {
+                          trackMenu = menu;
+                        }}
+                      />
+                    {:else if tab.id === "lyrics"}
+                      <NowPlayingLyricsTab />
+                    {:else if tab.id === "related"}
+                      <NowPlayingRelatedTab {relatedTracks} {relatedLoading} />
+                    {:else if tab.id === "video"}
+                      <VideoWatchPanel {track} embedded />
+                    {/if}
+                  </div>
+                </Tabs.Content>
+              {/if}
+            {/each}
+          </Tabs.Root>
         </div>
       </section>
     </div>
@@ -420,7 +429,7 @@
     flex: 1 1 auto;
   }
 
-  .now-playing-side__tabs {
+  :global(.now-playing-side__tabs) {
     display: flex;
     flex-shrink: 0;
     flex-wrap: wrap;
@@ -431,7 +440,7 @@
     overflow: hidden;
   }
 
-  .now-playing-side__tab {
+  :global(.now-playing-side__tab) {
     position: relative;
     border: none;
     background: transparent;
@@ -447,21 +456,21 @@
     transition: color var(--jb-transition);
   }
 
-  .now-playing-side__tab:hover {
+  :global(.now-playing-side__tab:hover) {
     color: var(--jb-text);
   }
 
-  .now-playing-side__tab:focus-visible {
+  :global(.now-playing-side__tab:focus-visible) {
     outline: none;
     box-shadow: var(--jb-focus-ring);
     color: var(--jb-text);
   }
 
-  .now-playing-side__tab--active {
+  :global(.now-playing-side__tab[data-state="active"]) {
     color: var(--jb-text);
   }
 
-  .now-playing-side__tab--active::after {
+  :global(.now-playing-side__tab[data-state="active"])::after {
     content: "";
     position: absolute;
     left: 0;
@@ -471,7 +480,7 @@
     background: var(--jb-text);
   }
 
-  .now-playing-side__panel {
+  :global(.now-playing-side__panel) {
     flex: 1;
     min-height: 0;
     display: flex;

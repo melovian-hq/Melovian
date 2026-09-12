@@ -32,6 +32,7 @@
     contextMenuPositionFromEvent,
     type ContextMenuEntry,
   } from "$lib/components/ui/context-menu";
+  import { Tabs } from "bits-ui";
 
   let query = $state("");
   let searching = $state(false);
@@ -235,22 +236,23 @@
     </div>
 
     {#if showSourceFilter}
-      <div class="search-source" role="tablist" aria-label="Source filter">
-        {#each [{ id: "all", label: "All sources" }, { id: "local", label: "Local" }, { id: "server", label: "Server" }] as option (option.id)}
-          <button
-            type="button"
-            role="tab"
-            class="search-source__btn"
-            class:search-source__btn--active={sourceFilter === option.id}
-            aria-selected={sourceFilter === option.id}
-            onclick={() => {
-              sourceFilter = option.id as "all" | "local" | "server";
-            }}
-          >
-            {option.label}
-          </button>
-        {/each}
-      </div>
+      <Tabs.Root
+        style="display: contents"
+        bind:value={
+          () => sourceFilter,
+          (value) => {
+            sourceFilter = value as "all" | "local" | "server";
+          }
+        }
+      >
+        <Tabs.List class="search-source" aria-label="Source filter">
+          {#each [{ id: "all", label: "All sources" }, { id: "local", label: "Local" }, { id: "server", label: "Server" }] as option (option.id)}
+            <Tabs.Trigger value={option.id} class="search-source__btn">
+              {option.label}
+            </Tabs.Trigger>
+          {/each}
+        </Tabs.List>
+      </Tabs.Root>
     {/if}
 
     {#if showHistory}
@@ -435,13 +437,13 @@
     box-shadow: none;
   }
 
-  .search-source {
+  :global(.search-source) {
     display: flex;
     flex-wrap: wrap;
     gap: var(--jb-space-2);
   }
 
-  .search-source__btn {
+  :global(.search-source__btn) {
     padding: 0.35rem 0.8rem;
     border-radius: var(--jb-radius-full);
     border: 1px solid var(--jb-border);
@@ -453,7 +455,7 @@
     cursor: pointer;
   }
 
-  .search-source__btn--active {
+  :global(.search-source__btn[data-state="active"]) {
     border-color: var(--jb-music-accent);
     background: var(--jb-music-accent-muted);
     color: var(--jb-music-accent);
