@@ -12,6 +12,25 @@ export type PlaylistKind = "local" | "server";
 export type PlaylistItem = MusicPlaylist | ServerPlaylist;
 
 export const PLAYLIST_VIEW_KEY = StorageKeys.playlistView;
+export const PLAYLIST_KIND_KEY = StorageKeys.playlistKind;
+
+export function loadPlaylistKind(): PlaylistKind | null {
+  try {
+    const saved = localStorage.getItem(PLAYLIST_KIND_KEY);
+    if (saved === "server" || saved === "local") return saved;
+  } catch {
+    // ignore
+  }
+  return null;
+}
+
+export function savePlaylistKind(kind: PlaylistKind) {
+  try {
+    localStorage.setItem(PLAYLIST_KIND_KEY, kind);
+  } catch {
+    // ignore
+  }
+}
 
 export function loadPlaylistView(): PlaylistViewMode {
   try {
