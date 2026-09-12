@@ -27,7 +27,7 @@ var ErrNoPinnedKey = errors.New("no release signing key compiled in")
 // optional "*" marker, filename.
 func ParseChecksums(data []byte) map[string]string {
 	out := map[string]string{}
-	for _, line := range strings.Split(string(data), "\n") {
+	for line := range strings.SplitSeq(string(data), "\n") {
 		line = strings.TrimSpace(line)
 		if line == "" || strings.HasPrefix(line, "#") {
 			continue

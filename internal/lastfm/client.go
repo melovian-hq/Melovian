@@ -10,6 +10,7 @@ import (
 	"encoding/json"
 	"fmt"
 	"io"
+	"maps"
 	"net/http"
 	"net/url"
 	"sort"
@@ -83,9 +84,7 @@ type lastFMResponse struct {
 
 func (c *Client) do(ctx context.Context, params url.Values, apiSecret string) error {
 	signed := url.Values{}
-	for k, v := range params {
-		signed[k] = v
-	}
+	maps.Copy(signed, params)
 	signed.Set("api_sig", sign(signed, apiSecret))
 	// The signed URL carries api_key, sk, and api_sig. Never put it in an
 	// error string; these errors reach API responses and logs.
@@ -120,9 +119,7 @@ func (c *Client) ValidateToken(ctx context.Context, apiKey, apiSecret, sessionKe
 		"sk":      []string{sessionKey},
 	}
 	signed := url.Values{}
-	for k, v := range params {
-		signed[k] = v
-	}
+	maps.Copy(signed, params)
 	signed.Set("api_sig", sign(signed, apiSecret))
 	u := c.base() + "?" + signed.Encode() + "&format=json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)

@@ -66,7 +66,7 @@ func runCompareProperties(t *testing.T, fn compareFn) error {
 		}
 	}
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		a := randomVersion(r)
 		b := randomVersion(r)
 		if fn(a, b) != -fn(b, a) {

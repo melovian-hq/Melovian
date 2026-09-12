@@ -80,7 +80,7 @@ func TestFanoutDropsWhenSinkStalls(t *testing.T) {
 	}()
 
 	chunk := make([]byte, chunkBytes)
-	for i := 0; i < sinkQueueChunks+10; i++ {
+	for range sinkQueueChunks + 10 {
 		f.Write(chunk)
 	}
 	waitFor(t, func() bool {

@@ -126,7 +126,7 @@ func refParseChecksums(data []byte) map[string]string {
 
 func TestParseSemverMatchesRegexOracle(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		s := randomVersion(r)
 		if !referenceSemverRE.MatchString(s) {
 			// A strict regex oracle does not recognize every invalid string,
@@ -161,7 +161,7 @@ func TestParseSemverMatchesRegexOracle(t *testing.T) {
 
 func TestCompareMatchesReferenceOracle(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		a := randomVersion(r)
 		b := randomVersion(r)
 		got := Compare(a, b)

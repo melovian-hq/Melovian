@@ -23,7 +23,7 @@ func randomCapability(r *rand.Rand) string {
 func randomCapabilityList(r *rand.Rand) []string {
 	n := r.Intn(10)
 	caps := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		caps[i] = randomCapability(r)
 	}
 	return slices.Compact(caps)
@@ -31,7 +31,7 @@ func randomCapabilityList(r *rand.Rand) []string {
 
 func TestParseJoinCapabilitiesRoundTripProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		caps := randomCapabilityList(r)
 		joined := JoinCapabilities(caps)
 		parsed := ParseCapabilities(joined)
@@ -48,7 +48,7 @@ func TestParseJoinCapabilitiesRoundTripProperty(t *testing.T) {
 
 func TestParseCapabilitiesNormalizesProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		// Build a raw header with noise that ParseCapabilities removes.
 		caps := randomCapabilityList(r)
 		raw := " " + JoinCapabilities(caps)
@@ -69,7 +69,7 @@ func TestParseCapabilitiesNormalizesProperty(t *testing.T) {
 
 func TestIntersectProperties(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		a := randomCapabilityList(r)
 		b := randomCapabilityList(r)
 		ab := Intersect(a, b)
@@ -115,7 +115,7 @@ func TestIntersectProperties(t *testing.T) {
 func TestCompareSemverRejectsNonNumericProperty(t *testing.T) {
 	non := []string{"", "dev", "416368d", "v", "1.2.3.4"}
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		s := non[r.Intn(len(non))] + strconv.Itoa(r.Intn(1000))
 		// CompareSemver must return a value in range and be antisymmetric.
 		got := CompareSemver(s, "1.0.0")
@@ -127,7 +127,7 @@ func TestCompareSemverRejectsNonNumericProperty(t *testing.T) {
 
 func TestClientServerTooOldProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 100; i++ {
+	for range 100 {
 		client := randomSemver(r)
 		if CompareSemver(client, MinClientVersion) < 0 {
 			if !ClientTooOld(client) {

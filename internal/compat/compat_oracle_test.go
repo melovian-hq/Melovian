@@ -5,6 +5,7 @@ package compat
 
 import (
 	"math/rand"
+	"slices"
 	"strings"
 	"testing"
 
@@ -18,7 +19,7 @@ func refParseCapabilities(raw string) []string {
 		return nil
 	}
 	var out []string
-	for _, p := range strings.Split(raw, ",") {
+	for p := range strings.SplitSeq(raw, ",") {
 		p = strings.TrimSpace(p)
 		if p != "" {
 			out = append(out, p)
@@ -29,17 +30,12 @@ func refParseCapabilities(raw string) []string {
 
 // refHasCapability is an independent oracle using a manual loop.
 func refHasCapability(caps []string, cap string) bool {
-	for _, c := range caps {
-		if c == cap {
-			return true
-		}
-	}
-	return false
+	return slices.Contains(caps, cap)
 }
 
 func TestParseCapabilitiesMatchesReferenceOracle(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		raw := randomCapabilityHeader(r)
 		got := ParseCapabilities(raw)
 		want := refParseCapabilities(raw)
@@ -56,7 +52,7 @@ func TestParseCapabilitiesMatchesReferenceOracle(t *testing.T) {
 
 func TestHasCapabilityMatchesReferenceOracle(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		caps := randomCapabilityList(r)
 		cap := randomCapability(r)
 		got := HasCapability(caps, cap)
@@ -71,7 +67,7 @@ func TestCompareSemverMatchesUpdateOracle(t *testing.T) {
 	// For non-prerelease dotted versions, compat.CompareSemver should agree with
 	// the update package's stricter Compare. This is a cross-package differential.
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		a := randomSemver(r)
 		b := randomSemver(r)
 		got := CompareSemver(a, b)

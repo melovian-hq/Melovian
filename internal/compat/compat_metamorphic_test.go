@@ -11,7 +11,7 @@ import (
 
 func TestParseJoinMetamorphicRoundTrip(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		caps := randomCapabilityList(r)
 		joined := JoinCapabilities(caps)
 		parsed := ParseCapabilities(joined)
@@ -25,7 +25,7 @@ func TestParseJoinMetamorphicRoundTrip(t *testing.T) {
 
 func TestIntersectMetamorphicRelations(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		a := randomCapabilityList(r)
 		b := randomCapabilityList(r)
 
@@ -59,7 +59,7 @@ func TestIntersectMetamorphicRelations(t *testing.T) {
 
 func TestCompareSemverMetamorphic(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		a := randomSemver(r)
 		b := randomSemver(r)
 
@@ -83,7 +83,7 @@ func TestCompareSemverMetamorphic(t *testing.T) {
 
 func TestCompareSemverTransitive(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		a := randomSemver(r)
 		b := randomSemver(r)
 		c := randomSemver(r)

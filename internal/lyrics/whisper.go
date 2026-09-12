@@ -43,10 +43,7 @@ func DocumentFromWhisper(in FetchInput, segments []WhisperSegment) (*Document, e
 		if text == "" {
 			continue
 		}
-		startMs := segment.StartMs
-		if startMs < 0 {
-			startMs = 0
-		}
+		startMs := max(segment.StartMs, 0)
 		start := startMs
 		doc.Lines = append(doc.Lines, Line{Text: text, StartMs: &start})
 		fmt.Fprintf(&raw, "[%02d:%02d.%02d] %s\n",

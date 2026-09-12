@@ -28,7 +28,7 @@ func semverString(v Semver) string {
 func randomPrerelease(r *rand.Rand) string {
 	n := r.Intn(4) + 1
 	parts := make([]string, n)
-	for i := 0; i < n; i++ {
+	for i := range n {
 		if r.Intn(2) == 1 {
 			parts[i] = strconv.Itoa(r.Intn(100))
 		} else {
@@ -103,7 +103,7 @@ func randomNonSemver(r *rand.Rand) string {
 func TestParseSemverRoundTripProperty(t *testing.T) {
 	// parse∘print = id for valid semvers.
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		in := randomSemver(r)
 		v, err := ParseSemver(in)
 		if err != nil {
@@ -146,7 +146,7 @@ func TestParseSemverRejectsInvalidProperty(t *testing.T) {
 
 func TestCompareAntisymmetricProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 1000; i++ {
+	for range 1000 {
 		a := randomVersion(r)
 		b := randomVersion(r)
 		c1 := Compare(a, b)
@@ -159,7 +159,7 @@ func TestCompareAntisymmetricProperty(t *testing.T) {
 
 func TestCompareTransitiveProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		a := randomVersion(r)
 		b := randomVersion(r)
 		c := randomVersion(r)
@@ -186,7 +186,7 @@ func TestCompareTransitiveProperty(t *testing.T) {
 func TestIsNewerProperty(t *testing.T) {
 	// IsNewer(current, candidate) == (current is not semver or candidate > current).
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		current := randomVersion(r)
 		candidate := randomVersion(r)
 		got := IsNewer(current, candidate)
@@ -200,7 +200,7 @@ func TestIsNewerProperty(t *testing.T) {
 
 func TestVerifyDigestProperty(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		data := make([]byte, r.Intn(256))
 		_, _ = r.Read(data)
 		h := sha256.Sum256(data)

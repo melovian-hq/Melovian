@@ -36,7 +36,7 @@ func runIntersectProperties(t *testing.T, fn intersectFn) error {
 		}
 	}
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		a := randomCapabilityList(r)
 		b := randomCapabilityList(r)
 		ab := fn(a, b)

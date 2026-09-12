@@ -14,7 +14,7 @@ import (
 
 func TestParseSemverMetamorphicBuildMetadata(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		base := randomSemver(r)
 		v, err := ParseSemver(base)
 		if err != nil {
@@ -33,7 +33,7 @@ func TestParseSemverMetamorphicBuildMetadata(t *testing.T) {
 
 func TestParseSemverMetamorphicVPrefix(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		s := randomSemver(r)
 		bare := strings.TrimPrefix(s, "v")
 		withV := "v" + bare
@@ -53,7 +53,7 @@ func TestParseSemverMetamorphicVPrefix(t *testing.T) {
 
 func TestCompareMetamorphicPrereleaseLowerThanRelease(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		base := randomSemverWithoutPre(r)
 		pre := base + "-" + randomPrerelease(r)
 		if got := Compare(pre, base); got != -1 {
@@ -67,7 +67,7 @@ func TestCompareMetamorphicPrereleaseLowerThanRelease(t *testing.T) {
 
 func TestCompareMetamorphicBuildDoesNotAffectOrder(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 200; i++ {
+	for range 200 {
 		a := randomSemver(r)
 		b := randomSemver(r)
 		c1 := Compare(a, b)
@@ -82,7 +82,7 @@ func TestCompareDifferentialUpdateVsCompat(t *testing.T) {
 	// For non-prerelease semver versions, update.Compare and compat.CompareSemver
 	// must agree. They diverge by design when prerelease suffixes are present.
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		a := randomSemverWithoutPre(r)
 		b := randomSemverWithoutPre(r)
 		got := Compare(a, b)
@@ -95,7 +95,7 @@ func TestCompareDifferentialUpdateVsCompat(t *testing.T) {
 
 func TestIsNewerMetamorphic(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
-	for i := 0; i < 500; i++ {
+	for range 500 {
 		current := randomVersion(r)
 		candidate := randomVersion(r)
 		_, parseErr := ParseSemver(current)

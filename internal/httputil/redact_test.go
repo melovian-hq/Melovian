@@ -26,8 +26,7 @@ func TestSanitizeErrorURLStripsQueryAndUserinfo(t *testing.T) {
 	if !strings.Contains(msg, "example.com") {
 		t.Fatalf("expected host to remain for debugging, got %s", msg)
 	}
-	var uerr *url.Error
-	if !errors.As(out, &uerr) {
+	if _, ok := errors.AsType[*url.Error](out); !ok {
 		t.Fatal("sanitized error must remain a *url.Error")
 	}
 }
