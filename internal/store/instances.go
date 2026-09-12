@@ -47,11 +47,56 @@ type UpdateInstanceInput struct {
 }
 
 type InstanceStore struct {
-	db *DB
+	db     *DB
+	cipher *secretCipher
 }
 
 func NewInstanceStore(db *DB) *InstanceStore {
 	return &InstanceStore{db: db}
+}
+
+// SetCipher enables at-rest encryption of instance passwords. Rows written
+// before encryption are readable as plaintext and can be upgraded with
+// MigratePasswords.
+func (s *InstanceStore) SetCipher(c *secretCipher) {
+	s.cipher = c
+}
+
+// MigratePasswords rewrites any plaintext password column values as encrypted.
+// Safe to call at startup and idempotent.
+func (s *InstanceStore) MigratePasswords() error {
+	if s.cipher == nil {
+		return nil
+	}
+	rows, err := s.db.query(
+		`SELECT id, password FROM subsonic_instances WHERE password != '' AND password NOT LIKE 'enc1:%'`,
+	)
+	if err != nil {
+		return err
+	}
+	type rowPair struct{ id, password string }
+	var pending []rowPair
+	for rows.Next() {
+		var p rowPair
+		if err := rows.Scan(&p.id, &p.password); err != nil {
+			_ = rows.Close()
+			return err
+		}
+		pending = append(pending, p)
+	}
+	_ = rows.Close()
+	for _, p := range pending {
+		sealed, err := s.cipher.encrypt(p.password)
+		if err != nil {
+			return err
+		}
+		if _, err := s.db.exec(
+			`UPDATE subsonic_instances SET password = ? WHERE id = ?`, sealed, p.id,
+		); err != nil {
+			return err
+		}
+	}
+	return nil
 }
 
 func newInstanceID() string {
@@ -75,7 +120,7 @@ func (s *InstanceStore) ListForUser(userID string) ([]SubsonicInstance, error) {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	return scanInstances(rows)
+	return s.scanInstances(rows)
 }
 
 func (s *InstanceStore) List() ([]SubsonicInstance, error) {
@@ -87,7 +132,7 @@ func (s *InstanceStore) List() ([]SubsonicInstance, error) {
 		return nil, err
 	}
 	defer func() { _ = rows.Close() }()
-	return scanInstances(rows)
+	return s.scanInstances(rows)
 }
 
 func (s *InstanceStore) GetForUser(userID, id string) (SubsonicInstance, error) {
@@ -107,7 +152,7 @@ func (s *InstanceStore) Get(id string) (SubsonicInstance, error) {
 		 FROM subsonic_instances WHERE id = ?`,
 		id,
 	)
-	return scanInstance(row)
+	return s.scanInstance(row)
 }
 
 func (s *InstanceStore) CreateForUser(userID string, input CreateInstanceInput) (SubsonicInstance, error) {
@@ -148,12 +193,17 @@ func (s *InstanceStore) create(input CreateInstanceInput) (SubsonicInstance, err
 		return SubsonicInstance{}, fmt.Errorf("password is required")
 	}
 
+	sealed, err := s.cipher.encrypt(password)
+	if err != nil {
+		return SubsonicInstance{}, err
+	}
+
 	id := newInstanceID()
 	now := nowUnix()
-	_, err := s.db.exec(
+	_, err = s.db.exec(
 		`INSERT INTO subsonic_instances (id, name, server_url, username, password, server_name, created_at, updated_at)
 		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, name, serverURL, username, password, strings.TrimSpace(input.ServerName), now, now,
+		id, name, serverURL, username, sealed, strings.TrimSpace(input.ServerName), now, now,
 	)
 	if err != nil {
 		return SubsonicInstance{}, err
@@ -188,11 +238,16 @@ func (s *InstanceStore) Update(id string, input UpdateInstanceInput) (SubsonicIn
 		serverName = existing.ServerName
 	}
 
+	sealed, err := s.cipher.encrypt(password)
+	if err != nil {
+		return SubsonicInstance{}, err
+	}
+
 	now := nowUnix()
 	_, err = s.db.exec(
 		`UPDATE subsonic_instances SET name = ?, server_url = ?, username = ?, password = ?,
 		 server_name = ?, updated_at = ? WHERE id = ?`,
-		name, serverURL, username, password, serverName, now, id,
+		name, serverURL, username, sealed, serverName, now, id,
 	)
 	if err != nil {
 		return SubsonicInstance{}, err
@@ -326,7 +381,7 @@ func (s *InstanceStore) PublicView(inst SubsonicInstance) map[string]any {
 	return payload
 }
 
-func scanInstance(row *sql.Row) (SubsonicInstance, error) {
+func (s *InstanceStore) scanInstance(row *sql.Row) (SubsonicInstance, error) {
 	var inst SubsonicInstance
 	var created, updated int64
 	var lastUsed sql.NullInt64
@@ -337,6 +392,11 @@ func scanInstance(row *sql.Row) (SubsonicInstance, error) {
 	if err != nil {
 		return SubsonicInstance{}, err
 	}
+	password, err := s.cipher.decrypt(inst.Password)
+	if err != nil {
+		return SubsonicInstance{}, err
+	}
+	inst.Password = password
 	inst.CreatedAt = time.Unix(created, 0)
 	inst.UpdatedAt = time.Unix(updated, 0)
 	if lastUsed.Valid {
@@ -346,7 +406,7 @@ func scanInstance(row *sql.Row) (SubsonicInstance, error) {
 	return inst, nil
 }
 
-func scanInstances(rows *sql.Rows) ([]SubsonicInstance, error) {
+func (s *InstanceStore) scanInstances(rows *sql.Rows) ([]SubsonicInstance, error) {
 	var items []SubsonicInstance
 	for rows.Next() {
 		var inst SubsonicInstance
@@ -358,6 +418,11 @@ func scanInstances(rows *sql.Rows) ([]SubsonicInstance, error) {
 		); err != nil {
 			return nil, err
 		}
+		password, err := s.cipher.decrypt(inst.Password)
+		if err != nil {
+			return nil, err
+		}
+		inst.Password = password
 		inst.CreatedAt = time.Unix(created, 0)
 		inst.UpdatedAt = time.Unix(updated, 0)
 		if lastUsed.Valid {
