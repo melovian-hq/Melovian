@@ -2,12 +2,13 @@ version: '3'
 
 vars:
   MAGICK:
-    sh: 'command -v magick >/dev/null 2>&1 && echo magick || { command -v convert >/dev/null 2>&1 && echo convert; }'
+    sh: 'command -v magick >/dev/null 2>&1 && echo magick || { command -v convert >/dev/null 2>&1 && echo convert || echo magick; }'
 
 tasks:
   go:mod:tidy:
     summary: Runs `go mod tidy`
     internal: true
+    run: once
     cmds:
       - go mod tidy
 
@@ -90,6 +91,7 @@ tasks:
     label: build:frontend (DEV={{.DEV}} RUNNER={{.PACKAGE_MANAGER}} VERSION={{.VERSION}})
     summary: Build the frontend project
     dir: frontend
+    run: once
     sources:
       - "**/*"
       - exclude: node_modules/**/*
@@ -196,6 +198,7 @@ tasks:
   generate:icons:
     summary: Generates Windows `.ico` and Mac `.icns` from an image; on macOS, `-iconcomposerinput appicon.icon -macassetdir darwin` also produces `Assets.car` from a `.icon` file (skipped on other platforms).
     dir: build
+    run: once
     deps:
       - task: generate:appicon
     sources:
@@ -209,6 +212,7 @@ tasks:
 
   generate:appicon:
     summary: Generates build/appicon.png from the branding logo
+    run: once
     status:
       - test -f "{{.ROOT_DIR}}/build/appicon.png"
       - test -f "{{.ROOT_DIR}}/build/ios/icon.png"
@@ -219,6 +223,7 @@ tasks:
   generate:linux-icons:
     summary: Generates Linux hicolor icon sizes from appicon.png
     dir: build
+    run: once
     deps:
       - task: generate:appicon
     sources:
@@ -234,6 +239,7 @@ tasks:
 
   generate:android:icons:
     summary: Generates Android mipmap launcher icons from appicon.png
+    run: once
     deps:
       - task: generate:appicon
     sources:
@@ -273,6 +279,7 @@ tasks:
 
   generate:web:icons:
     summary: Generates web favicon and touch icons from the branding logo
+    run: once
     sources:
       - "{{.ROOT_DIR}}/build/branding/logo.png"
     generates:
