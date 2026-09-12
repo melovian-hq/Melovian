@@ -4,7 +4,14 @@
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 import * as musicApi from "$lib/music/api";
 import { findMix } from "$lib/music/mixes";
-import { slimPersonalMix } from "$lib/music/mix-storage";
+import {
+  clearMixCache,
+  loadMixCache,
+  recentMixTrackIds,
+  saveMixCache,
+  shouldRebuildMixes,
+  slimPersonalMix,
+} from "$lib/music/mix-storage";
 import {
   buildPersonalMixes,
   buildMixContextInput,
@@ -12,13 +19,6 @@ import {
   sortMixesByPriority,
   upsertMix,
 } from "$lib/music/mix-generator";
-import {
-  shouldRebuildMixes,
-  loadMixCache,
-  recentMixTrackIds,
-  saveMixCache,
-  clearMixCache,
-} from "$lib/music/mix-cache";
 import {
   mergeMixSettings,
   saveMixSettings,

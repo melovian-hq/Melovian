@@ -8,7 +8,7 @@ import {
   mixCacheKey,
   saveMixCache,
   shouldRebuildMixes,
-} from "./mix-cache";
+} from "./mix-storage";
 import type { GeneratedMix } from "./mix-generator";
 
 const mix = (id: string): GeneratedMix => ({

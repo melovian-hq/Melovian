@@ -7,7 +7,7 @@ import {
   fetchArtistInfoWithCache,
   invalidateArtistInfoCache,
   prefetchArtistInfo,
-} from "./artist-info-cache";
+} from "./artist-media";
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 
 function library(

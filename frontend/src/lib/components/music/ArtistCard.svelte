@@ -7,8 +7,10 @@
     artistCoverPaletteKey,
     artistCoverSeed,
   } from "$lib/music/cover-art-fallback";
-  import { resolveServerArtistArtUrl } from "$lib/music/artist-artwork";
-  import { prefetchArtistInfo } from "$lib/music/artist-info-cache";
+  import {
+    prefetchArtistInfo,
+    resolveServerArtistArtUrl,
+  } from "$lib/music/artist-media";
   import type { SubsonicArtist } from "$lib/subsonic";
   import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
   import ArtistContextMenu from "./ArtistContextMenu.svelte";

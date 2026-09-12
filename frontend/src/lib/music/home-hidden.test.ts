@@ -8,7 +8,7 @@ import {
   hideHomeId,
   isHomeIdHidden,
   parseHiddenHome,
-} from "./home-hidden";
+} from "./home-hidden.svelte";
 
 describe("home hidden items", () => {
   beforeEach(() => {

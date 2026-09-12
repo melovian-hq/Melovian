@@ -23,19 +23,20 @@
     fetchArtistWithCache,
     invalidateArtistDetailCache,
   } from "$lib/subsonic/detail-cache";
-  import { fetchArtistInfoWithCache } from "$lib/music/artist-info-cache";
+  import {
+    fetchArtistInfoWithCache,
+    hasServerArtistArt,
+    resolveServerArtistArtUrl,
+  } from "$lib/music/artist-media";
   import {
     enhanceArtistArtwork,
     artworkNeedsEnhancement,
   } from "$lib/music/metadata-enhancement";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
-  import {
-    hasServerArtistArt,
-    resolveServerArtistArtUrl,
-  } from "$lib/music/artist-artwork";
   import { stableItemKey } from "$lib/core/collection";
   import { APP_NAME } from "$lib/brand";
   import { setPageMeta } from "$lib/seo/meta";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
   interface Props {
     artistId: string;
@@ -43,9 +44,7 @@
 
   let { artistId }: Props = $props();
 
-  let loading = $state(true);
   let infoLoading = $state(false);
-  let error = $state<string | null>(null);
   let playingAll = $state(false);
   let bioExpanded = $state(false);
   let data = $state<Awaited<ReturnType<typeof music.library.getArtist>> | null>(
@@ -55,53 +54,34 @@
   let enhancedPortrait = $state<string | null>(null);
   let artistMenu = $state<{ x: number; y: number } | null>(null);
 
-  $effect(() => {
-    const id = artistId;
-    const revision = music.libraryRevision;
-    let cancelled = false;
-    loading = true;
-    infoLoading = true;
-    error = null;
-    info = null;
-    data = null;
-    enhancedPortrait = null;
-    bioExpanded = false;
-    artistMenu = null;
-    if (revision > 0) invalidateArtistDetailCache(id);
-    void (async () => {
+  const page = createAsyncPage({
+    errorMessage: "Failed to load artist",
+    onError: () => {
+      infoLoading = false;
+    },
+    load: async (run) => {
+      const id = artistId;
+      infoLoading = true;
+      info = null;
+      data = null;
+      enhancedPortrait = null;
+      bioExpanded = false;
+      artistMenu = null;
+      if (music.libraryRevision > 0) invalidateArtistDetailCache(id);
       if (!music.libraryReady) {
-        if (!cancelled) {
-          error = music.error ?? "Not connected";
-          loading = false;
-          infoLoading = false;
-        }
-        return;
+        infoLoading = false;
+        throw new Error(music.error ?? "Not connected");
       }
-      try {
-        const result = await fetchArtistWithCache(
-          music.library,
-          id,
-          (stale) => {
-            if (!cancelled) {
-              data = stale;
-              loading = false;
-            }
-          },
-        );
-        if (!cancelled) {
-          data = result;
-          loading = false;
+      const result = await fetchArtistWithCache(music.library, id, (stale) => {
+        if (!run.cancelled) {
+          data = stale;
+          page.loading = false;
         }
-      } catch (err) {
-        if (!cancelled) {
-          error = err instanceof Error ? err.message : "Failed to load artist";
-          loading = false;
-          infoLoading = false;
-        }
-        return;
-      }
-
-      if (cancelled || !data) return;
+      });
+      if (run.cancelled) return run.skip();
+      data = result;
+      page.loading = false;
+      if (!data) return run.skip();
 
       const coverSrc = coverArtUrl(
         music.config,
@@ -124,7 +104,7 @@
           { resolvedSrc: coverSrc },
         )
           .then((enhanced) => {
-            if (!cancelled) enhancedPortrait = enhanced;
+            if (!run.cancelled) enhancedPortrait = enhanced;
           })
           .catch(() => {});
       }
@@ -134,20 +114,21 @@
           music.library,
           id,
           (stale) => {
-            if (!cancelled) {
+            if (!run.cancelled) {
               info = stale;
               infoLoading = false;
             }
           },
         );
-        if (!cancelled) info = artistInfo;
+        if (!run.cancelled) info = artistInfo;
+      } catch {
+        // Artist info is optional. Keep the loaded artist and hide the
+        // similar-artists skeleton instead of failing the whole page.
       } finally {
-        if (!cancelled) infoLoading = false;
+        if (!run.cancelled) infoLoading = false;
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      return run.skip();
+    },
   });
 
   const coverArtFallback = $derived(
@@ -267,7 +248,7 @@
   <div class="artist-page__body">
     <MusicBreadcrumbs items={breadcrumbItems} />
 
-    {#if loading}
+    {#if page.loading}
       <div
         class="artist-page__skeleton"
         role="status"
@@ -281,10 +262,10 @@
           {/each}
         </div>
       </div>
-    {:else if error || !data}
+    {:else if page.error || !data}
       <EmptyState
         title="Could not load artist"
-        message={error ?? "Artist not found"}
+        message={page.error ?? "Artist not found"}
         icon="alertCircle"
       >
         {#snippet actions()}

@@ -6,7 +6,7 @@ import {
   hasServerArtistArt,
   normalizeExternalMediaUrl,
   resolveServerArtistArtUrl,
-} from "./artist-artwork";
+} from "./artist-media";
 
 vi.mock("$lib/features/instances/context", () => ({
   getActiveInstanceId: () => "inst-1",

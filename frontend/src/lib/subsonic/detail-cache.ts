@@ -3,7 +3,7 @@
 
 import { createDetailCache, DETAIL_CACHE_TTL_MS } from "$lib/core/detail-cache";
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
-import { invalidateArtistInfoCache } from "$lib/music/artist-info-cache";
+import { invalidateArtistInfoCache } from "$lib/music/artist-media";
 
 type AlbumDetail = Awaited<ReturnType<MusicLibraryAdapter["getAlbum"]>>;
 type ArtistDetail = Awaited<ReturnType<MusicLibraryAdapter["getArtist"]>>;
