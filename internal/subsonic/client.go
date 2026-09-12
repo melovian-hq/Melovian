@@ -17,12 +17,13 @@ import (
 	"strings"
 	"time"
 
+	"melovian/internal/consts"
 	"melovian/internal/democatalog"
 	"melovian/internal/httputil"
 )
 
 const ClientName = "melovian"
-const Version = "1.16.1"
+const Version = consts.SubsonicVersion
 
 type Client struct {
 	ServerURL string

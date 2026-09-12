@@ -69,6 +69,11 @@ type Config struct {
 	DLNAHost             string
 	DLNAPort             int
 	Sentry               SentryConfig
+	// FrontendDevServerURL is FRONTEND_DEVSERVER_URL, the Vite dev server
+	// address set by the Wails dev loop. Empty in production builds.
+	// Request-time checks go through FrontendDevServerEnabled because the
+	// var can be set after Config was loaded.
+	FrontendDevServerURL string
 }
 
 type ConnectionDefaults struct {
@@ -96,6 +101,22 @@ func DefaultDataDir() string {
 	return filepath.Join(base, "melovian")
 }
 
+// Environment variables intentionally read outside this package, by platform
+// and bootstrap code whose scope is the process environment rather than app
+// configuration:
+//
+//	XDG_SESSION_TYPE, WAYLAND_DISPLAY - Wayland session detection in
+//	  internal/desktop and vendored Wails platform code.
+//	VLC_PLUGIN_PATH - libvlc plugin discovery in internal/libvlc.
+//	APPDIR - AppImage mount path in internal/libmpv and internal/sandbox.
+//	TERM, NO_COLOR - terminal capability and color detection in
+//	  internal/termout.
+//	MELOVIAN_LANDLOCK - Landlock sandbox toggle in internal/sandbox, read
+//	  during sandbox bootstrap.
+//	MELOVIAN_INSTANCE_KEY - instance credential cipher key in
+//	  internal/store/secretcipher.go.
+//	MELOVIAN_LOG_LEVEL - log level in internal/melog and the server CLI,
+//	  applied before Config is loaded.
 func LoadConfig() (Config, error) {
 	dataDir := DefaultDataDir()
 	allowedIPs, err := parseAllowedIPs(os.Getenv("MELOVIAN_ALLOWED_IPS"))
@@ -103,29 +124,30 @@ func LoadConfig() (Config, error) {
 		return Config{}, err
 	}
 	cfg := Config{
-		DataDir:            dataDir,
-		DatabasePath:       filepath.Join(dataDir, "melovian.db"),
-		DatabaseURL:        strings.TrimSpace(os.Getenv("MELOVIAN_DATABASE_URL")),
-		ListenAddr:         envOr("MELOVIAN_LISTEN", "127.0.0.1:17337"),
-		CacheEnabled:       envOr("CACHE_ENABLED", "true") != "false",
-		LegacyServer:       os.Getenv("NAVIDROME_SERVER"),
-		LegacyUser:         os.Getenv("NAVIDROME_USER"),
-		LegacyPass:         os.Getenv("NAVIDROME_PASSWORD"),
-		ConnectionDefaults: loadConnectionDefaults(),
-		AuthSecret:         os.Getenv("MELOVIAN_AUTH_SECRET"),
-		PublicURL:          strings.TrimRight(os.Getenv("MELOVIAN_PUBLIC_URL"), "/"),
-		CORSOrigins:        parseCORSOrigins(os.Getenv("MELOVIAN_CORS_ORIGINS")),
-		OIDC:               loadOIDCConfig(),
-		LocalLibrary:       loadLocalLibraryConfig(false),
-		DemoMode:           envTruthy(os.Getenv("MELOVIAN_DEMO_MODE")),
-		AllowedIPs:         allowedIPs,
-		TrustProxy:         envTruthy(os.Getenv("MELOVIAN_TRUST_PROXY")),
-		DebugPprof:         envTruthy(os.Getenv("MELOVIAN_DEBUG_PPROF")),
-		SubsonicServer:     envOr("MELOVIAN_SUBSONIC_SERVER", "true") != "false",
-		DLNAServer:         envOr("MELOVIAN_DLNA_SERVER", "false") == "true",
-		DLNAHost:           envOr("MELOVIAN_DLNA_HOST", "0.0.0.0"),
-		DLNAPort:           envIntOr("MELOVIAN_DLNA_PORT", 8200),
-		Sentry:             loadSentryConfig(),
+		DataDir:              dataDir,
+		DatabasePath:         filepath.Join(dataDir, "melovian.db"),
+		DatabaseURL:          strings.TrimSpace(os.Getenv("MELOVIAN_DATABASE_URL")),
+		ListenAddr:           envOr("MELOVIAN_LISTEN", "127.0.0.1:17337"),
+		CacheEnabled:         envOr("CACHE_ENABLED", "true") != "false",
+		LegacyServer:         os.Getenv("NAVIDROME_SERVER"),
+		LegacyUser:           os.Getenv("NAVIDROME_USER"),
+		LegacyPass:           os.Getenv("NAVIDROME_PASSWORD"),
+		ConnectionDefaults:   loadConnectionDefaults(),
+		AuthSecret:           os.Getenv("MELOVIAN_AUTH_SECRET"),
+		PublicURL:            strings.TrimRight(os.Getenv("MELOVIAN_PUBLIC_URL"), "/"),
+		CORSOrigins:          parseCORSOrigins(os.Getenv("MELOVIAN_CORS_ORIGINS")),
+		OIDC:                 loadOIDCConfig(),
+		LocalLibrary:         loadLocalLibraryConfig(false),
+		DemoMode:             envTruthy(os.Getenv("MELOVIAN_DEMO_MODE")),
+		AllowedIPs:           allowedIPs,
+		TrustProxy:           envTruthy(os.Getenv("MELOVIAN_TRUST_PROXY")),
+		DebugPprof:           envTruthy(os.Getenv("MELOVIAN_DEBUG_PPROF")),
+		SubsonicServer:       envOr("MELOVIAN_SUBSONIC_SERVER", "true") != "false",
+		DLNAServer:           envOr("MELOVIAN_DLNA_SERVER", "false") == "true",
+		DLNAHost:             envOr("MELOVIAN_DLNA_HOST", "0.0.0.0"),
+		DLNAPort:             envIntOr("MELOVIAN_DLNA_PORT", 8200),
+		Sentry:               loadSentryConfig(),
+		FrontendDevServerURL: strings.TrimSpace(os.Getenv("FRONTEND_DEVSERVER_URL")),
 	}
 	return cfg, nil
 }
@@ -207,6 +229,13 @@ func (c Config) OIDCEnabled() bool {
 	return c.AuthEnabled() &&
 		strings.TrimSpace(c.OIDC.Issuer) != "" &&
 		strings.TrimSpace(c.OIDC.ClientID) != ""
+}
+
+// FrontendDevServerEnabled reports whether the app is running behind the
+// Vite dev server. It reads the env var at call time because dev tooling and
+// tests can set FRONTEND_DEVSERVER_URL after Config was loaded.
+func FrontendDevServerEnabled() bool {
+	return os.Getenv("FRONTEND_DEVSERVER_URL") != ""
 }
 
 func loadOIDCConfig() OIDCConfig {

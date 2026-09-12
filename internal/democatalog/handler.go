@@ -109,7 +109,7 @@ func serveStream(w http.ResponseWriter, r *http.Request, id string) {
 	if id != "" {
 		s, ok := c.Song(id)
 		if !ok {
-			http.Error(w, "song not found", http.StatusNotFound)
+			writeErr(w, 70, "song not found")
 			return
 		}
 		if s.Duration > 0 {

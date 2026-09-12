@@ -24,7 +24,7 @@ var coverCache sync.Map
 
 func serveCover(w http.ResponseWriter, id string, size int) {
 	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
+		writeErr(w, 10, "missing id")
 		return
 	}
 

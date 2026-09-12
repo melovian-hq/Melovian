@@ -13,6 +13,7 @@ import (
 	"sync"
 
 	"melovian/internal/brand"
+	"melovian/internal/consts"
 )
 
 const (
@@ -20,8 +21,8 @@ const (
 	Username      = "demo"
 	Password      = "demo"
 	ServerName    = "Home Library"
-	ServerVersion = "1.16.1"
-	SubsonicVer   = "1.16.1"
+	ServerVersion = consts.SubsonicVersion
+	SubsonicVer   = consts.SubsonicVersion
 )
 
 type Artist struct {

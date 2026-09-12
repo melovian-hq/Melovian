@@ -72,3 +72,42 @@ func FormatFromPath(name string) string {
 	}
 	return ext
 }
+
+// ContentTypeExtension maps an audio or video MIME type to the file
+// extension used for downloads and exports. Extensions come from the
+// canonical audioExtensions and videoExtensions lists above, with two
+// export-only additions: .mkv for Matroska video the scanner does not
+// index, and the .audio fallback for unrecognized audio types.
+func ContentTypeExtension(contentType string) string {
+	lower := strings.ToLower(strings.TrimSpace(contentType))
+	switch {
+	case strings.Contains(lower, "video/mp4"), strings.HasPrefix(lower, "video/"):
+		if strings.Contains(lower, "webm") {
+			return ".webm"
+		}
+		if strings.Contains(lower, "mkv") || strings.Contains(lower, "x-matroska") {
+			return ".mkv"
+		}
+		return ".mp4"
+	case strings.Contains(lower, "mpeg"), strings.Contains(lower, "mp3"):
+		return ".mp3"
+	case strings.Contains(lower, "flac"):
+		return ".flac"
+	case strings.Contains(lower, "ogg"):
+		return ".ogg"
+	case strings.Contains(lower, "opus"):
+		return ".opus"
+	case strings.Contains(lower, "wav"):
+		return ".wav"
+	case strings.Contains(lower, "m4a"):
+		return ".m4a"
+	case strings.Contains(lower, "mp4"), strings.Contains(lower, "aac"):
+		// audio/mp4 and bare aac without video/
+		if strings.Contains(lower, "aac") && !strings.Contains(lower, "mp4") {
+			return ".aac"
+		}
+		return ".m4a"
+	default:
+		return ".audio"
+	}
+}

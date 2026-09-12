@@ -12,12 +12,13 @@ import (
 	"strings"
 
 	"melovian/internal/brand"
+	"melovian/internal/consts"
 	"melovian/internal/localmusic"
 	"melovian/internal/store"
 )
 
 const (
-	Version      = "1.16.1"
+	Version      = consts.SubsonicVersion
 	OpenSubsonic = "1"
 )
 
@@ -70,7 +71,7 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if r.Method != http.MethodGet && r.Method != http.MethodPost && r.Method != http.MethodHead {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		writeError(w, r, 0, "method not allowed")
 		return
 	}
 
