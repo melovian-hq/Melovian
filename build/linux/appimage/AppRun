@@ -29,5 +29,9 @@ if [[ "${EUID}" -eq 0 ]]; then
     echo "warning: running as root cannot authenticate to the desktop display server; run as your normal user" >&2
 fi
 export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
+# WebKit's bubblewrap sandbox cannot nest inside our landlock+seccomp
+# sandbox under the AppImage mount environment. Disabled here only so
+# native packages (deb/rpm/tarball) keep WebKit process isolation.
+export WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS="${WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS:-1}"
 
 exec "${APPDIR}/usr/bin/melovian" "$@"
