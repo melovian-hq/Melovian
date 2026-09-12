@@ -15,11 +15,16 @@ Only the branch and tags that match the current `0.1.x` line receive patches. Th
 
 Do not open a public issue for a security problem that could expose credentials, media libraries, or remote code execution.
 
-1. Report privately through [GitHub Security Advisories](https://github.com/melovian-hq/Melovian/security/advisories/new), or contact Quad4 Software maintainers directly.
+1. Report privately through GitHub Security Advisories:
+   https://github.com/melovian-hq/Melovian/security/advisories/new
+   If that is unavailable, open a report with the repository maintainer through
+   the Quad4 Software contact listed on the project page.
 2. Include the Melovian version or git commit, how you run it (desktop, `melovian-server`, or Docker), and steps to reproduce.
 3. If you have a patch, attach it. Do not publish the patch until a fix is released or the maintainers say it is safe to disclose.
 
-We aim to acknowledge private reports within 7 days. Fix timing depends on severity and whether a release is already in progress.
+## Disclosure timeline
+
+We aim to acknowledge private reports within 7 days. Fix timing depends on severity and whether a release is already in progress. We practice coordinated disclosure: a fix release and advisory go out together, and we ask reporters not to disclose publicly before then.
 
 ## Deploy checklist (server / Docker)
 

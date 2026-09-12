@@ -87,6 +87,9 @@ func defaultLastFMEndpoint(endpoint string) string {
 		return "https://ws.audioscrobbler.com/2.0/"
 	}
 	ep := strings.TrimSpace(endpoint)
+	if _, err := httputil.ParseHTTPURL(ep); err != nil {
+		return "https://ws.audioscrobbler.com/2.0/"
+	}
 	if !strings.HasSuffix(ep, "/") {
 		ep += "/"
 	}

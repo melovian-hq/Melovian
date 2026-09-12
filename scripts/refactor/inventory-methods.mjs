@@ -88,7 +88,7 @@ function lineOf(src, idx) {
 function inventorySource(raw, filePath) {
   let src = raw;
   if (filePath.endsWith(".svelte")) {
-    const m = raw.match(/<script[^>]*>([\s\S]*?)<\/script>/i);
+    const m = raw.match(/<script[^>]*>([\s\S]*?)<\/script\s*>/i);
     src = m ? m[1] : raw;
   }
 

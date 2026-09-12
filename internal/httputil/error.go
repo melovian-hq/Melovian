@@ -7,6 +7,8 @@ import (
 	"encoding/json"
 	"log/slog"
 	"net/http"
+
+	"melovian/internal/melog"
 )
 
 type APIError struct {
@@ -21,9 +23,9 @@ type APIError struct {
 func WriteInternalError(w http.ResponseWriter, r *http.Request, op string, err error) {
 	slog.Warn("request failed",
 		"op", op,
-		"err", err,
+		"err", melog.Sanitize(err.Error()),
 		"request_id", RequestIDFromContext(r.Context()),
-		"path", r.URL.Path,
+		"path", melog.Sanitize(r.URL.Path),
 	)
 	WriteError(w, http.StatusInternalServerError, "internal_error", "internal error")
 }
