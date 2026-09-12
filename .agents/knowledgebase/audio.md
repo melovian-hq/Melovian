@@ -16,6 +16,7 @@ Fixed little-endian signed 16-bit stereo at 48 kHz. `BytesPerSec` is 192000.
 | `internal/pcmsink/fanout.go` | Multicasts PCM chunks to every registered sink with bounded queues. |
 | `internal/pcmsink/router.go` | Reads from per-player FIFOs, mixes concurrent streams, feeds the fanout. |
 | `internal/pcmsink/fifo_unix.go` | Unix-only FIFO helpers. Build tag `//go:build unix`. |
+| `internal/pcmsink/fifo_stub.go` | Non-Unix FIFO stubs. |
 
 ## Supported sink specs
 

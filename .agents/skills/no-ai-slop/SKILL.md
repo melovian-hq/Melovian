@@ -5,7 +5,7 @@ description: "Rules and worked examples for writing prose that does not read lik
 
 # No AI Slop
 
-The full rule list lives in the project `CLAUDE.md` (rules 1 through 24). This skill turns the rules that have worked examples into actionable guidance: each shows a WRONG version (the slop) and a RIGHT version (the fix). The pattern behind every fix is the same: replace the vague claim with a specific, checkable fact.
+The prose rule list for this repo lives in `.agents/rules/prose.md`. This skill turns the rules that have worked examples into actionable guidance: each shows a WRONG version (the slop) and a RIGHT version (the fix). The pattern behind every fix is the same: replace the vague claim with a specific, checkable fact.
 
 ## Rule 1: No emdashes
 

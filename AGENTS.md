@@ -15,20 +15,20 @@ A desktop and web music player for Subsonic-compatible servers (Navidrome and ot
 
 | Component | Stack |
 |---|---|
-| Backend | Go with Wails v3 bindings |
-| Frontend | Svelte 5 SPA under Vite |
-| Persistence | SQLite by default, Postgres via `MELOVIAN_DATABASE_URL` |
-| Desktop audio | libmpv on Linux |
-| Build | Task 3.x, pnpm 11.1.2, Go 1.26+ |
+| Backend | Go 1.26 with Wails v3 (beta.16) bindings |
+| Frontend | Svelte 5 (runes) SPA under Vite 8, Tailwind v4, bits-ui, runed |
+| Persistence | SQLite (modernc.org/sqlite) by default, Postgres via `MELOVIAN_DATABASE_URL` |
+| Desktop audio | libmpv or libvlc, selectable backend via AudioService |
+| Build | Task 3.x, pnpm 11.1.2, Node 22 |
 
 ## Where code lives
 
 | Area | Path | What is inside |
 |---|---|---|
-| HTTP API + business logic | `internal/` | `internal/api/`, `internal/subsonic/`, `internal/localmusic/`, `internal/store/`, `internal/libmpv/` |
-| Wails service layer | `services/` | Desktop services exposed to the frontend |
-| Svelte frontend | `frontend/src/` | Pages, components, music config, Subsonic client |
-| Build + packaging | `build/`, `Taskfile.yml` | Wails config, per-OS task files, dev loop |
+| HTTP API + business logic | `internal/` | 30+ packages: `api/`, `subsonic/`, `subsonicserver/`, `localmusic/`, `store/`, `libmpv/`, `libvlc/`, `pcmsink/`, `dlna/`, `jukebox/`, `lastfm/`, `rocksky/`, `transcode/`, `update/`, `sandbox/`, `metadata/`, `metaloader/`, `smartplaylist/`, `extensions/`, `navidrome/`, `video/`, `democatalog/` and helpers. See `melovian-codebase` skill for the full map |
+| Wails service layer | `services/` | `MediaService`, `AudioService`, `UpdateService` plus tray and window chrome |
+| Svelte frontend | `frontend/src/` | `pages/` + custom router (`lib/router/`, `routes.ts`), `lib/components/`, `lib/config/music*` store, `lib/features/` vertical modules, `lib/music/` domain logic, `lib/subsonic/` client |
+| Build + packaging | `build/`, `Taskfile.yml` | `build/config.yml` (Wails v3 config), per-OS task files, dev loop |
 | Docker server mode | `docker/` | Headless API + static frontend |
 
 ## Branding and constants
@@ -63,6 +63,11 @@ Skills live in `.agents/skills/`. Load the relevant one before starting a broad 
 | `no-ai-slop` | Writing prose, UI strings, comments, docs, or commit messages humans will read |
 | `rossmann-voice` | Writing long-form content that should sound like Louis Rossmann |
 | `melovian-codebase` | Navigating the repo or planning a feature that crosses Go and Svelte |
+| `melovian-frontend` | Writing frontend code: Svelte 5 runes, Tailwind v4, bits-ui v2, runed, Vitest 4, TS 6 syntax rules |
+| `melovian-wails` | Editing Go services, Wails bindings, `build/config.yml`, or desktop window behavior |
+| `melovian-testing` | Writing or running tests: file suffix taxonomy, mocking, coverage gates, e2e |
+| `melovian-quality` | Applying the code quality bar or deciding if a change is done |
+| `melovian-debugging` | Investigating a bug or crash: logs, dev modes, env toggles, tracing across layers |
 | `melovian-maintenance` | Updating deps, changing CI, or fixing build/test issues |
 
 The `no-ai-slop` and `rossmann-voice` skills are vendored from [no_ai_slop_writing_rules](https://github.com/realrossmanngroup/no_ai_slop_writing_rules). Update them with:
@@ -79,11 +84,16 @@ cp -r /tmp/no_ai_slop_writing_rules-main/skills/rossmann-voice .agents/skills/
 |---|---|
 | New browse page | `frontend/src/pages/`, register in `frontend/src/routes.ts` |
 | Player or queue behavior | `frontend/src/lib/config/music.svelte.ts`, `frontend/src/lib/config/music/*-ops.ts` |
-| Settings tab UI | `frontend/src/lib/components/settings/panels/Settings*Panel.svelte` |
+| Settings tab UI | `frontend/src/lib/components/settings/panels/Settings*Panel.svelte`, register in `frontend/src/lib/settings/tabs.ts` |
 | Subsonic API call | `frontend/src/lib/subsonic/api.ts` or the library adapter |
 | Persistent setting | Go handler in `internal/api/`, mirror in frontend prefs if needed |
-| Desktop-only behavior | `internal/desktop/`, `services/`, graphics settings |
+| Desktop-only behavior | `internal/desktop/`, `services/`, `frontend/src/lib/desktop/` |
+| Wails service method | `services/`, register in `main.go`, then `task generate:bindings` |
 | Mix or radio algorithm | `frontend/src/lib/music/mix-generator/`, `personal-radio.ts`, `taste-score.ts` |
+| Scrobbling (Last.fm, ListenBrainz, Rocksky) | `internal/lastfm/`, `internal/api/{lastfm,listenbrainz,rocksky,scrobblers}.go`, see `.agents/knowledgebase/scrobbling.md` |
+| Native audio output | `internal/libmpv/`, `internal/libvlc/`, `internal/pcmsink/`, see `.agents/knowledgebase/audio.md` |
+| Serving library to other clients | `internal/subsonicserver/` (`/rest`), `internal/dlna/` |
+| Extension feature | `internal/extensions/`, `frontend/src/lib/extensions/` |
 
 ## Development loop
 
@@ -133,4 +143,5 @@ Root `go test .` fails unless `frontend/dist` is already built. Use package-scop
 | `go test .` fails on embed | `frontend/dist` is missing | Build the frontend or use `go test ./internal/... ./services/...` |
 | Wails dev will not start | Missing `build/` or CLI version mismatch | Run `task setup` and check the Wails CLI version against `go.mod` |
 | Bindings drift in CI | Go service signature changed | Run `task generate:bindings` and commit `frontend/bindings/` |
-| Desktop blank WebView on Linux | WebKit GPU issues | See the README logging section or try disabling GPU |
+| Vite fails on `wails("./bindings")` | `frontend/bindings/` missing or stale | Run `task generate:bindings` |
+| Desktop blank WebView on Linux | WebKit GPU issues | `WEBKIT_DISABLE_DMABUF_RENDERER=1` or the graphics stability settings; see the README logging section |
