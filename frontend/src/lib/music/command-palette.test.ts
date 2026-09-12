@@ -17,6 +17,7 @@ vi.mock("$lib/config/music.svelte", () => ({
     toggleQueue: vi.fn(),
     searchAll: vi.fn(),
     playTrackById: vi.fn(),
+    playLibraryShuffle: vi.fn(),
   },
 }));
 
@@ -95,6 +96,16 @@ describe("command-palette", () => {
     music.currentTrack = { id: "t1", title: "Song" } as never;
     await tv!.run();
     expect(layout.enterTvMode).toHaveBeenCalled();
+  });
+
+  it("includes a library shuffle command that starts continuous refill", async () => {
+    const { music } = await import("$lib/config/music.svelte");
+    const command = searchPaletteCommands("shuffle library").find(
+      (entry) => entry.id === "shuffle-library",
+    );
+    expect(command).toBeTruthy();
+    await command!.run();
+    expect(music.playLibraryShuffle).toHaveBeenCalled();
   });
 
   it("does not include stats or radio navigation", () => {
