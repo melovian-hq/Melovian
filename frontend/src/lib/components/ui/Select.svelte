@@ -29,6 +29,11 @@
     class: className = "",
     onchange,
   }: Props = $props();
+
+  // The portaled listbox needs an accessible name too. Label it by the
+  // trigger so it inherits the ariaLabel or visible value text.
+  const uid = $props.id();
+  const triggerId = $derived(id ?? `jb-select-trigger-${uid}`);
 </script>
 
 <Select.Root
@@ -39,7 +44,7 @@
   onValueChange={(next: string) => onchange?.(next as T)}
 >
   <Select.Trigger
-    {id}
+    id={triggerId}
     class="jb-select__trigger {className}"
     aria-label={ariaLabel}
   >
@@ -47,7 +52,11 @@
     <MdiIcon name="chevronDown" size={16} class="jb-select__chevron" />
   </Select.Trigger>
   <Select.Portal>
-    <Select.Content class="jb-select__content" sideOffset={4}>
+    <Select.Content
+      class="jb-select__content"
+      sideOffset={4}
+      aria-labelledby={triggerId}
+    >
       <Select.ScrollUpButton class="jb-select__scroll">
         <MdiIcon name="chevronUp" size={14} />
       </Select.ScrollUpButton>
