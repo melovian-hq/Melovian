@@ -78,6 +78,8 @@ cp -r /tmp/no_ai_slop_writing_rules-main/skills/no-ai-slop .agents/skills/
 cp -r /tmp/no_ai_slop_writing_rules-main/skills/rossmann-voice .agents/skills/
 ```
 
+The local `no-ai-slop` files carry additions beyond upstream: the `.agents/rules/prose.md` pointer in SKILL.md, the "Newer patterns (2025-2026 model output)" section, and the extended sections in `references/ai-writing-detection.md` (significance inflation, -ing tails, copula avoidance, vague attribution, chatbot residue, marketing register, formatting bleed, expanded markup artifacts, vocabulary-by-era). Re-vendoring overwrites them; re-apply the local sections afterward or diff before copying.
+
 ## Where to put new work
 
 | Feature type | Start here |

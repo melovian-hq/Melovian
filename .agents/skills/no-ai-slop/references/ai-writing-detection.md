@@ -2,7 +2,7 @@
 
 Words, phrases, punctuation patterns, structural signals, and statistical measures commonly associated with AI-generated text. Avoid these to ensure writing sounds natural and human.
 
-Sources: Grammarly (2025), Microsoft 365 Life Hacks (2025), GPTHuman (2025), Walter Writes (2025), Textero (2025), Plagiarism Today (2025), Rolling Stone (2025), MDPI Blog (2025), isgpt.org corpus analysis (2025), ACL hedging study (2024), Wikipedia AI content detection project (2025), Segmental entropy research (arxiv, 2025)
+Sources: Wikipedia Signs of AI writing field guide (WP:AITELLS, updated 2026), Grammarly (2025), Microsoft 365 Life Hacks (2025), GPTHuman (2025), Walter Writes (2025), Textero (2025), Plagiarism Today (2025), Rolling Stone (2025), MDPI Blog (2025), isgpt.org corpus analysis (2025), ACL hedging study (2024), Segmental entropy research (arxiv, 2025), WriteHuman humanization corpus (80,141 pairs, 2026), The Atlantic chatbait coverage (2025)
 
 ---
 
@@ -12,6 +12,15 @@ Sources: Grammarly (2025), Microsoft 365 Life Hacks (2025), GPTHuman (2025), Wal
 - Overused Adjectives
 - Overused Transitions and Connectors
 - Phrases That Signal AI Writing (Opening, Transitional, Concluding, Structural, Inflated Symbolism)
+- Inflated Significance and Legacy Claims
+- Superficial -ing Analyses
+- Copula Avoidance and Marketing Verbs
+- Vague Connection and Unnamed Attribution
+- Formulaic Endings: Challenges and Future Prospects
+- Rule of Three
+- Conversational Residue (Chatbot Persona Bleed)
+- Marketing and Dev-Marketing Register
+- Chatbot Formatting Bleed
 - Filler Words and Empty Intensifiers
 - Heading Anti-Patterns
 - Academic-Specific AI Tells
@@ -48,6 +57,7 @@ Em dashes are longer than hyphens (-) and are used for emphasis, interruptions, 
 - Use parentheses for supplementary information
 - Reserve em dashes for rare, deliberate emphasis only
 - If you find yourself using more than one em dash per page, revise
+- Also banned: " -- " used as an em dash substitute, and the en dash (–) standing in for one
 
 ---
 
@@ -71,6 +81,21 @@ Em dashes are longer than hyphens (-) and are used for emphasis, interruptions, 
 | ascertain | find out, determine, establish |
 | elucidate | explain, clarify, make clear |
 
+### Newer overused verbs (2025-2026)
+Documented post-GPT-4o drift. These rose as the classic list faded:
+
+| Avoid | Use Instead |
+|-------|-------------|
+| showcase (as verb) | show, display, demonstrate |
+| garner | get, receive, earn |
+| align with | match, fit, agree with |
+| resonate with | appeal to, land with |
+| interplay | interaction, relationship |
+| garner/emphasize/highlight (as sentence padding) | cut the clause |
+| ensuring | and (join the clauses) or state the outcome |
+| unlock / elevate / supercharge / unleash | the concrete action it performs |
+| garner media attention | was covered by (named outlet) |
+
 ---
 
 ## Overused Adjectives
@@ -92,6 +117,20 @@ Em dashes are longer than hyphens (-) and are used for emphasis, interruptions, 
 | multifaceted | complex, varied, diverse |
 | holistic | complete, whole, comprehensive |
 
+### Newer overused adjectives (2025-2026)
+
+| Avoid | Use Instead |
+|-------|-------------|
+| vibrant | name what is actually active about it |
+| meticulous / meticulously | careful, precise (or cut) |
+| enduring | lasting, or cut |
+| bustling | busy, or cut |
+| rich (as filler: "rich history") | state what the history contains |
+| key (as adjective) | important, main, or cut |
+| valuable | useful, or cut |
+| game-changing / revolutionary / next-level | the concrete difference |
+| best-in-class / world-class / industry-leading | the metric that supports the claim |
+
 ### Overused Metaphorical Nouns (2025-2026)
 AI models use these nouns metaphorically to inject false gravitas. Literal uses are fine.
 
@@ -102,6 +141,11 @@ AI models use these nouns metaphorically to inject false gravitas. Literal uses 
 | beacon ("a beacon of hope") | beacon (actual light or signal device) |
 | realm ("in the realm of cybersecurity") | realm (actual kingdom or territory) |
 | testament ("a testament to innovation") | testament (actual legal document, e.g., last will and testament) |
+| landscape ("the regulatory landscape") | landscape (physical terrain) |
+| ecosystem ("the repair ecosystem") | ecosystem (biological) |
+| journey ("your fitness journey") | journey (physical travel) |
+| cornerstone ("a cornerstone of the industry") | cornerstone (actual stone) |
+| powerhouse / workhorse ("a productivity powerhouse") | the thing itself, described plainly |
 
 ---
 
@@ -119,6 +163,7 @@ AI models use these nouns metaphorically to inject false gravitas. Literal uses 
 | in the realm of | in, within, regarding |
 | in the landscape of | in, within |
 | in today's [anything] | currently, now, today |
+| additionally (starting a sentence) | and, also, or restructure |
 
 ---
 
@@ -150,6 +195,10 @@ AI models use these nouns metaphorically to inject false gravitas. Literal uses 
 - "In the final analysis..."
 - "All things considered..."
 - "At the end of the day..."
+- "Only time will tell..."
+- "The future looks bright/promising..."
+- "One thing is clear..."
+- "Exciting times ahead..."
 
 ### Structural Patterns to Avoid
 - "Whether you're a [X], [Y], or [Z]..." (listing three examples after "whether")
@@ -157,6 +206,9 @@ AI models use these nouns metaphorically to inject false gravitas. Literal uses 
 - "Think of [X] as [elaborate metaphor]..."
 - Starting sentences with "By" followed by a gerund: "By understanding X, you can Y..."
 - Contrasting parallelisms: "It's not X. It's Y." or "It's not about X, it's about Y." More than two of these in a 500-word block is a high-confidence AI indicator.
+- "From X to Y" false ranges where the endpoints are not a real scale: "From hobbyists to enterprises, everyone benefits."
+- "Not only X but also Y" as a prefab pattern. If the addition is real, write it without the frame.
+- "Y rather than X" / "Instead of X, Y" used as a reflexive contrast shape. The WriteHuman 2026 corpus found "rather than" 2.5x over-represented in AI text. Keep the contrast only when the alternative was genuinely expected.
 
 ### Inflated Symbolism Phrases (2025-2026 AI Tells)
 These multi-word phrases appear hundreds of times more frequently in AI-generated text than in human baselines (corpus analysis, isgpt.org 2025):
@@ -173,27 +225,257 @@ These multi-word phrases appear hundreds of times more frequently in AI-generate
 
 ---
 
-## Heading Anti-Patterns
+## Inflated Significance and Legacy Claims
 
-AI-generated content frequently uses narrative, dramatic, or clickbait heading structures that read like thriller chapter titles. These patterns signal low-effort AI writing even when the body text is clean. All headings must describe the section content directly and technically.
+AI text inflates the importance of arbitrary details by tying them to broader trends, legacy, or meaning. The repertoire is recognizable (Wikipedia field guide, WP:AILEGACY). Banned patterns:
 
-### Banned Heading Structures
+- "stands as / serves as a testament/reminder/symbol"
+- "marking a pivotal moment / a turning point / a shift"
+- "a crucial/pivotal/vital/significant/key role or moment"
+- "underscores/highlights its importance/significance"
+- "reflects/symbolizes broader trends / a broader movement"
+- "setting the stage for"
+- "represents/marks a shift"
+- "focal point", "indelible mark", "deeply rooted"
+- "part of a broader movement/effort/initiative"
+- "contributing to the [abstract noun]" as a sentence tail
+- "positioned to / positions them as"
 
-| Pattern | Bad Example | Good Replacement |
-|---------|-------------|------------------|
-| "The [Concept] Trap" | "The Initialization Trap" | "Import vs. Initialize: DDF Metadata Destruction Risk" |
-| "The [Adjective] [Noun]" drama | "The Hidden Danger" | "Firmware Corruption After Sudden Power Loss" |
-| "The [Noun] [Dramatic Noun]" | "The Silent Killer" | "Gradual Bad Sector Growth on Aging Platters" |
-| "Why [Action] [Dramatic Verb] [Object]" | "Why Rebuilding Destroys Everything" | "How Forced Rebuilds Overwrite Parity on Degraded Arrays" |
-| "[Noun]: The [Adjective] [Noun]" | "Encryption: The Hidden Trap" | "Hardware AES-256 Encryption on WD Passport Bridge Boards" |
-| "The [Noun] You [Emotion Verb]" | "The Risk You Overlook" | "Unmonitored SMART Threshold Warnings" |
+WRONG: "The founding of the regional office marked a pivotal moment, reflecting a broader movement toward decentralization."
+RIGHT: "The regional office opened in 1989 and began publishing its own statistics in 1991."
 
-### How to Self-Check Headings
+### Canned notability and coverage claims
 
-1. Could this heading serve as a thriller chapter title or YouTube clickbait thumbnail? If yes, rewrite it.
-2. Does the heading describe what the section contains, or does it tease it? Headings describe; they do not tease.
-3. Remove "The" from the beginning of any heading and check if it still uses a dramatic noun pairing. If so, rewrite.
-4. A good heading reads like an entry in a technical manual index: specific, descriptive, and boring to non-specialists.
+Post-2024 models prove importance by describing the coverage instead of the subject (WP:AIATTR). Banned patterns:
+
+- "featured/profiled/cited in [media outlets]" when the outlets are not the point
+- "independent coverage", "regional media outlets", "trade publications" as a claim of notability
+- "maintains an active/strong social media presence"
+- "documented in archived programs and regional press coverage"
+- "highlighted by multiple independent reports"
+
+WRONG: "Her insights have been featured in Wired, Refinery29, and other prominent media outlets."
+RIGHT: "Wired interviewed her in March 2024 about algorithmic pricing."
+
+---
+
+## Superficial -ing Analyses
+
+The highest-frequency modern tell. AI attaches a present-participle clause to the end of a sentence to fake analysis (WP:SUPERFICIAL). The clause asserts significance, impact, or emotion without adding a checkable fact.
+
+Banned tails:
+- "..., highlighting the importance of..."
+- "..., underscoring its role as..."
+- "..., reflecting its continued relevance..."
+- "..., contributing to the socio-economic development..."
+- "..., fostering a sense of community..."
+- "..., ensuring a seamless experience..."
+- "..., enhancing its significance as..."
+- "..., shaping the future of..."
+- "..., cementing its status as..."
+- "..., solidifying its position as..."
+
+WRONG: "The station added eight platforms, contributing to the socio-economic development of the region."
+RIGHT: "The station added eight platforms in 2019. Freight volume rose 40% by 2023."
+
+Fix: delete the -ing clause, or replace it with the fact it was gesturing at. The WriteHuman 2026 corpus flags "ensuring" as the strongest current-era AI verb for exactly this reason.
+
+---
+
+## Copula Avoidance and Marketing Verbs
+
+LLMs systematically avoid "is/are/has" and substitute elevated or marketing verbs (WP:AINOCOPULA). One study measured a 10%+ drop in "is"/"are" frequency in 2023 academic writing, concentrated in AI-assisted text.
+
+| Avoid | Use Instead |
+|-------|-------------|
+| serves as / stands as / functions as / operates as / marks | is |
+| represents a significant X | is a X (if X is real) |
+| boasts / features / offers / maintains | has |
+| refers to (in a lead) | is |
+| began his career as / ventured into politics as a candidate | was / ran for |
+| holds the distinction of being | is |
+| plays a crucial/critical/important role in shaping | does the thing, or name the mechanism |
+
+WRONG: "The player boasts a robust queue and serves as the primary playback interface."
+RIGHT: "The player is the primary playback interface. Its queue persists across restarts."
+
+---
+
+## Vague Connection and Unnamed Attribution
+
+### Vague connection (WP:AICONNECT)
+AI gestures at relationships instead of stating them. Banned patterns:
+
+- "associated with", "connected to", "in connection with", "in association with"
+- "is closely tied to", "has ties to", "is intertwined with"
+- "particularly/widely associated with"
+
+WRONG: "Sources identified Doe as being associated with leadership of ExampleCorp."
+RIGHT: "Doe was ExampleCorp's CEO from 2017 to 2021."
+
+### Unnamed attribution (WP:AIWEASEL)
+Opinions get attributed to vague authorities, or one source gets inflated into a consensus:
+
+- "Experts say / argue / believe"
+- "Critics argue", "Some critics argue", "Observers note"
+- "Industry reports", "several sources", "multiple publications" (when citing one or two)
+- "It is widely acknowledged/interpreted/believed that"
+- "Studies show", "Research suggests" without naming the study
+- "described in scholarship as" without naming the scholarship
+- "such as" before a list implied to be non-exhaustive when the source gives no others
+
+WRONG: "Experts believe the change improves playback reliability."
+RIGHT: "The 2025 NAVIDROME-2341 issue reports 14 failed-gapless reports before the patch."
+
+If you cannot name who holds the opinion, the opinion does not belong in the text.
+
+---
+
+## Formulaic Endings: Challenges and Future Prospects
+
+AI articles end with a rigid formula (WP:FACESCHALLENGES): a "Challenges" or "Future Outlook" section that opens with "Despite its [praising words], X faces challenges..." and closes with vague optimism or speculation about future initiatives.
+
+Banned shapes:
+- "Despite its success/popularity/promise, X faces challenges including..."
+- "Despite these challenges, X continues to thrive/remains committed to..."
+- "Challenges and Legacy" / "Future Outlook" / "Looking Ahead" as bolt-on sections
+- "...positions it well for the future"
+- "SCE continues to evolve in response to these challenges" (any "X continues to evolve" closer)
+- Balanced-on-command endings: "While limitations remain, the potential is clear."
+
+End on the last concrete fact instead. If real challenges exist, name the specific ones and who reported them.
+
+---
+
+## Rule of Three
+
+LLMs overuse tricolons to simulate completeness (WP:RO3): "adjective, adjective, adjective" and "phrase, phrase, and phrase" stacks.
+
+Banned patterns:
+- Adjective stacks: "fast, reliable, and secure", "simple, powerful, and intuitive", "rich, vibrant, and diverse"
+- Noun stacks: "performance, reliability, and security"
+- Canned triple-item lists where every entry has identical grammar
+- "X, Y, and Z" enumerations chosen for rhythm rather than because three real items exist
+
+WRONG: "The new engine is fast, reliable, and secure."
+RIGHT: "The new engine cut p99 seek latency from 40 ms to 12 ms in benchmarks."
+
+Fix: keep the one property that is real and measurable. If three real items exist, list them because they exist, not as a rhythm device.
+
+---
+
+## Conversational Residue (Chatbot Persona Bleed)
+
+Text generated in a chat interface carries the interface with it. Any of these in docs, comments, UI strings, or articles is a 100% paste tell.
+
+### Sycophantic openers
+- "Great question!" / "Certainly!" / "Absolutely!" / "Of course!" / "I'd be happy to..."
+- "You're absolutely right"
+- "That's a really good point"
+
+### Hollow closers and offers
+- "Hope this helps!" / "Let me know if you need anything else!" / "Feel free to ask..."
+- "Would you like me to...", "Want me to...", "Should I turn this into..."
+- "I can also give you X. Do you want that?"
+
+### Rhetorical hooks and performative reveals
+- "Here's the thing:", "The truth is:", "The reality is:", "Here's the deal:"
+- "Picture this:", "Imagine this:", "Think about it:"
+- "But here's the kicker:", "Here's the catch:", "Here's where it gets interesting:"
+- "The bottom line:"
+
+### Forced-emphasis fragments
+- "Let that sink in." / "Read that again." / "I'll wait." / "Sit with that."
+- "Full stop." / "Period." used as its own sentence
+- "Sound familiar?" / "See where this is going?" / "Want to know the best part?"
+- "One might wonder..." / "You might ask..."
+- "This matters because:" / "Here's why that matters:"
+
+### Knowledge-cutoff disclaimers and gap speculation
+Never narrate the limits of your information (WP:AICUTOFF). This overlaps Rule 24 (no research-process narration) and extends it:
+
+- "As of my last update/knowledge cutoff..."
+- "Based on available information..."
+- "While specific details are limited/scarce/not widely documented..."
+- "...in the provided sources / search results..."
+- "maintains a low profile" / "keeps personal details private" (speculation about why sources are thin)
+- "Details are not publicly disclosed" followed by speculation about what they "likely" are
+
+Report only what is supported. If a fact is not in sources, it does not exist for the reader.
+
+### Placeholder and template residue
+- "[Your Name]", "[Describe the specific...]", "[insert X here]"
+- "(Add your channel URL here)", "(If available)"
+- "2025-XX-XX" placeholder dates
+- Instructions left in output: "Delete this section before submission", "Here's a template you can customize"
+- HTML comments containing editorial notes meant for the requester
+
+---
+
+## Marketing and Dev-Marketing Register
+
+LLMs default to landing-page and dev-tool-homepage copy. None of these carry information; each has a concrete replacement.
+
+### Marketing verbs and hype nouns
+| Avoid | Use Instead |
+|-------|-------------|
+| unlock / elevate / supercharge / unleash / empower / revolutionize / transform | the concrete action |
+| game-changer / game-changing / a paradigm shift / disrupt | the measured difference |
+| the future of X / the future is here / next-gen | the version, the date |
+| designed to / built for / crafted / thoughtfully designed / purpose-built | what it does |
+| take X to the next level | the specific improvement |
+
+### Empty superlatives and comparatives
+"best-in-class", "world-class", "industry-leading", "market-leading", "next-level", "top-tier", "second to none", "in a league of its own", "best of both worlds", "gold standard", "checks all the boxes", "the whole package", "low-hanging fruit", "a no-brainer".
+
+### Dev-marketing cliches (common in READMEs, release notes, tool docs)
+| Avoid | Use Instead |
+|-------|-------------|
+| blazing fast / lightning fast / insanely fast | the benchmark number |
+| buttery smooth / silky smooth | the frame rate or latency figure |
+| under the hood / behind the scenes | "internally" or name the mechanism |
+| the secret sauce / where the magic happens / like magic | name the mechanism |
+| it just works / works out of the box / zero-config | what setup is actually required |
+| battle-tested / production-ready / rock-solid / bulletproof | where it runs and for how long |
+| enterprise-grade / mission-critical | the failure modes it survives |
+| first-class support / first-class citizen | what the API exposes |
+| seamless integration / seamless experience | what the integration does |
+| ship X in minutes | the actual setup time |
+| lightweight / tiny footprint / minimal overhead | the binary size or memory figure |
+| Swiss Army knife of X / the missing piece | what it covers |
+| a breath of fresh air | cut |
+
+WRONG: "Melovian is a blazing-fast, rock-solid player that just works out of the box."
+RIGHT: "Melovian indexes 50k local tracks in about 20 seconds and plays while scanning continues."
+
+---
+
+## Chatbot Formatting Bleed
+
+Formatting habits from chat interfaces appearing in docs or articles.
+
+- **Bold-colon list items**: every bullet shaped like "**Label:** description". Fine as a deliberate table substitute once; a tell when it is the default shape of every list.
+- **Boldface on key terms**: bolding every product name, concept, and "key takeaway". Bold is for rare emphasis.
+- **Emoji in headings and bullets**: "🚀 Features", "📬 Contact". Never in this repo.
+- **Title Case headings**: "Impact Of Technology And Digitalization". Use sentence case.
+- **Thematic breaks** (`---` or `***`) between every section. Sections flow without them.
+- **Heading-only nesting**: a heading whose only content is subheadings.
+- **Tables for everything**: AI reaches for a table when a sentence works. Keep tables for genuinely tabular data.
+- **Skipped heading levels** and overuse of level-1 headings.
+- **"Key takeaways" / "TL;DR" / "Highlights" summary blocks** bolted onto short text.
+- **Preamble before lists**: "Here are the main features:", "The following are the key points:". Introduce with content or not at all.
+
+### Unicode and paste artifacts
+
+Check pasted or generated text for invisible or substituted characters:
+
+- Non-breaking space U+00A0 (breaks wrapping and search)
+- Zero-width space U+200B, joiners U+200C/U+200D (break parsers and diffs)
+- Curly quotes “ ” ‘ ’ and curly apostrophe ’ where straight quotes are the file convention (see False Positive Prevention; curly quotes alone do not prove AI use)
+- Horizontal ellipsis … (U+2026) where "..." is the convention
+- " -- " standing in for an em dash
+
+Normalize to the file's existing conventions.
 
 ---
 
@@ -224,6 +506,43 @@ These words often add nothing to meaning. Remove them or find specific alternati
 - undoubtedly
 - very
 
+### Empty phrases that inflate
+- "a wide range/array of", "a variety of", "numerous", "various" (name the count)
+- "a number of", "the majority of", "a significant portion of"
+- "at this point in time" (now), "due to the fact that" (because), "in order to" (to)
+- "for the most part", "by and large", "more often than not"
+- "moving forward", "going forward"
+- "needless to say", "suffice it to say", "it goes without saying"
+- "and that's okay", "and that's a good thing" (faux reassurance)
+
+---
+
+## Heading Anti-Patterns
+
+AI-generated content frequently uses narrative, dramatic, or clickbait heading structures that read like thriller chapter titles. These patterns signal low-effort AI writing even when the body text is clean. All headings must describe the section content directly and technically.
+
+### Banned Heading Structures
+
+| Pattern | Bad Example | Good Replacement |
+|---------|-------------|------------------|
+| "The [Concept] Trap" | "The Initialization Trap" | "Import vs. Initialize: DDF Metadata Destruction Risk" |
+| "The [Adjective] [Noun]" drama | "The Hidden Danger" | "Firmware Corruption After Sudden Power Loss" |
+| "The [Noun] [Dramatic Noun]" | "The Silent Killer" | "Gradual Bad Sector Growth on Aging Platters" |
+| "Why [Action] [Dramatic Verb] [Object]" | "Why Rebuilding Destroys Everything" | "How Forced Rebuilds Overwrite Parity on Degraded Arrays" |
+| "[Noun]: The [Adjective] [Noun]" | "Encryption: The Hidden Trap" | "Hardware AES-256 Encryption on WD Passport Bridge Boards" |
+| "The [Noun] You [Emotion Verb]" | "The Risk You Overlook" | "Unmonitored SMART Threshold Warnings" |
+| Vague analytical | "Broader Implications", "Larger Trend", "Industry-Wide Impact" | name the subject, not the abstraction |
+| Guide-speak | "The Ultimate Guide to X", "X Explained", "Demystifying X", "X 101", "Everything You Need to Know About X" | name the content |
+| Formulaic sections | "Challenges and Future Prospects", "Looking Ahead", "The Road Forward" | name what the section contains or cut it |
+
+### How to Self-Check Headings
+
+1. Could this heading serve as a thriller chapter title or YouTube clickbait thumbnail? If yes, rewrite it.
+2. Does the heading describe what the section contains, or does it tease it? Headings describe; they do not tease.
+3. Remove "The" from the beginning of any heading and check if it still uses a dramatic noun pairing. If so, rewrite.
+4. A good heading reads like an entry in a technical manual index: specific, descriptive, and boring to non-specialists.
+5. Use sentence case, not Title Case.
+
 ---
 
 ## Academic-Specific AI Tells
@@ -247,17 +566,22 @@ These words often add nothing to meaning. Remove them or find specific alternati
 
 ## Hallucinated Markup Artifacts
 
-When AI generates wikitext, it sometimes hallucinates citation markup from its training data. These are 100% confidence indicators of unedited AI output:
+When AI generates text, it sometimes leaves citation markup from its training data or UI. These are 100% confidence indicators of unedited AI output:
 
 | Artifact | Origin |
 |----------|--------|
-| `oaicite` | OpenAI ChatGPT citation placeholder |
+| `oaicite` / `oai_citation` | OpenAI ChatGPT citation placeholder |
 | `contentReference` | OpenAI internal reference tag |
-| `grok_card` | xAI Grok citation tag |
-| `attributableIndex` | AI attribution tracking artifact |
 | `turn0search0` | ChatGPT search result placeholder |
+| `attributableIndex` | AI attribution tracking artifact |
+| `[cite: 1]`, `(start_span)`, `(end_span)` | Google Gemini citation markup |
+| `grok_card`, `grok_render_citation_card_json` | xAI Grok citation tag |
+| `【...】` lenticular brackets, dagger `†` markers | DeepSeek citation style |
+| `attached_file`, `ppl-ai-file-upload` | Perplexity artifacts |
+| `:::writing` | unclassified AI scaffold marker |
+| `utm_source=chatgpt.com` | link copied from ChatGPT's link-out wrapper |
 
-Any occurrence of these strings in wikitext means the text was pasted from an AI tool without editing. Zero tolerance.
+Any occurrence of these strings means the text was pasted from an AI tool without editing. Zero tolerance. Also flag citations with dead DOIs/ISBNs, DOIs resolving to unrelated papers, and book citations with no page or URL: these are fabricated-reference tells.
 
 ---
 
@@ -316,36 +640,51 @@ AI maintains flat stylistic consistency from introduction through conclusion. Hu
 - **Why this matters:** Human introductions tend to be tighter and more declarative. Human body sections are denser with longer sentences. Human conclusions shift register. AI maintains a monotone throughout.
 
 ### Contrasting Parallelism Overuse
-2025-era models overuse sequential contrasting structures to simulate punchy emphasis:
-- "It's not X, it's Y."
-- "It's not about X, it's about Y."
-- "The issue isn't X. The issue is Y."
+Models overuse sequential contrasting structures to simulate punchy emphasis. Three documented forms (WP:AIPARALLEL):
+- "It's not X, it's Y." / "It's not about X, it's about Y." / "The issue isn't X. The issue is Y."
+- "Not just X, but also Y." / "Not only X but also Y."
+- "Y rather than X." / "Instead of X, Y."
+- "No X, no Y, just Z."
 - **Threshold:** More than two contrasting parallelisms in a 500-word block.
+
+### List and Bullet Uniformity
+Every bullet with identical grammar ("Improved X. Improved Y. Improved Z.") or identical length reads as template output. Vary bullet structure or write prose.
 
 ---
 
 ## Model-Family-Specific Tells
 
-Different AI model families produce distinct stylistic fingerprints based on their training and RLHF tuning.
+Different AI model families produce distinct stylistic fingerprints based on their training and RLHF tuning. The vocabulary drifts by era; a word that flagged AI in 2023 may be unremarkable in 2026 output.
 
-### GPT-4o / GPT-4.5 (OpenAI)
+### Vocabulary by era (Wikipedia field guide)
+- **2023 to mid-2024 (GPT-4):** Additionally, boasts, bolstered, crucial, delve, emphasizing, enduring, garner, intricate, interplay, key, landscape, meticulous, pivotal, underscore, tapestry, testament, valuable, vibrant
+- **Mid-2024 to mid-2025 (GPT-4o):** align with, bolster, crucial, emphasizing, enhance, enduring, fostering, highlighting, pivotal, showcasing, underscore, vibrant. Delve dropped off sharply in 2025.
+- **Mid-2025 on (GPT-5):** emphasizing, enhance, highlighting, showcasing, plus the canned notability/coverage claims (featured in, independent coverage, media outlets). "Ensuring" and "rather than" lead the 2026 frequency tables.
+
+### GPT-4o / GPT-5 (OpenAI)
 - Heavy use of bullet-point formatting and structured lists
 - Staccato short-sentence contrasting: "It's not X. It's Y." used to simulate punchy copy
 - Rhetorical colon abuse: "Here's the thing:", "Think about it:", "The bottom line:", "The reality:"
 - Over-structures arguments into numbered steps
+- 2025 sycophancy drift: flatters the user's ideas ("amazing", "game-changing") and validates rather than evaluates
 
-### Claude 3.5 / Claude 4 (Anthropic)
+### Claude (Anthropic)
 - Better sentence length variation than GPT, but still exhibits flat segmental entropy
 - Overly polite and conciliatory transitions: "It's worth considering that", "To be fair", "That said"
 - Leans toward poetic and metaphorical prose with words like "nuanced," "complexities"
 - Loses thread in long documents and resorts to increasingly generic transitions
 - Tends toward diplomatic hedging even when stating documented facts
 
+### Grok (xAI)
+- Idiosyncratic "scientific" vocabulary: causal, empirical, correlate
+- Continues to overuse "underscore" as of 2026
+
 ### Common Across All Models
 - Uniform paragraph lengths
 - Predictable section ordering (Background > Details > Impact > Response)
 - Citation clustering at paragraph ends rather than distributed throughout sentences
 - Excessive boldface on concepts, product names, and inline headers
+- Negative parallelisms and rule-of-three stacks
 
 ---
 
@@ -371,6 +710,10 @@ These words require bigram context checking. Only flag metaphorical uses:
 - symphony: "Beethoven's symphony" (OK) vs. "a symphony of features" (flag)
 - beacon: "lighthouse beacon" (OK) vs. "a beacon of hope" (flag)
 - testament: "last will and testament" (OK) vs. "a testament to innovation" (flag)
+- features/offers/boasts: a literal feature list heading "Features" is OK; "the player boasts gapless playback" is flag-shaped but acceptable when it states a real spec
+
+### Curly Quotes and Typography
+Curly quotes alone do not prove AI use: Word, macOS/iOS autocorrect, LanguageTool, and typeset publications all produce them. Flag them only as a consistency issue against the file's conventions, or when combined with other tells.
 
 ---
 
@@ -384,5 +727,12 @@ These words require bigram context checking. Only flag metaphorical uses:
 6. Verify each intensifier adds genuine meaning
 7. Count hedging markers per paragraph. More than 3 in a single paragraph is a red flag.
 8. Check paragraph word counts within each section. If they are all similar, vary them.
-9. Search for hallucinated markup: `oaicite`, `contentReference`, `turn0search0`, `grok_card`
+9. Search for hallucinated markup: `oaicite`, `contentReference`, `turn0search0`, `grok_card`, `[cite:`, `(start_span)`, `【`, `utm_source=chatgpt.com`
 10. Check if your introduction, body, and conclusion have different pacing and sentence complexity
+11. Scan for -ing tails: grep your text for ", highlighting", ", underscoring", ", reflecting", ", contributing", ", ensuring", ", fostering", ", shaping", ", positioning", ", cementing". Cut each one or replace with a fact.
+12. Scan for copula avoidance: "serves as", "stands as", "functions as", "represents", "boasts", "features", "holds the distinction". Rewrite to is/has/does.
+13. Scan for vague attribution: "experts", "critics", "observers", "sources", "studies show" without a name. Name them or cut.
+14. Scan for chatbot residue: "Hope this helps", "let me know", "Great question", "Here's the thing", "Let that sink in", "as of my last". Delete the sentence.
+15. Scan for the rule of three: adjective stacks and triple-phrase rhythms. Keep the one real claim.
+16. Check the ending. If the last paragraph is "challenges", "future outlook", or balanced-on-command optimism, end on a fact instead.
+17. Normalize unicode: no non-breaking spaces, zero-width characters, or " -- " em dash substitutes.
