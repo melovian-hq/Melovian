@@ -4,6 +4,7 @@
 import * as authApi from "./api";
 import type { AuthUser } from "./api";
 import { changeUsername as changeUsernameRequest } from "./account";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { logger } from "$lib/core/logger";
 
 class AuthStore {
@@ -13,7 +14,7 @@ class AuthStore {
   demoMode = $state(false);
   fakeCatalog = $state(false);
   oidcEnabled = $state(false);
-  oidcLoginUrl = $state("/api/auth/oidc/login");
+  oidcLoginUrl = $state<string>(ApiPaths.authOidcLogin);
   localLoginEnabled = $state(true);
   user = $state<AuthUser | null>(null);
   loading = $state(true);
@@ -48,7 +49,7 @@ class AuthStore {
       this.demoMode = status.demoMode === true;
       this.fakeCatalog = status.fakeCatalog === true;
       this.oidcEnabled = status.oidcEnabled ?? false;
-      this.oidcLoginUrl = status.oidcLoginUrl ?? "/api/auth/oidc/login";
+      this.oidcLoginUrl = status.oidcLoginUrl ?? ApiPaths.authOidcLogin;
       this.localLoginEnabled = status.localLoginEnabled ?? true;
       this.user = status.user ?? null;
       this.statusLoaded = true;

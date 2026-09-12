@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { captureClientError, captureClientMessage } from "$lib/core/sentry";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { APP_NAME } from "$lib/brand";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
@@ -61,7 +62,7 @@ function shipToBackend(payload: ClientLogPayload): void {
 
   void import("$lib/config/remote-server")
     .then(({ isRemoteClient, resolveApiUrl }) => {
-      fetch(resolveApiUrl("/api/client-log"), {
+      fetch(resolveApiUrl(ApiPaths.clientLog), {
         method: "POST",
         credentials: isRemoteClient() ? "include" : "same-origin",
         headers: {

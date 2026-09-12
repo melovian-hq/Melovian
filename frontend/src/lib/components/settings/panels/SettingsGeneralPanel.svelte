@@ -14,6 +14,7 @@
   import GraphicsSettings from "$lib/components/settings/GraphicsSettings.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+  import { ApiPaths } from "$lib/core/http/api-paths";
   import { auth } from "$lib/features/auth/store.svelte";
   import { router } from "$lib/router/router.svelte";
   import { music } from "$lib/config/music.svelte";
@@ -42,7 +43,7 @@
 
   $effect(() => {
     loading = true;
-    fetchWithRetry("/api/config", { headers: apiHeaders() })
+    fetchWithRetry(ApiPaths.config, { headers: apiHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((cfg) => {
         dataDir = cfg?.dataDir ?? "";

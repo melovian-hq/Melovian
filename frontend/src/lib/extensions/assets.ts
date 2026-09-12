@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { resolveApiUrl } from "$lib/config/remote-server";
+import { ApiPaths } from "$lib/core/http/api-paths";
 
 /** True when rel is a safe path under an extension directory (no traversal). */
 export function isSafeExtensionAssetPath(rel: string): boolean {
@@ -22,9 +23,7 @@ export function extensionAssetUrl(extensionId: string, rel: string): string {
     .split("/")
     .map((part) => encodeURIComponent(part))
     .join("/");
-  return resolveApiUrl(
-    `/api/extensions/${encodeURIComponent(extensionId.trim())}/assets/${encoded}`,
-  );
+  return resolveApiUrl(ApiPaths.extensionAsset(extensionId.trim(), encoded));
 }
 
 const preloaded = new Set<string>();

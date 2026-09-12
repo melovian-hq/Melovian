@@ -9,6 +9,9 @@ import { isRemoteClient, resolveApiUrl } from "$lib/config/remote-server";
 
 const REQUEST_ID_HEADER = "X-Request-Id";
 
+export const DEFAULT_RETRY_ATTEMPTS = 3;
+export const RETRY_BASE_DELAY_MS = 200;
+
 /** Browser/network failures that are expected and should not hit BugSink. */
 export function isTransientNetworkError(err: unknown): boolean {
   if (!(err instanceof Error)) return false;
@@ -27,7 +30,7 @@ export function isTransientNetworkError(err: unknown): boolean {
 export async function fetchWithRetry(
   input: RequestInfo | URL,
   init?: RequestInit,
-  attempts = 3,
+  attempts = DEFAULT_RETRY_ATTEMPTS,
 ): Promise<Response> {
   let lastError: unknown;
   let lastRequestId = "";
@@ -53,7 +56,7 @@ export async function fetchWithRetry(
         return response;
       }
       if (response.status >= 500 && attempt < attempts - 1) {
-        await sleep(200 * (attempt + 1) * (attempt + 1));
+        await sleep(RETRY_BASE_DELAY_MS * (attempt + 1) * (attempt + 1));
         continue;
       }
       if (
@@ -62,7 +65,7 @@ export async function fetchWithRetry(
           response.status === 504) &&
         attempt < attempts - 1
       ) {
-        await sleep(200 * (attempt + 1) * (attempt + 1));
+        await sleep(RETRY_BASE_DELAY_MS * (attempt + 1) * (attempt + 1));
         continue;
       }
       if (!response.ok && response.status >= 400) {
@@ -87,7 +90,7 @@ export async function fetchWithRetry(
         throw err instanceof Error ? err : new Error("Request aborted");
       }
       if (attempt < attempts - 1) {
-        await sleep(200 * (attempt + 1) * (attempt + 1));
+        await sleep(RETRY_BASE_DELAY_MS * (attempt + 1) * (attempt + 1));
         continue;
       }
     }

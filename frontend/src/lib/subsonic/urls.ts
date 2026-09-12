@@ -84,7 +84,7 @@ export function downloadStreamUrl(trackId: string): string {
   const instanceId = getActiveInstanceId();
   if (instanceId) params.set("_instance", instanceId);
   const query = params.toString();
-  const path = `/api/downloads/${encodeURIComponent(trackId)}/stream${query ? `?${query}` : ""}`;
+  const path = `${ApiPaths.downloadStream(trackId)}${query ? `?${query}` : ""}`;
   return resolveMediaUrl(path);
 }
 

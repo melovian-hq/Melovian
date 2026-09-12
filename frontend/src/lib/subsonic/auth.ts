@@ -3,10 +3,11 @@
 
 import type { SubsonicConfig } from "./types";
 import { APP_SLUG } from "$lib/brand";
+import { ApiPaths } from "$lib/core/http/api-paths";
 
 export function createDefaultSubsonicConfig(): SubsonicConfig {
   return {
-    serverUrl: "/api/subsonic",
+    serverUrl: ApiPaths.subsonicPrefix,
     clientName: APP_SLUG,
     version: "1.16.1",
   };

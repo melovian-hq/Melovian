@@ -5,6 +5,7 @@ import { readFileSync, readdirSync, statSync } from "node:fs";
 import path from "node:path";
 import { fileURLToPath } from "node:url";
 import { describe, expect, it } from "vitest";
+import { ApiPaths } from "$lib/core/http/api-paths";
 
 type ApiRoute = {
   method: string;
@@ -124,6 +125,13 @@ function collectSourceFiles(dir: string): string[] {
   return files;
 }
 
+function resolveApiPathValue(value: unknown): string {
+  if (typeof value === "function") {
+    return (value as (...args: string[]) => string)("id", "id");
+  }
+  return String(value);
+}
+
 function collectFrontendApiPaths(): Map<string, Set<string>> {
   const usages = new Map<string, Set<string>>();
   for (const file of collectSourceFiles(frontendSrc)) {
@@ -183,5 +191,24 @@ describe("frontend api route contract", () => {
         ),
     );
     expect(missing).toEqual([]);
+  });
+
+  it("declares every ApiPaths entry in the backend manifest", () => {
+    const missing: string[] = [];
+
+    for (const [name, value] of Object.entries(ApiPaths)) {
+      const resolved = resolveApiPathValue(value);
+      const matched = manifest.routes.some((route) =>
+        routeMatches(resolved, route),
+      );
+      if (!matched) {
+        missing.push(`${name} -> ${resolved}`);
+      }
+    }
+
+    expect(
+      missing,
+      `ApiPaths entries missing from internal/api/testdata/api-routes.json:\n${missing.join("\n")}`,
+    ).toEqual([]);
   });
 });

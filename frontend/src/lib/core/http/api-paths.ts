@@ -2,10 +2,34 @@
 // SPDX-License-Identifier: Apache-2.0
 
 export const ApiPaths = {
+  apiPrefix: "/api/",
+  subsonicPrefix: "/api/subsonic",
+  clientLog: "/api/client-log",
+
   authStatus: "/api/auth/status",
   authSetup: "/api/auth/setup",
   authLogin: "/api/auth/login",
   authLogout: "/api/auth/logout",
+  authSessions: "/api/auth/sessions",
+  authSessionById: (id: string) =>
+    `/api/auth/sessions/${encodeURIComponent(id)}`,
+  authChangePassword: "/api/auth/change-password",
+  authUsername: "/api/auth/username",
+  authDeleteAccount: "/api/auth/delete-account",
+  authSubsonicKey: "/api/auth/subsonic-key",
+  authSubsonicKeyRotate: "/api/auth/subsonic-key/rotate",
+  authOidcLogin: "/api/auth/oidc/login",
+
+  config: "/api/config",
+  updateStatus: "/api/update/status",
+  updateCheck: "/api/update/check",
+  updateApply: "/api/update/apply",
+  updateRestart: "/api/update/restart",
+  updateSettings: "/api/update/settings",
+  settingsSentry: "/api/settings/sentry",
+  settingsSentryTest: "/api/settings/sentry/test",
+  devices: "/api/devices",
+  ws: "/api/ws",
 
   instances: "/api/instances",
   instancesActive: "/api/instances/active",
@@ -19,7 +43,8 @@ export const ApiPaths = {
   localLibraryById: (id: string) => `/api/local-libraries/${id}`,
   localLibraryActivate: (id: string) => `/api/local-libraries/${id}/activate`,
   localLibraryScan: (id: string) => `/api/local-libraries/${id}/scan`,
-  config: "/api/config",
+
+  filesystemDirectories: "/api/filesystem/directories",
 
   sourcesStatus: "/api/sources/status",
   sourcesMultiLocalLibrary: "/api/sources/multi-local-library",
@@ -40,6 +65,7 @@ export const ApiPaths = {
   musicResume: "/api/music/resume",
   musicStats: "/api/music/stats",
   musicBatch: "/api/music/batch",
+  musicItemsPrefix: "/api/music/items/",
   musicItem: (trackId: string) => `/api/music/items/${trackId}`,
   musicItemPlayed: (trackId: string) => `/api/music/items/${trackId}/played`,
   musicPlaylists: "/api/music/playlists",
@@ -53,6 +79,7 @@ export const ApiPaths = {
   musicSettingsCache: "/api/music/settings/cache",
   musicSettingsEq: "/api/music/settings/eq",
   musicSettingsConnection: "/api/music/settings/connection",
+  musicSettingsSentryClient: "/api/music/settings/sentry-client",
   musicSettingsRocksky: "/api/music/settings/rocksky",
   musicRockskyTest: "/api/music/settings/rocksky/test",
   musicRockskyNowPlaying: "/api/music/rocksky/now-playing",
@@ -79,14 +106,55 @@ export const ApiPaths = {
   musicSmartPlaylistsSupport: "/api/music/smart-playlists/support",
   musicSmartPlaylists: "/api/music/smart-playlists",
 
+  localMusicArtists: "/api/local-music/artists",
+  localMusicArtist: (id: string) =>
+    `/api/local-music/artists/${encodeURIComponent(id)}`,
+  localMusicAlbums: "/api/local-music/albums",
+  localMusicAlbum: (id: string) =>
+    `/api/local-music/albums/${encodeURIComponent(id)}`,
+  localMusicSearch: "/api/local-music/search",
+  localMusicSong: (id: string) =>
+    `/api/local-music/songs/${encodeURIComponent(id)}`,
+  localMusicSongSimilar: (trackId: string) =>
+    `/api/local-music/songs/${encodeURIComponent(trackId)}/similar`,
+  localMusicRandomSongs: "/api/local-music/randomSongs",
+  localMusicGenres: "/api/local-music/genres",
+  localMusicSongsByGenre: "/api/local-music/songsByGenre",
+  localMusicStarred: "/api/local-music/starred",
+  localMusicTrackStream: (trackId: string) =>
+    `/api/local-music/tracks/${encodeURIComponent(trackId)}/stream`,
+  localMusicCover: (id: string) =>
+    `/api/local-music/cover/${encodeURIComponent(id)}`,
   localMusicVideos: "/api/local-music/videos",
   localMusicVideo: (id: string) =>
     `/api/local-music/videos/${encodeURIComponent(id)}`,
+  localMusicMetadataSummary: "/api/local-music/metadata/summary",
+  localMusicMetadataTracks: "/api/local-music/metadata/tracks",
+  localMusicMetadataTrack: (id: string) =>
+    `/api/local-music/metadata/tracks/${encodeURIComponent(id)}`,
+  localMusicMetadataTrackSuggestions: (trackId: string) =>
+    `/api/local-music/metadata/tracks/${encodeURIComponent(trackId)}/suggestions`,
+  localMusicMetadataTrackAutofix: (trackId: string) =>
+    `/api/local-music/metadata/tracks/${encodeURIComponent(trackId)}/autofix`,
+  localMusicMetadataTrackAutofixAlbum: (trackId: string) =>
+    `/api/local-music/metadata/tracks/${encodeURIComponent(trackId)}/autofix-album`,
+  localMusicMetadataLookup: "/api/local-music/metadata/lookup",
+  localMusicMetadataAutofixBatch: "/api/local-music/metadata/autofix-batch",
+
   videoSettings: "/api/video/settings",
   videoSearch: "/api/video/search",
   videoResolve: "/api/video/resolve",
   videoLink: (trackId: string) =>
     `/api/video/links/${encodeURIComponent(trackId)}`,
+
+  extensions: "/api/extensions",
+  extensionsInstall: "/api/extensions/install",
+  extensionById: (id: string) => `/api/extensions/${id}`,
+  extensionScript: (id: string) => `/api/extensions/${id}/script`,
+  extensionEnabled: (id: string) => `/api/extensions/${id}/enabled`,
+  extensionReinstall: (id: string) => `/api/extensions/${id}/reinstall`,
+  extensionAsset: (id: string, path: string) =>
+    `/api/extensions/${encodeURIComponent(id)}/assets/${path}`,
 
   downloads: "/api/downloads",
   downloadsDir: "/api/downloads/dir",
@@ -96,6 +164,8 @@ export const ApiPaths = {
     `/api/downloads/${encodeURIComponent(trackId)}`,
   downloadExport: (trackId: string) =>
     `/api/downloads/${encodeURIComponent(trackId)}/export`,
+  downloadStream: (trackId: string) =>
+    `/api/downloads/${encodeURIComponent(trackId)}/stream`,
 
   mediaTrackDownload: (trackId: string) =>
     `/api/media/tracks/${encodeURIComponent(trackId)}/download`,

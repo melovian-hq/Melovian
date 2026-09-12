@@ -37,10 +37,7 @@ import {
 import { bindPlaybackLifecycle } from "$lib/music/playback-lifecycle";
 import { connection } from "$lib/music/connection.svelte";
 import { toast } from "$lib/ui/toast.svelte";
-import {
-  layout,
-  MOBILE_MEDIA,
-} from "$lib/components/layout/layout.svelte";
+import { layout, MOBILE_MEDIA } from "$lib/components/layout/layout.svelte";
 import { loadExtensions } from "$lib/extensions/registry";
 
 let mobileMedia: MediaQuery | undefined;
