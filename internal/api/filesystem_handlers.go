@@ -57,7 +57,7 @@ func (s *Server) handleListDirectories(w http.ResponseWriter, r *http.Request) {
 	parent := ""
 	if path != filepath.Dir(path) {
 		candidate := filepath.Dir(path)
-		if s.pathAllowedForBrowse(candidate) {
+		if _, err := osutil.ResolveInside(candidate, s.browseStartCandidates()...); err == nil {
 			parent = candidate
 		}
 	}
@@ -89,12 +89,12 @@ func (s *Server) resolveBrowsePath(raw string) (string, error) {
 	}
 	// Resolve before the allowlist check so a symlink inside an allowed root
 	// cannot point the listing somewhere else.
-	resolved, err := filepath.EvalSymlinks(filepath.Clean(path))
+	resolved, err := osutil.ResolveInside(path, s.browseStartCandidates()...)
+	if errors.Is(err, osutil.ErrPathOutsideRoots) {
+		return "", errBrowseOutsideRoots
+	}
 	if err != nil {
 		return "", err
-	}
-	if !s.pathAllowedForBrowse(resolved) {
-		return "", errBrowseOutsideRoots
 	}
 	info, err := os.Stat(resolved) //#nosec G703 -- resolved passed the browse allowlist after symlink resolution
 	if err != nil {
@@ -104,22 +104,6 @@ func (s *Server) resolveBrowsePath(raw string) (string, error) {
 		return "", errNotDirectory
 	}
 	return resolved, nil
-}
-
-// pathAllowedForBrowse reports whether path is under a configured browse root.
-// Callers must pass a symlink-resolved path.
-func (s *Server) pathAllowedForBrowse(path string) bool {
-	path = filepath.Clean(path)
-	for _, root := range s.browseStartCandidates() {
-		root = strings.TrimSpace(root)
-		if root == "" {
-			continue
-		}
-		if err := osutil.PathEscapesRoot(filepath.Clean(root), path); err == nil {
-			return true
-		}
-	}
-	return false
 }
 
 func (s *Server) browseStartCandidates() []string {

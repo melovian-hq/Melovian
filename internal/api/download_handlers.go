@@ -56,24 +56,18 @@ func (s *Server) openDownloadPath(instanceID, path string) (*os.File, error) {
 	cleaned := filepath.Clean(path)
 	// Canonicalize both sides so a symlinked data dir (macOS /var ->
 	// /private/var) compares against the resolved file path.
-	resolvedJail := jail
-	if resolved, err := filepath.EvalSymlinks(jail); err == nil {
-		resolvedJail = resolved
-	}
-	if resolved, err := filepath.EvalSymlinks(cleaned); err == nil {
-		cleaned = resolved
-	}
-	if err := osutil.PathEscapesRoot(resolvedJail, cleaned); err != nil {
+	resolved, err := osutil.ResolveInside(cleaned, jail)
+	if err != nil {
 		return nil, os.ErrNotExist
 	}
-	return os.Open(cleaned) //#nosec G304 -- path re-checked against download jail
+	return os.Open(resolved) //#nosec G304 -- path re-checked against download jail
 }
 
 func (s *Server) handleListDownloads(w http.ResponseWriter, r *http.Request) {
 	instanceID := InstanceIDFromContext(r.Context())
 	items, err := s.downloads.List(instanceID)
 	if err != nil {
-		http.Error(w, "list downloads: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "list downloads:", err)
 		return
 	}
 	out := make([]map[string]any, 0, len(items))
@@ -100,11 +94,11 @@ func (s *Server) handleRevealDownloadDir(w http.ResponseWriter, r *http.Request)
 	instanceID := InstanceIDFromContext(r.Context())
 	dir := s.downloadDir(instanceID)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
-		http.Error(w, "create cache dir: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "create cache dir:", err)
 		return
 	}
 	if err := osutil.RevealPath(dir); err != nil {
-		http.Error(w, "open folder: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "open folder:", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -113,11 +107,11 @@ func (s *Server) handleRevealDownloadDir(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 	trackID := r.PathValue("trackId")
 	if trackID == "" {
-		http.Error(w, "missing track id", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_track_id", "missing track id")
 		return
 	}
 	if strings.HasPrefix(trackID, "trk_") {
-		http.Error(w, "local library tracks are already stored on disk", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "local_library_tracks_are_already_stored_", "local library tracks are already stored on disk")
 		return
 	}
 	instanceID := InstanceIDFromContext(r.Context())
@@ -129,11 +123,11 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 
 	settings, err := s.loadCacheSettings(userID)
 	if err != nil {
-		http.Error(w, "load cache settings: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "load cache settings:", err)
 		return
 	}
 	if !settings.Enabled {
-		http.Error(w, "track caching is disabled", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "track_caching_is_disabled", "track caching is disabled")
 		return
 	}
 
@@ -146,18 +140,18 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	} else if !errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "lookup cache: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "lookup cache:", err)
 		return
 	}
 
 	client := s.subsonicForContext(r.Context())
 	if !client.Enabled() {
-		http.Error(w, "no subsonic instance configured", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "no subsonic instance configured")
 		return
 	}
 
 	if err := s.evictDownloads(instanceID, settings.LimitBytes, maxDownloadBytes); err != nil {
-		http.Error(w, "evict cache: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "evict cache:", err)
 		return
 	}
 
@@ -170,14 +164,14 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 
 	body, contentType, err := client.Stream(trackID)
 	if err != nil {
-		http.Error(w, "download failed: "+err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "download failed:", err)
 		return
 	}
 	defer func() { _ = body.Close() }()
 
 	dir := s.downloadDir(instanceID)
 	if err := os.MkdirAll(dir, 0o750); err != nil {
-		http.Error(w, "create cache dir: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "create cache dir:", err)
 		return
 	}
 
@@ -185,7 +179,7 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 	tmp := path + ".part"
 	file, err := os.Create(tmp) //#nosec G304,G703 -- path derived from hashed track id within app data dir
 	if err != nil {
-		http.Error(w, "create cache file: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "create cache file:", err)
 		return
 	}
 
@@ -193,12 +187,12 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 	closeErr := file.Close()
 	if err != nil || closeErr != nil {
 		_ = os.Remove(tmp) //#nosec G703 -- tmp is under download jail
-		http.Error(w, "write cache file", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "write cache file")
 		return
 	}
 	if err := os.Rename(tmp, path); err != nil { //#nosec G703 -- path is under download jail
 		_ = os.Remove(tmp) //#nosec G703 -- tmp is under download jail
-		http.Error(w, "finalize cache file: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "finalize cache file:", err)
 		return
 	}
 
@@ -214,12 +208,12 @@ func (s *Server) handleCreateDownload(w http.ResponseWriter, r *http.Request) {
 	}
 	if err := s.downloads.Upsert(entry); err != nil {
 		_ = os.Remove(path) //#nosec G703 -- path is under download jail
-		http.Error(w, "record download: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "record download:", err)
 		return
 	}
 
 	if err := s.evictDownloads(instanceID, settings.LimitBytes, 0); err != nil {
-		http.Error(w, "trim cache: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "trim cache:", err)
 		return
 	}
 
@@ -235,7 +229,7 @@ func (s *Server) handleDeleteDownload(w http.ResponseWriter, r *http.Request) {
 	instanceID := InstanceIDFromContext(r.Context())
 	path, err := s.downloads.Delete(instanceID, trackID)
 	if err != nil {
-		http.Error(w, "delete download: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "delete download:", err)
 		return
 	}
 	if path != "" {
@@ -249,24 +243,24 @@ func (s *Server) handleStreamDownload(w http.ResponseWriter, r *http.Request) {
 	instanceID := InstanceIDFromContext(r.Context())
 	entry, err := s.downloads.Get(instanceID, trackID)
 	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "not downloaded", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_downloaded", "not downloaded")
 		return
 	}
 	if err != nil {
-		http.Error(w, "lookup download: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "lookup download:", err)
 		return
 	}
 
 	file, err := s.openDownloadPath(instanceID, entry.Path)
 	if err != nil {
-		http.Error(w, "open cache file: "+err.Error(), http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "open cache file: "+err.Error())
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
 	if err != nil {
-		http.Error(w, "stat cache file", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "stat cache file")
 		return
 	}
 

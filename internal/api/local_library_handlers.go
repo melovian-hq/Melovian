@@ -15,6 +15,7 @@ import (
 	"melovian/internal/appconfig"
 	"melovian/internal/httputil"
 	"melovian/internal/metaloader"
+	"melovian/internal/osutil"
 	"melovian/internal/store"
 )
 
@@ -126,8 +127,10 @@ func (s *Server) resolveLibraryPath(inputPath string) (string, error) {
 	// roots the folder browser offers. Otherwise any account could point a
 	// library at arbitrary directories and stream whatever the process can
 	// read. Single user installs are trusted with any path.
-	if s.cfg.ServerMode && s.cfg.AuthEnabled() && !s.pathAllowedForBrowse(resolved) {
-		return "", errors.New("path must be under an allowed root (home, /media, /mnt, /run/media, or MELOVIAN_LOCAL_LIBRARY_ROOTS)")
+	if s.cfg.ServerMode && s.cfg.AuthEnabled() {
+		if _, err := osutil.ResolveInside(resolved, s.browseStartCandidates()...); err != nil {
+			return "", errors.New("path must be under an allowed root (home, /media, /mnt, /run/media, or MELOVIAN_LOCAL_LIBRARY_ROOTS)")
+		}
 	}
 	info, err := os.Stat(resolved)
 	if err != nil {
@@ -148,7 +151,7 @@ func (s *Server) handleListLocalLibraries(w http.ResponseWriter, r *http.Request
 	userID := UserIDFromContext(r.Context())
 	items, err := s.localLibraries.ListForUser(userID)
 	if err != nil {
-		http.Error(w, "failed to list libraries", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to list libraries")
 		return
 	}
 
@@ -161,28 +164,28 @@ func (s *Server) handleListLocalLibraries(w http.ResponseWriter, r *http.Request
 
 func (s *Server) handleCreateLocalLibrary(w http.ResponseWriter, r *http.Request) {
 	if !s.localLibraryEnabled() {
-		http.Error(w, "local libraries are disabled", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "local_libraries_are_disabled", "local libraries are disabled")
 		return
 	}
 
 	var req localLibraryRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
 	path, err := s.resolveLibraryPath(req.Path)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
 	userID := UserIDFromContext(r.Context())
 	if _, err := s.localLibraries.FindByPathForUser(userID, path); err == nil {
-		http.Error(w, "a library with this path already exists", http.StatusConflict)
+		httputil.WriteError(w, http.StatusConflict, "a_library_with_this_path_already_exists", "a library with this path already exists")
 		return
 	} else if !errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "failed to validate library path", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to validate library path")
 		return
 	}
 
@@ -191,7 +194,7 @@ func (s *Server) handleCreateLocalLibrary(w http.ResponseWriter, r *http.Request
 		Path: path,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -211,10 +214,10 @@ func (s *Server) handleGetLocalLibrary(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.localLibraries.GetForUser(userID, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, "failed to load library", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load library")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, s.localLibraryPublicView(lib))
@@ -233,7 +236,7 @@ func (s *Server) handleGetActiveLocalLibrary(w http.ResponseWriter, r *http.Requ
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{})
 			return
 		}
-		http.Error(w, "failed to load active library", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load active library")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, s.localLibraryPublicView(lib))
@@ -241,7 +244,7 @@ func (s *Server) handleGetActiveLocalLibrary(w http.ResponseWriter, r *http.Requ
 
 func (s *Server) handleActivateLocalLibrary(w http.ResponseWriter, r *http.Request) {
 	if !s.localLibraryEnabled() {
-		http.Error(w, "local libraries are disabled", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "local_libraries_are_disabled", "local libraries are disabled")
 		return
 	}
 
@@ -249,15 +252,15 @@ func (s *Server) handleActivateLocalLibrary(w http.ResponseWriter, r *http.Reque
 	userID := UserIDFromContext(r.Context())
 	if err := s.localLibraries.SetActiveForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleActivateLocalLibrary", err)
 		return
 	}
 	if !s.shouldKeepOtherSourceOnActivate(userID) {
 		if err := s.instances.ClearActiveForUser(userID); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httputil.WriteInternalError(w, r, "handleActivateLocalLibrary", err)
 			return
 		}
 	}
@@ -273,7 +276,7 @@ func (s *Server) handleActivateLocalLibrary(w http.ResponseWriter, r *http.Reque
 
 func (s *Server) handleScanLocalLibrary(w http.ResponseWriter, r *http.Request) {
 	if !s.localLibraryEnabled() {
-		http.Error(w, "local libraries are disabled", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "local_libraries_are_disabled", "local libraries are disabled")
 		return
 	}
 
@@ -281,17 +284,17 @@ func (s *Server) handleScanLocalLibrary(w http.ResponseWriter, r *http.Request) 
 	userID := UserIDFromContext(r.Context())
 	if _, err := s.localLibraries.GetForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleScanLocalLibrary", err)
 		return
 	}
 
 	if !s.startLibraryScan(id) {
 		lib, getErr := s.localLibraries.Get(id)
 		if getErr != nil {
-			http.Error(w, "failed to load library", http.StatusInternalServerError)
+			httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load library")
 			return
 		}
 		httputil.WriteJSON(w, http.StatusOK, s.localLibraryPublicView(lib))
@@ -308,16 +311,16 @@ func (s *Server) handleUpdateLocalLibrary(w http.ResponseWriter, r *http.Request
 	existing, err := s.localLibraries.GetForUser(userID, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleUpdateLocalLibrary", err)
 		return
 	}
 
 	var req localLibraryRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -325,15 +328,15 @@ func (s *Server) handleUpdateLocalLibrary(w http.ResponseWriter, r *http.Request
 	if strings.TrimSpace(req.Path) != "" {
 		resolved, err := s.resolveLibraryPath(req.Path)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 		if resolved != existing.Path {
 			if other, findErr := s.localLibraries.FindByPathForUser(userID, resolved); findErr == nil && other.ID != id {
-				http.Error(w, "a library with this path already exists", http.StatusConflict)
+				httputil.WriteError(w, http.StatusConflict, "a_library_with_this_path_already_exists", "a library with this path already exists")
 				return
 			} else if findErr != nil && !errors.Is(findErr, sql.ErrNoRows) {
-				http.Error(w, "failed to validate library path", http.StatusInternalServerError)
+				httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to validate library path")
 				return
 			}
 		}
@@ -341,7 +344,7 @@ func (s *Server) handleUpdateLocalLibrary(w http.ResponseWriter, r *http.Request
 	} else if !s.localLibraryConfig().AllowCustomPath {
 		resolved, err := s.resolveLibraryPath("")
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 		path = resolved
@@ -352,7 +355,7 @@ func (s *Server) handleUpdateLocalLibrary(w http.ResponseWriter, r *http.Request
 		Path: path,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	if lib.Path != existing.Path {
@@ -366,18 +369,18 @@ func (s *Server) handleDeleteLocalLibrary(w http.ResponseWriter, r *http.Request
 	userID := UserIDFromContext(r.Context())
 	if _, err := s.localLibraries.GetForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteLocalLibrary", err)
 		return
 	}
 	if err := s.localLibraries.Delete(id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteLocalLibrary", err)
 		return
 	}
 	if s.libraryWatcher != nil {
