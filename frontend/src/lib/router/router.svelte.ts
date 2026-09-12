@@ -11,6 +11,9 @@ export { matchPath, parseQuery, matchRoute } from "./match";
 export type RouteComponent = Component<any>;
 export type RouteLoader = () => Promise<{ default: RouteComponent }>;
 
+/** Layout mode for the persistent shell content area. */
+export type RouteContentLayout = "default" | "compact" | "fill";
+
 export interface RouteDefinition {
   path: string;
   component?: RouteComponent;
@@ -21,6 +24,10 @@ export interface RouteDefinition {
   description?: string;
   /** When false, emit noindex. Defaults to true. */
   index?: boolean;
+  /** Render without the app shell chrome (sidebar, topbar, bottom nav). */
+  bare?: boolean;
+  /** Shell content layout. Defaults to "default". */
+  content?: RouteContentLayout;
 }
 
 function appBase(): string {
