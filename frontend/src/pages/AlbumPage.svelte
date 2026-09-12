@@ -2,7 +2,6 @@
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import EnhancedCoverArt from "$lib/components/ui/EnhancedCoverArt.svelte";
   import AmbientCoverBackdrop from "$lib/components/ui/AmbientCoverBackdrop.svelte";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import AlbumContextMenu from "$lib/components/music/AlbumContextMenu.svelte";
   import MusicBreadcrumbs, {
     type MusicBreadcrumb,
@@ -201,187 +200,185 @@
   />
 {/if}
 
-<AppShell fill>
-  <div class="album-page">
-    {#if album}
-      <div class="album-page__ambient" aria-hidden="true">
-        <AmbientCoverBackdrop
-          src={ambientCoverImage}
-          seed={albumCoverSeed(album.album)}
-          paletteKey={albumCoverPaletteKey(album.album)}
-          opacity={0.72}
-          blur={56}
-          saturate={1.55}
-          scale={1.45}
-        />
-        <div class="album-page__wash"></div>
-      </div>
-    {/if}
+<div class="album-page">
+  {#if album}
+    <div class="album-page__ambient" aria-hidden="true">
+      <AmbientCoverBackdrop
+        src={ambientCoverImage}
+        seed={albumCoverSeed(album.album)}
+        paletteKey={albumCoverPaletteKey(album.album)}
+        opacity={0.72}
+        blur={56}
+        saturate={1.55}
+        scale={1.45}
+      />
+      <div class="album-page__wash"></div>
+    </div>
+  {/if}
 
-    <div class="album-page__body">
-      <MusicBreadcrumbs items={breadcrumbItems} />
+  <div class="album-page__body">
+    <MusicBreadcrumbs items={breadcrumbItems} />
 
-      {#if loading}
-        <div
-          class="album-page__skeleton"
-          role="status"
-          aria-busy="true"
-          aria-label="Loading album"
-        >
-          <Skeleton variant="hero" class="album-page__skeleton-hero" />
-          <div class="album-page__skeleton-rows">
-            {#each Array.from({ length: 8 }) as _, i (i)}
-              <Skeleton variant="row" />
-            {/each}
-          </div>
+    {#if loading}
+      <div
+        class="album-page__skeleton"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading album"
+      >
+        <Skeleton variant="hero" class="album-page__skeleton-hero" />
+        <div class="album-page__skeleton-rows">
+          {#each Array.from({ length: 8 }) as _, i (i)}
+            <Skeleton variant="row" />
+          {/each}
         </div>
-      {:else if error || !album}
-        <EmptyState
-          title="Could not load album"
-          message={error ?? "Album not found"}
-          icon="alertCircle"
-        >
-          {#snippet actions()}
-            <Link href="/music" class="album-page__back">Back to music</Link>
-          {/snippet}
-        </EmptyState>
-      {:else}
-        <header
-          class="album-hero"
-          role="group"
-          oncontextmenu={onAlbumHeroContextMenu}
-        >
-          <div class="album-hero__layout">
-            <div class="album-hero__cover-wrap">
-              <EnhancedCoverArt
-                kind="album"
-                entity={{
-                  id: album.album.id,
-                  name: album.album.name,
-                  artist: album.album.artist,
-                  coverArt: album.album.coverArt,
-                }}
-                src={coverImage}
-                seed={albumCoverSeed(album.album)}
-                paletteKey={albumCoverPaletteKey(album.album)}
-                alt={album.album.name}
-                fetchpriority="high"
-                loading="eager"
-              />
-            </div>
-
-            <div class="album-hero__info">
-              <p class="album-hero__type">Album</p>
-              <div class="album-hero__title-row">
-                <h1>{album.album.name}</h1>
-                <StarButton kind="album" album={album.album} size={22} onDark />
-              </div>
-              <p class="album-hero__meta">
-                {#if album.album.artistId}
-                  <Link href="/music/artist/{album.album.artistId}"
-                    >{album.album.artist}</Link
-                  >
-                {:else}
-                  {album.album.artist ?? "Unknown artist"}
-                {/if}
-                {#if album.album.year}
-                  <span class="album-hero__dot">·</span> {album.album.year}
-                {/if}
-                <span class="album-hero__dot">·</span>
-                {trackGroups.length} tracks
-                {#if versionCount > 0}
-                  <span class="album-hero__dot">·</span>
-                  {versionCount} alternate versions
-                {/if}
-                <span class="album-hero__dot">·</span>
-                {formatDuration(totalDuration)}
-              </p>
-              {#if album.album.genre}
-                <p class="album-hero__genre">{album.album.genre}</p>
-              {/if}
-
-              <div class="album-hero__actions">
-                <Button size="sm" onclick={() => playAll(false)}>
-                  <MdiIcon name="play" size={18} />
-                  Play
-                </Button>
-                <button
-                  type="button"
-                  class="album-hero__secondary"
-                  onclick={() => playAll(true)}
-                >
-                  <MdiIcon name="shuffle" size={16} />
-                  Shuffle
-                </button>
-                <button
-                  type="button"
-                  class="album-hero__secondary"
-                  onclick={playAlbumNext}
-                >
-                  <MdiIcon name="playNext" size={16} />
-                  Play next
-                </button>
-                <button
-                  type="button"
-                  class="album-hero__secondary"
-                  onclick={addAlbumToQueue}
-                >
-                  <MdiIcon name="queueAdd" size={16} />
-                  Add to queue
-                </button>
-                <button
-                  type="button"
-                  class="album-hero__secondary"
-                  onclick={() => trackSelection.enable()}
-                >
-                  <MdiIcon name="squareCheck" size={16} />
-                  Select
-                </button>
-                <button
-                  type="button"
-                  class="album-hero__secondary"
-                  onclick={() => void downloadFiles()}
-                  disabled={savingFiles || !album?.songs?.length}
-                >
-                  <MdiIcon name="download" size={16} />
-                  {savingFiles ? "Downloading…" : "Download"}
-                </button>
-              </div>
-            </div>
-          </div>
-        </header>
-
-        <TrackSelectionBar allTracks={playbackTracks} />
-
-        {#if displayTracks.length === 0}
-          <EmptyState
-            title="No tracks"
-            message="This album has no songs to play."
-            icon="album"
-          />
-        {:else}
-          <div class="album-tracks">
-            <div class="album-tracks__head">
-              <span>#</span>
-              <span>Title</span>
-              <span></span>
-              <span>Duration</span>
-            </div>
-            <TrackVirtualList
-              tracks={displayTracks}
-              versionsFor={(index) => trackGroups[index]?.versions}
-              onplay={playGroup}
-              onplayversion={playVersion}
-              selectable={trackSelection.active}
-              lazyThreshold={12}
-              itemHeight={62}
+      </div>
+    {:else if error || !album}
+      <EmptyState
+        title="Could not load album"
+        message={error ?? "Album not found"}
+        icon="alertCircle"
+      >
+        {#snippet actions()}
+          <Link href="/music" class="album-page__back">Back to music</Link>
+        {/snippet}
+      </EmptyState>
+    {:else}
+      <header
+        class="album-hero"
+        role="group"
+        oncontextmenu={onAlbumHeroContextMenu}
+      >
+        <div class="album-hero__layout">
+          <div class="album-hero__cover-wrap">
+            <EnhancedCoverArt
+              kind="album"
+              entity={{
+                id: album.album.id,
+                name: album.album.name,
+                artist: album.album.artist,
+                coverArt: album.album.coverArt,
+              }}
+              src={coverImage}
+              seed={albumCoverSeed(album.album)}
+              paletteKey={albumCoverPaletteKey(album.album)}
+              alt={album.album.name}
+              fetchpriority="high"
+              loading="eager"
             />
           </div>
-        {/if}
+
+          <div class="album-hero__info">
+            <p class="album-hero__type">Album</p>
+            <div class="album-hero__title-row">
+              <h1>{album.album.name}</h1>
+              <StarButton kind="album" album={album.album} size={22} onDark />
+            </div>
+            <p class="album-hero__meta">
+              {#if album.album.artistId}
+                <Link href="/music/artist/{album.album.artistId}"
+                  >{album.album.artist}</Link
+                >
+              {:else}
+                {album.album.artist ?? "Unknown artist"}
+              {/if}
+              {#if album.album.year}
+                <span class="album-hero__dot">·</span> {album.album.year}
+              {/if}
+              <span class="album-hero__dot">·</span>
+              {trackGroups.length} tracks
+              {#if versionCount > 0}
+                <span class="album-hero__dot">·</span>
+                {versionCount} alternate versions
+              {/if}
+              <span class="album-hero__dot">·</span>
+              {formatDuration(totalDuration)}
+            </p>
+            {#if album.album.genre}
+              <p class="album-hero__genre">{album.album.genre}</p>
+            {/if}
+
+            <div class="album-hero__actions">
+              <Button size="sm" onclick={() => playAll(false)}>
+                <MdiIcon name="play" size={18} />
+                Play
+              </Button>
+              <button
+                type="button"
+                class="album-hero__secondary"
+                onclick={() => playAll(true)}
+              >
+                <MdiIcon name="shuffle" size={16} />
+                Shuffle
+              </button>
+              <button
+                type="button"
+                class="album-hero__secondary"
+                onclick={playAlbumNext}
+              >
+                <MdiIcon name="playNext" size={16} />
+                Play next
+              </button>
+              <button
+                type="button"
+                class="album-hero__secondary"
+                onclick={addAlbumToQueue}
+              >
+                <MdiIcon name="queueAdd" size={16} />
+                Add to queue
+              </button>
+              <button
+                type="button"
+                class="album-hero__secondary"
+                onclick={() => trackSelection.enable()}
+              >
+                <MdiIcon name="squareCheck" size={16} />
+                Select
+              </button>
+              <button
+                type="button"
+                class="album-hero__secondary"
+                onclick={() => void downloadFiles()}
+                disabled={savingFiles || !album?.songs?.length}
+              >
+                <MdiIcon name="download" size={16} />
+                {savingFiles ? "Downloading…" : "Download"}
+              </button>
+            </div>
+          </div>
+        </div>
+      </header>
+
+      <TrackSelectionBar allTracks={playbackTracks} />
+
+      {#if displayTracks.length === 0}
+        <EmptyState
+          title="No tracks"
+          message="This album has no songs to play."
+          icon="album"
+        />
+      {:else}
+        <div class="album-tracks">
+          <div class="album-tracks__head">
+            <span>#</span>
+            <span>Title</span>
+            <span></span>
+            <span>Duration</span>
+          </div>
+          <TrackVirtualList
+            tracks={displayTracks}
+            versionsFor={(index) => trackGroups[index]?.versions}
+            onplay={playGroup}
+            onplayversion={playVersion}
+            selectable={trackSelection.active}
+            lazyThreshold={12}
+            itemHeight={62}
+          />
+        </div>
       {/if}
-    </div>
+    {/if}
   </div>
-</AppShell>
+</div>
 
 <style>
   .album-page {

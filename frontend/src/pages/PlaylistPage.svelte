@@ -1,6 +1,5 @@
 <script lang="ts">
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import TrackRow from "$lib/components/music/TrackRow.svelte";
   import VirtualList from "$lib/components/ui/VirtualList.svelte";
@@ -193,152 +192,128 @@
   );
 </script>
 
-<AppShell compactTop>
-  <div class="playlist-page">
-    <MusicBreadcrumbs items={breadcrumbItems} />
+<div class="playlist-page">
+  <MusicBreadcrumbs items={breadcrumbItems} />
 
-    {#if loading}
-      <div
-        class="playlist-page__skeleton"
-        role="status"
-        aria-busy="true"
-        aria-label="Loading playlist"
-      >
-        <Skeleton variant="hero" class="playlist-page__skeleton-hero" />
-        <div class="playlist-page__skeleton-rows">
-          {#each Array.from({ length: 8 }) as _, i (i)}
-            <Skeleton variant="row" />
-          {/each}
-        </div>
+  {#if loading}
+    <div
+      class="playlist-page__skeleton"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading playlist"
+    >
+      <Skeleton variant="hero" class="playlist-page__skeleton-hero" />
+      <div class="playlist-page__skeleton-rows">
+        {#each Array.from({ length: 8 }) as _, i (i)}
+          <Skeleton variant="row" />
+        {/each}
       </div>
-    {:else if error || !playlist}
-      <EmptyState
-        title="Could not load playlist"
-        message={error ?? "Playlist not found"}
-        icon="alertCircle"
-      >
-        {#snippet actions()}
-          <Link href="/music/playlists" class="playlist-page__back"
-            >Back to playlists</Link
-          >
-        {/snippet}
-      </EmptyState>
-    {:else}
-      <header
-        class="playlist-hero"
-        role="group"
-        oncontextmenu={(event) => {
-          heroMenu = contextMenuPositionFromEvent(event);
-        }}
-      >
-        <p class="playlist-hero__type">
-          {isSmart ? "Smart playlist" : "Playlist"}
-        </p>
-        <h1>{playlist.name}</h1>
-        <p class="playlist-hero__meta">
-          {playlist.trackCount ?? playlist.tracks?.length ?? 0} tracks{#if playlistDuration}
-            · {playlistDuration}{/if}
-        </p>
-        <div class="playlist-hero__actions">
-          {#if playlist.tracks && playlist.tracks.length > 0}
-            <Button size="sm" onclick={playAll}>
-              <MdiIcon name="play" size={18} />
-              {hasSearch ? "Play matches" : "Play all"}
-            </Button>
-            <Button size="sm" variant="surface" onclick={playPlaylistNext}>
-              <MdiIcon name="playNext" size={16} />
-              Play next
-            </Button>
-            <Button size="sm" variant="surface" onclick={addPlaylistToQueue}>
-              <MdiIcon name="queueAdd" size={16} />
-              Add to queue
-            </Button>
-            <Button size="sm" variant="surface" onclick={exportPlaylist}>
-              <MdiIcon name="export" size={16} />
-              Export M3U
-            </Button>
-          {/if}
-          {#if isSmart}
-            <Button
-              size="sm"
-              variant="surface"
-              onclick={refreshSmart}
-              disabled={refreshing}
-            >
-              <MdiIcon name="refresh" size={16} />
-              {refreshing ? "Refreshing…" : "Refresh"}
-            </Button>
-          {/if}
-          {#if playlist.tracks && playlist.tracks.length > 0}
-            <Button
-              size="sm"
-              variant="surface"
-              onclick={() => void downloadFiles()}
-              disabled={savingFiles}
-            >
-              <MdiIcon name="download" size={16} />
-              {savingFiles ? "Downloading…" : "Download"}
-            </Button>
-          {/if}
+    </div>
+  {:else if error || !playlist}
+    <EmptyState
+      title="Could not load playlist"
+      message={error ?? "Playlist not found"}
+      icon="alertCircle"
+    >
+      {#snippet actions()}
+        <Link href="/music/playlists" class="playlist-page__back"
+          >Back to playlists</Link
+        >
+      {/snippet}
+    </EmptyState>
+  {:else}
+    <header
+      class="playlist-hero"
+      role="group"
+      oncontextmenu={(event) => {
+        heroMenu = contextMenuPositionFromEvent(event);
+      }}
+    >
+      <p class="playlist-hero__type">
+        {isSmart ? "Smart playlist" : "Playlist"}
+      </p>
+      <h1>{playlist.name}</h1>
+      <p class="playlist-hero__meta">
+        {playlist.trackCount ?? playlist.tracks?.length ?? 0} tracks{#if playlistDuration}
+          · {playlistDuration}{/if}
+      </p>
+      <div class="playlist-hero__actions">
+        {#if playlist.tracks && playlist.tracks.length > 0}
+          <Button size="sm" onclick={playAll}>
+            <MdiIcon name="play" size={18} />
+            {hasSearch ? "Play matches" : "Play all"}
+          </Button>
+          <Button size="sm" variant="surface" onclick={playPlaylistNext}>
+            <MdiIcon name="playNext" size={16} />
+            Play next
+          </Button>
+          <Button size="sm" variant="surface" onclick={addPlaylistToQueue}>
+            <MdiIcon name="queueAdd" size={16} />
+            Add to queue
+          </Button>
+          <Button size="sm" variant="surface" onclick={exportPlaylist}>
+            <MdiIcon name="export" size={16} />
+            Export M3U
+          </Button>
+        {/if}
+        {#if isSmart}
           <Button
             size="sm"
             variant="surface"
-            onclick={() => (shareOpen = true)}
+            onclick={refreshSmart}
+            disabled={refreshing}
           >
-            <MdiIcon name="share" size={16} />
-            Share
+            <MdiIcon name="refresh" size={16} />
+            {refreshing ? "Refreshing…" : "Refresh"}
           </Button>
-        </div>
-      </header>
+        {/if}
+        {#if playlist.tracks && playlist.tracks.length > 0}
+          <Button
+            size="sm"
+            variant="surface"
+            onclick={() => void downloadFiles()}
+            disabled={savingFiles}
+          >
+            <MdiIcon name="download" size={16} />
+            {savingFiles ? "Downloading…" : "Download"}
+          </Button>
+        {/if}
+        <Button size="sm" variant="surface" onclick={() => (shareOpen = true)}>
+          <MdiIcon name="share" size={16} />
+          Share
+        </Button>
+      </div>
+    </header>
 
-      <LocalSearchBox
-        bind:value={searchQuery}
-        placeholder="Search playlist tracks"
-        disabled={loading && !playlist}
-        resultCount={filteredTracks.length}
-        totalCount={playlist.tracks?.length ?? 0}
-      />
+    <LocalSearchBox
+      bind:value={searchQuery}
+      placeholder="Search playlist tracks"
+      disabled={loading && !playlist}
+      resultCount={filteredTracks.length}
+      totalCount={playlist.tracks?.length ?? 0}
+    />
 
-      {#if playlist.tracks && playlist.tracks.length > 0}
-        {#if filteredTracks.length === 0}
-          <EmptyState
-            title="No matches"
-            message={`No tracks match "${searchQuery.trim()}".`}
-            icon="search"
-          />
-        {:else}
-          <div class="playlist-tracks">
-            {#if filteredTracks.length >= 24}
-              <VirtualList
-                items={filteredTracks}
-                itemHeight={58}
-                scrollMode="document"
-              >
-                {#snippet children({ item: track, index })}
-                  <div class="playlist-tracks__row">
-                    <TrackRow
-                      track={trackToSong(track)}
-                      {index}
-                      onplay={() => music.playTracks(filteredSongs, index)}
-                    />
-                    <button
-                      type="button"
-                      class="playlist-tracks__remove"
-                      onclick={() => void removeTrack(track.trackId)}
-                      aria-label="Remove track"
-                    >
-                      <MdiIcon name="trash2" size={16} />
-                    </button>
-                  </div>
-                {/snippet}
-              </VirtualList>
-            {:else}
-              {#each filteredTracks as track, i (stableItemKey(track.trackId, i, track.trackTitle))}
+    {#if playlist.tracks && playlist.tracks.length > 0}
+      {#if filteredTracks.length === 0}
+        <EmptyState
+          title="No matches"
+          message={`No tracks match "${searchQuery.trim()}".`}
+          icon="search"
+        />
+      {:else}
+        <div class="playlist-tracks">
+          {#if filteredTracks.length >= 24}
+            <VirtualList
+              items={filteredTracks}
+              itemHeight={58}
+              scrollMode="document"
+            >
+              {#snippet children({ item: track, index })}
                 <div class="playlist-tracks__row">
                   <TrackRow
                     track={trackToSong(track)}
-                    index={i}
-                    onplay={() => music.playTracks(filteredSongs, i)}
+                    {index}
+                    onplay={() => music.playTracks(filteredSongs, index)}
                   />
                   <button
                     type="button"
@@ -349,20 +324,38 @@
                     <MdiIcon name="trash2" size={16} />
                   </button>
                 </div>
-              {/each}
-            {/if}
-          </div>
-        {/if}
-      {:else}
-        <EmptyState
-          title="No tracks yet"
-          message="Add songs from any album using the + button."
-          icon="listMusic"
-        />
+              {/snippet}
+            </VirtualList>
+          {:else}
+            {#each filteredTracks as track, i (stableItemKey(track.trackId, i, track.trackTitle))}
+              <div class="playlist-tracks__row">
+                <TrackRow
+                  track={trackToSong(track)}
+                  index={i}
+                  onplay={() => music.playTracks(filteredSongs, i)}
+                />
+                <button
+                  type="button"
+                  class="playlist-tracks__remove"
+                  onclick={() => void removeTrack(track.trackId)}
+                  aria-label="Remove track"
+                >
+                  <MdiIcon name="trash2" size={16} />
+                </button>
+              </div>
+            {/each}
+          {/if}
+        </div>
       {/if}
+    {:else}
+      <EmptyState
+        title="No tracks yet"
+        message="Add songs from any album using the + button."
+        icon="listMusic"
+      />
     {/if}
-  </div>
-</AppShell>
+  {/if}
+</div>
 
 {#if heroMenu && playlist}
   <PlaylistContextMenu

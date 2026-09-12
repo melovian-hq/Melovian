@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import LyricsDisplay from "$lib/components/music/LyricsDisplay.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
@@ -74,187 +73,182 @@
   const showSearchSection = $derived(lastSearchQuery.length >= 3);
 </script>
 
-<AppShell compactTop>
-  {#if !extensionFeatures.lyrics}
-    <EmptyState
-      title="Lyrics extension is off"
-      message="Turn on Lyrics under Settings, Extensions to use lyrics search and synced display."
-      icon="lyrics"
-    >
-      {#snippet actions()}
-        <Link href="/settings/extensions">Open Extensions</Link>
-      {/snippet}
-    </EmptyState>
-  {:else}
-    <div class="lyrics-page">
-      <MusicBreadcrumbs items={[{ label: "Lyrics" }]} />
+{#if !extensionFeatures.lyrics}
+  <EmptyState
+    title="Lyrics extension is off"
+    message="Turn on Lyrics under Settings, Extensions to use lyrics search and synced display."
+    icon="lyrics"
+  >
+    {#snippet actions()}
+      <Link href="/settings/extensions">Open Extensions</Link>
+    {/snippet}
+  </EmptyState>
+{:else}
+  <div class="lyrics-page">
+    <MusicBreadcrumbs items={[{ label: "Lyrics" }]} />
 
-      <header class="lyrics-header">
-        <h1>Lyrics</h1>
-        <p class="lyrics-header__sub">
-          Search by words you remember, or follow synced lyrics for the track
-          that is playing.
-        </p>
-      </header>
+    <header class="lyrics-header">
+      <h1>Lyrics</h1>
+      <p class="lyrics-header__sub">
+        Search by words you remember, or follow synced lyrics for the track that
+        is playing.
+      </p>
+    </header>
 
-      <div class="lyrics-search">
-        <MdiIcon name="search" size={20} />
-        <Input
-          bind:value={searchQuery}
-          placeholder="Search lyrics in your library"
-        />
+    <div class="lyrics-search">
+      <MdiIcon name="search" size={20} />
+      <Input
+        bind:value={searchQuery}
+        placeholder="Search lyrics in your library"
+      />
+      {#if searchLoading}
+        <Spinner />
+      {/if}
+    </div>
+
+    {#if searchError}
+      <p class="lyrics-page__message lyrics-page__message--error">
+        {searchError}
+      </p>
+    {/if}
+
+    {#if showSearchSection}
+      <Section title="Lyrics matches">
         {#if searchLoading}
-          <Spinner />
-        {/if}
-      </div>
-
-      {#if searchError}
-        <p class="lyrics-page__message lyrics-page__message--error">
-          {searchError}
-        </p>
-      {/if}
-
-      {#if showSearchSection}
-        <Section title="Lyrics matches">
-          {#if searchLoading}
-            <p class="lyrics-page__message" aria-live="polite">
-              Searching for "{lastSearchQuery}"…
-            </p>
-          {:else if searchHits.length === 0}
-            <EmptyState
-              title="No lyric matches"
-              message={`Nothing in the scanned library matched "${lastSearchQuery}". Try different words or a shorter phrase.`}
-              icon="lyrics"
-            />
-          {:else}
-            <div class="lyrics-search-results">
-              {#each searchHits as hit (hit.songId)}
-                <article class="lyrics-hit">
-                  <div class="lyrics-hit__meta">
-                    <h2>{hit.title}</h2>
-                    <p>
-                      {hit.artist ?? "Unknown artist"}
-                      {#if hit.album}
-                        · {hit.album}
-                      {/if}
-                    </p>
-                    <p class="lyrics-hit__snippet">{hit.snippet}</p>
-                  </div>
-                  <Button
-                    variant="surface"
-                    onclick={() =>
-                      void music.playTrackById(hit.songId).catch(() => {})}
-                  >
-                    Play
-                  </Button>
-                </article>
-              {/each}
-            </div>
-          {/if}
-        </Section>
-      {:else if searchQuery.trim().length > 0 && searchQuery.trim().length < 3}
-        <p class="lyrics-page__message">
-          Type at least 3 characters to search.
-        </p>
-      {/if}
-
-      {#if showNowPlaying}
-        <Section title="Now playing">
-          <p class="lyrics-now-playing__track">
-            {music.currentTrack!.title}
-            {#if music.currentTrack!.artist}
-              · {music.currentTrack!.artist}
-            {/if}
+          <p class="lyrics-page__message" aria-live="polite">
+            Searching for "{lastSearchQuery}"…
           </p>
+        {:else if searchHits.length === 0}
+          <EmptyState
+            title="No lyric matches"
+            message={`Nothing in the scanned library matched "${lastSearchQuery}". Try different words or a shorter phrase.`}
+            icon="lyrics"
+          />
+        {:else}
+          <div class="lyrics-search-results">
+            {#each searchHits as hit (hit.songId)}
+              <article class="lyrics-hit">
+                <div class="lyrics-hit__meta">
+                  <h2>{hit.title}</h2>
+                  <p>
+                    {hit.artist ?? "Unknown artist"}
+                    {#if hit.album}
+                      · {hit.album}
+                    {/if}
+                  </p>
+                  <p class="lyrics-hit__snippet">{hit.snippet}</p>
+                </div>
+                <Button
+                  variant="surface"
+                  onclick={() =>
+                    void music.playTrackById(hit.songId).catch(() => {})}
+                >
+                  Play
+                </Button>
+              </article>
+            {/each}
+          </div>
+        {/if}
+      </Section>
+    {:else if searchQuery.trim().length > 0 && searchQuery.trim().length < 3}
+      <p class="lyrics-page__message">Type at least 3 characters to search.</p>
+    {/if}
 
-          {#if music.lyricsLoading}
-            <div class="lyrics-page__loading"><Spinner /></div>
-          {:else if !music.currentLyrics}
-            <EmptyState
-              title="No lyrics found"
-              message="This track has no lyrics yet. Fetch from enabled providers or add lyrics on your server."
-              icon="lyrics"
-            />
+    {#if showNowPlaying}
+      <Section title="Now playing">
+        <p class="lyrics-now-playing__track">
+          {music.currentTrack!.title}
+          {#if music.currentTrack!.artist}
+            · {music.currentTrack!.artist}
+          {/if}
+        </p>
+
+        {#if music.lyricsLoading}
+          <div class="lyrics-page__loading"><Spinner /></div>
+        {:else if !music.currentLyrics}
+          <EmptyState
+            title="No lyrics found"
+            message="This track has no lyrics yet. Fetch from enabled providers or add lyrics on your server."
+            icon="lyrics"
+          />
+          <button
+            type="button"
+            class="lyrics-fetch-btn"
+            disabled={music.lyricsFetching}
+            onclick={() => void music.fetchCurrentLyrics()}
+          >
+            {music.lyricsFetching ? "Fetching lyrics…" : "Fetch lyrics"}
+          </button>
+          {#if extensionFeatures.lyricsWhisper}
             <button
               type="button"
               class="lyrics-fetch-btn"
               disabled={music.lyricsFetching}
-              onclick={() => void music.fetchCurrentLyrics()}
+              onclick={() => void music.generateWhisperLyrics()}
             >
-              {music.lyricsFetching ? "Fetching lyrics…" : "Fetch lyrics"}
+              {music.lyricsFetching
+                ? "Transcribing…"
+                : "Generate synced lyrics with Whisper"}
             </button>
-            {#if extensionFeatures.lyricsWhisper}
+          {/if}
+        {:else}
+          <article class="lyrics-body">
+            {#if music.currentLyrics.artist || music.currentLyrics.title}
+              <p class="lyrics-body__meta">
+                {music.currentLyrics.artist ?? music.currentTrack!.artist}
+                {#if music.currentLyrics.title}
+                  · {music.currentLyrics.title}
+                {/if}
+                {#if music.currentLyrics.synced}
+                  · Synced
+                {/if}
+              </p>
+            {/if}
+            <div class="lyrics-body__actions">
               <button
                 type="button"
-                class="lyrics-fetch-btn"
-                disabled={music.lyricsFetching}
-                onclick={() => void music.generateWhisperLyrics()}
+                class="lyrics-icon-btn"
+                title="Export lyrics"
+                aria-label="Export lyrics"
+                onclick={() =>
+                  import("$lib/music/lyrics-export").then(({ exportLyrics }) =>
+                    exportLyrics(
+                      music.currentLyrics!,
+                      music.currentTrack?.title,
+                    ),
+                  )}
               >
-                {music.lyricsFetching
-                  ? "Transcribing…"
-                  : "Generate synced lyrics with Whisper"}
+                <MdiIcon name="export" size={18} />
               </button>
-            {/if}
-          {:else}
-            <article class="lyrics-body">
-              {#if music.currentLyrics.artist || music.currentLyrics.title}
-                <p class="lyrics-body__meta">
-                  {music.currentLyrics.artist ?? music.currentTrack!.artist}
-                  {#if music.currentLyrics.title}
-                    · {music.currentLyrics.title}
-                  {/if}
-                  {#if music.currentLyrics.synced}
-                    · Synced
-                  {/if}
-                </p>
-              {/if}
-              <div class="lyrics-body__actions">
-                <button
-                  type="button"
-                  class="lyrics-icon-btn"
-                  title="Export lyrics"
-                  aria-label="Export lyrics"
-                  onclick={() =>
-                    import("$lib/music/lyrics-export").then(
-                      ({ exportLyrics }) =>
-                        exportLyrics(
-                          music.currentLyrics!,
-                          music.currentTrack?.title,
-                        ),
-                    )}
-                >
-                  <MdiIcon name="export" size={18} />
-                </button>
-                <button
-                  type="button"
-                  class="lyrics-icon-btn"
-                  title="Refetch lyrics"
-                  aria-label="Refetch lyrics"
-                  disabled={music.lyricsFetching}
-                  onclick={() => void music.fetchCurrentLyrics()}
-                >
-                  <MdiIcon name="refresh" size={18} />
-                </button>
-              </div>
-              <LyricsDisplay
-                lyrics={music.currentLyrics}
-                currentTimeMs={music.currentTime * 1000}
-                playing={music.playing}
-                onSeek={(startMs) => music.seekToLyricLine(startMs)}
-              />
-            </article>
-          {/if}
-        </Section>
-      {:else if !showSearchSection}
-        <EmptyState
-          title="Find songs by lyric"
-          message="Search above with words you remember, or start playing a track to view synced lyrics."
-          icon="lyrics"
-        />
-      {/if}
-    </div>
-  {/if}
-</AppShell>
+              <button
+                type="button"
+                class="lyrics-icon-btn"
+                title="Refetch lyrics"
+                aria-label="Refetch lyrics"
+                disabled={music.lyricsFetching}
+                onclick={() => void music.fetchCurrentLyrics()}
+              >
+                <MdiIcon name="refresh" size={18} />
+              </button>
+            </div>
+            <LyricsDisplay
+              lyrics={music.currentLyrics}
+              currentTimeMs={music.currentTime * 1000}
+              playing={music.playing}
+              onSeek={(startMs) => music.seekToLyricLine(startMs)}
+            />
+          </article>
+        {/if}
+      </Section>
+    {:else if !showSearchSection}
+      <EmptyState
+        title="Find songs by lyric"
+        message="Search above with words you remember, or start playing a track to view synced lyrics."
+        icon="lyrics"
+      />
+    {/if}
+  </div>
+{/if}
 
 <style>
   .lyrics-page {

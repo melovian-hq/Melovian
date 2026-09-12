@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import CollectionHero from "$lib/components/music/CollectionHero.svelte";
   import ListenHistoryList from "$lib/components/music/ListenHistoryList.svelte";
@@ -269,114 +268,112 @@
   ]);
 </script>
 
-<AppShell compactTop>
-  <div class="history-page" role="group" oncontextmenu={onPageContextMenu}>
-    <MusicBreadcrumbs items={[{ label: "History" }]} />
+<div class="history-page" role="group" oncontextmenu={onPageContextMenu}>
+  <MusicBreadcrumbs items={[{ label: "History" }]} />
 
-    <CollectionHero
-      typeLabel="Collection"
-      title="History"
-      meta={heroMeta}
-      tone="history"
-      icon="history"
-      coverSrc={heroCoverSrc}
-      coverSeed={events[0]?.trackId ?? "history"}
-      playDisabled={events.length === 0}
-      onplay={playAll}
-      onshuffle={shuffleAll}
-      onplaynext={() => music.playTracksNext(playTracks)}
-      onqueue={() => music.addTracksToQueue(playTracks)}
-    />
+  <CollectionHero
+    typeLabel="Collection"
+    title="History"
+    meta={heroMeta}
+    tone="history"
+    icon="history"
+    coverSrc={heroCoverSrc}
+    coverSeed={events[0]?.trackId ?? "history"}
+    playDisabled={events.length === 0}
+    onplay={playAll}
+    onshuffle={shuffleAll}
+    onplaynext={() => music.playTracksNext(playTracks)}
+    onqueue={() => music.addTracksToQueue(playTracks)}
+  />
 
-    <div class="history-toolbar">
-      <div
-        class="history-toolbar__periods"
-        role="tablist"
-        aria-label="Time period"
-      >
-        {#each Object.entries(STATS_PERIOD_LABELS) as [id, label] (id)}
-          <button
-            type="button"
-            role="tab"
-            class="history-toolbar__period"
-            class:history-toolbar__period--active={period === id}
-            aria-selected={period === id}
-            onclick={() => {
-              period = id as StatsPeriod;
-            }}
-          >
-            {label}
-          </button>
-        {/each}
-        {#each listenYears as year (year)}
-          <button
-            type="button"
-            role="tab"
-            class="history-toolbar__period history-toolbar__period--year"
-            class:history-toolbar__period--active={period ===
-              statsPeriodForYear(year)}
-            aria-selected={period === statsPeriodForYear(year)}
-            onclick={() => {
-              period = statsPeriodForYear(year);
-            }}
-          >
-            {year}
-          </button>
-        {/each}
-      </div>
-
-      <LocalSearchBox
-        bind:value={searchQuery}
-        placeholder="Search history"
-        resultCount={events.length}
-      />
+  <div class="history-toolbar">
+    <div
+      class="history-toolbar__periods"
+      role="tablist"
+      aria-label="Time period"
+    >
+      {#each Object.entries(STATS_PERIOD_LABELS) as [id, label] (id)}
+        <button
+          type="button"
+          role="tab"
+          class="history-toolbar__period"
+          class:history-toolbar__period--active={period === id}
+          aria-selected={period === id}
+          onclick={() => {
+            period = id as StatsPeriod;
+          }}
+        >
+          {label}
+        </button>
+      {/each}
+      {#each listenYears as year (year)}
+        <button
+          type="button"
+          role="tab"
+          class="history-toolbar__period history-toolbar__period--year"
+          class:history-toolbar__period--active={period ===
+            statsPeriodForYear(year)}
+          aria-selected={period === statsPeriodForYear(year)}
+          onclick={() => {
+            period = statsPeriodForYear(year);
+          }}
+        >
+          {year}
+        </button>
+      {/each}
     </div>
 
-    {#if unavailable}
-      <LibraryUnavailable />
-    {:else if error}
-      <EmptyState
-        title="Could not load history"
-        message={error}
-        icon="alertCircle"
-      />
-    {:else if showInitialLoading}
-      <div
-        class="history-page__loading"
-        role="status"
-        aria-busy="true"
-        aria-label="Loading history"
-      >
-        {#each Array.from({ length: 8 }) as _, i (i)}
-          <Skeleton variant="row" />
-        {/each}
-      </div>
-    {:else if events.length === 0}
-      <EmptyState
-        title={hasSearch ? "No matches" : "No listening history yet"}
-        message={hasSearch
-          ? "Try a different search or time range."
-          : "Play something and it will show up here."}
-        icon="history"
-      />
-    {:else}
-      <div class="history-page__list">
-        <div class="history-page__head">
-          <span>Title</span>
-          <span>Album</span>
-          <span>Played</span>
-          <span>Time</span>
-        </div>
-        <ListenHistoryList {events} onplay={playAt} onNearEnd={loadMore} />
-        {#if loadingMore}
-          <div class="history-page__more">
-            <Spinner />
-          </div>
-        {/if}
-      </div>
-    {/if}
+    <LocalSearchBox
+      bind:value={searchQuery}
+      placeholder="Search history"
+      resultCount={events.length}
+    />
   </div>
-</AppShell>
+
+  {#if unavailable}
+    <LibraryUnavailable />
+  {:else if error}
+    <EmptyState
+      title="Could not load history"
+      message={error}
+      icon="alertCircle"
+    />
+  {:else if showInitialLoading}
+    <div
+      class="history-page__loading"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading history"
+    >
+      {#each Array.from({ length: 8 }) as _, i (i)}
+        <Skeleton variant="row" />
+      {/each}
+    </div>
+  {:else if events.length === 0}
+    <EmptyState
+      title={hasSearch ? "No matches" : "No listening history yet"}
+      message={hasSearch
+        ? "Try a different search or time range."
+        : "Play something and it will show up here."}
+      icon="history"
+    />
+  {:else}
+    <div class="history-page__list">
+      <div class="history-page__head">
+        <span>Title</span>
+        <span>Album</span>
+        <span>Played</span>
+        <span>Time</span>
+      </div>
+      <ListenHistoryList {events} onplay={playAt} onNearEnd={loadMore} />
+      {#if loadingMore}
+        <div class="history-page__more">
+          <Spinner />
+        </div>
+      {/if}
+    </div>
+  {/if}
+</div>
 
 {#if pageMenu}
   <ContextMenu

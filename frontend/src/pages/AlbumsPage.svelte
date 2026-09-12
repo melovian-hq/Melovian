@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
@@ -105,84 +104,82 @@
   });
 </script>
 
-<AppShell compactTop>
-  <div class="albums-page">
-    <div class="albums-page__intro">
-      <PageHeader title="Albums" subtitle="Browse albums from your server." />
+<div class="albums-page">
+  <div class="albums-page__intro">
+    <PageHeader title="Albums" subtitle="Browse albums from your server." />
 
-      <div class="albums-page__sort" role="tablist" aria-label="Album sort">
-        {#each SORT_OPTIONS as option (option.id)}
-          <button
-            type="button"
-            role="tab"
-            class="albums-page__sort-btn"
-            class:albums-page__sort-btn--active={sort === option.id}
-            aria-selected={sort === option.id}
-            disabled={unavailable}
-            onclick={() => {
-              sort = option.id;
-            }}
-          >
-            {option.label}
-          </button>
-        {/each}
-      </div>
+    <div class="albums-page__sort" role="tablist" aria-label="Album sort">
+      {#each SORT_OPTIONS as option (option.id)}
+        <button
+          type="button"
+          role="tab"
+          class="albums-page__sort-btn"
+          class:albums-page__sort-btn--active={sort === option.id}
+          aria-selected={sort === option.id}
+          disabled={unavailable}
+          onclick={() => {
+            sort = option.id;
+          }}
+        >
+          {option.label}
+        </button>
+      {/each}
     </div>
-
-    <LocalSearchBox
-      bind:value={searchQuery}
-      placeholder="Search albums"
-      disabled={unavailable || (loading && albums.length === 0)}
-      resultCount={filteredAlbums.length}
-      totalCount={visibleAlbums.length}
-    />
-
-    {#if showInitialLoading}
-      <div
-        class="albums-page__loading"
-        role="status"
-        aria-busy="true"
-        aria-label="Loading albums"
-      >
-        {#each Array.from({ length: 12 }) as _, i (i)}
-          <Skeleton variant="card" />
-        {/each}
-      </div>
-    {:else if unavailable}
-      <LibraryUnavailable />
-    {:else if visibleAlbums.length === 0}
-      <EmptyState
-        title="No albums"
-        message="Your server did not return any albums for this view."
-        icon="album"
-      />
-    {:else if filteredAlbums.length === 0}
-      <EmptyState
-        title="No matches"
-        message={`No albums match "${searchQuery.trim()}".`}
-        icon="search"
-      />
-    {:else}
-      <AlbumGrid
-        albums={filteredAlbums}
-        size="md"
-        lazyThreshold={18}
-        onNearEnd={() => void loadMoreAlbums()}
-      />
-      {#if !hasSearch && hasMore}
-        <div class="albums-page__more">
-          {#if loadingMore}
-            <Spinner />
-          {:else}
-            <Button variant="surface" onclick={() => void loadMoreAlbums()}>
-              Load more albums
-            </Button>
-          {/if}
-        </div>
-      {/if}
-    {/if}
   </div>
-</AppShell>
+
+  <LocalSearchBox
+    bind:value={searchQuery}
+    placeholder="Search albums"
+    disabled={unavailable || (loading && albums.length === 0)}
+    resultCount={filteredAlbums.length}
+    totalCount={visibleAlbums.length}
+  />
+
+  {#if showInitialLoading}
+    <div
+      class="albums-page__loading"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading albums"
+    >
+      {#each Array.from({ length: 12 }) as _, i (i)}
+        <Skeleton variant="card" />
+      {/each}
+    </div>
+  {:else if unavailable}
+    <LibraryUnavailable />
+  {:else if visibleAlbums.length === 0}
+    <EmptyState
+      title="No albums"
+      message="Your server did not return any albums for this view."
+      icon="album"
+    />
+  {:else if filteredAlbums.length === 0}
+    <EmptyState
+      title="No matches"
+      message={`No albums match "${searchQuery.trim()}".`}
+      icon="search"
+    />
+  {:else}
+    <AlbumGrid
+      albums={filteredAlbums}
+      size="md"
+      lazyThreshold={18}
+      onNearEnd={() => void loadMoreAlbums()}
+    />
+    {#if !hasSearch && hasMore}
+      <div class="albums-page__more">
+        {#if loadingMore}
+          <Spinner />
+        {:else}
+          <Button variant="surface" onclick={() => void loadMoreAlbums()}>
+            Load more albums
+          </Button>
+        {/if}
+      </div>
+    {/if}
+  {/if}
+</div>
 
 <style>
   .albums-page {

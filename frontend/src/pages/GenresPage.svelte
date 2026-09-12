@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
@@ -72,97 +71,94 @@
   }
 </script>
 
-<AppShell compactTop>
-  <div class="genres-page">
-    <PageHeader title="Genres" subtitle="Browse and play by genre." />
+<div class="genres-page">
+  <PageHeader title="Genres" subtitle="Browse and play by genre." />
 
-    <LocalSearchBox
-      bind:value={searchQuery}
-      placeholder="Search genres"
-      disabled={unavailable || (loading && music.genres.length === 0)}
-      resultCount={filteredGenres.length}
-      totalCount={music.genres.length}
+  <LocalSearchBox
+    bind:value={searchQuery}
+    placeholder="Search genres"
+    disabled={unavailable || (loading && music.genres.length === 0)}
+    resultCount={filteredGenres.length}
+    totalCount={music.genres.length}
+  />
+
+  {#if showInitialLoading}
+    <div class="genre-grid">
+      {#each Array.from({ length: 12 }) as _, i (i)}
+        <Skeleton class="genre-skeleton" />
+      {/each}
+    </div>
+  {:else if unavailable}
+    <LibraryUnavailable />
+  {:else if music.genres.length === 0}
+    <EmptyState
+      title="No genres"
+      message="Your server did not report any genres."
+      icon="tag"
     />
-
-    {#if showInitialLoading}
-      <div class="genre-grid">
-        {#each Array.from({ length: 12 }) as _, i (i)}
-          <Skeleton class="genre-skeleton" />
-        {/each}
-      </div>
-    {:else if unavailable}
-      <LibraryUnavailable />
-    {:else if music.genres.length === 0}
-      <EmptyState
-        title="No genres"
-        message="Your server did not report any genres."
-        icon="tag"
-      />
-    {:else if filteredGenres.length === 0}
-      <EmptyState
-        title="No matches"
-        message={`No genres match "${searchQuery.trim()}".`}
-        icon="search"
-      />
-    {:else}
-      <div class="genre-grid">
-        {#each visibleGenres as genre, index (stableItemKey(genre.name, index, "genre"))}
-          <div
-            class="genre-card"
-            role="group"
-            oncontextmenu={(event) => onGenreContextMenu(event, genre.name)}
+  {:else if filteredGenres.length === 0}
+    <EmptyState
+      title="No matches"
+      message={`No genres match "${searchQuery.trim()}".`}
+      icon="search"
+    />
+  {:else}
+    <div class="genre-grid">
+      {#each visibleGenres as genre, index (stableItemKey(genre.name, index, "genre"))}
+        <div
+          class="genre-card"
+          role="group"
+          oncontextmenu={(event) => onGenreContextMenu(event, genre.name)}
+        >
+          <Link
+            href="/music/genre/{encodeURIComponent(genre.name)}"
+            class="genre-card__main"
           >
-            <Link
-              href="/music/genre/{encodeURIComponent(genre.name)}"
-              class="genre-card__main"
+            <GenreArt name={genre.name} />
+            <span class="genre-card__name" title={genre.name}>{genre.name}</span
             >
-              <GenreArt name={genre.name} />
-              <span class="genre-card__name" title={genre.name}
-                >{genre.name}</span
+            {#if genre.songCount}
+              <span class="genre-card__count"
+                >{genre.songCount.toLocaleString()}</span
               >
-              {#if genre.songCount}
-                <span class="genre-card__count"
-                  >{genre.songCount.toLocaleString()}</span
-                >
-              {/if}
-            </Link>
-            <button
-              type="button"
-              class="genre-card__queue"
-              aria-label={`Add ${genre.name} to queue`}
-              onclick={() => void music.addGenreToQueue(genre.name)}
-            >
-              <MdiIcon name="queueAdd" size={16} />
-            </button>
-            <button
-              type="button"
-              class="genre-card__play"
-              aria-label={`Play ${genre.name}`}
-              onclick={() => void music.playGenre(genre.name)}
-            >
-              <MdiIcon name="play" size={18} />
-            </button>
-          </div>
-        {/each}
-      </div>
-      {#if hasMoreGenres}
-        <div class="genres-page__more">
-          <Button
-            variant="ghost"
-            onclick={() => {
-              visibleCount = Math.min(
-                visibleCount + GENRE_BATCH,
-                filteredGenres.length,
-              );
-            }}
+            {/if}
+          </Link>
+          <button
+            type="button"
+            class="genre-card__queue"
+            aria-label={`Add ${genre.name} to queue`}
+            onclick={() => void music.addGenreToQueue(genre.name)}
           >
-            Show more ({filteredGenres.length - visibleCount} remaining)
-          </Button>
+            <MdiIcon name="queueAdd" size={16} />
+          </button>
+          <button
+            type="button"
+            class="genre-card__play"
+            aria-label={`Play ${genre.name}`}
+            onclick={() => void music.playGenre(genre.name)}
+          >
+            <MdiIcon name="play" size={18} />
+          </button>
         </div>
-      {/if}
+      {/each}
+    </div>
+    {#if hasMoreGenres}
+      <div class="genres-page__more">
+        <Button
+          variant="ghost"
+          onclick={() => {
+            visibleCount = Math.min(
+              visibleCount + GENRE_BATCH,
+              filteredGenres.length,
+            );
+          }}
+        >
+          Show more ({filteredGenres.length - visibleCount} remaining)
+        </Button>
+      </div>
     {/if}
-  </div>
-</AppShell>
+  {/if}
+</div>
 
 {#if genreMenu}
   <GenreContextMenu

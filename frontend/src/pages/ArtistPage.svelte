@@ -2,7 +2,6 @@
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import CoverArt from "$lib/components/ui/CoverArt.svelte";
   import AmbientCoverBackdrop from "$lib/components/ui/AmbientCoverBackdrop.svelte";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import AlbumGrid from "$lib/components/music/AlbumGrid.svelte";
   import ArtistCard from "$lib/components/music/ArtistCard.svelte";
   import ArtistContextMenu from "$lib/components/music/ArtistContextMenu.svelte";
@@ -249,197 +248,190 @@
   />
 {/if}
 
-<AppShell fill>
-  <div class="artist-page">
-    {#if data}
-      <div class="artist-page__ambient" aria-hidden="true">
-        <AmbientCoverBackdrop
-          src={portraitUrl}
-          seed={artistCoverSeed(data.artist)}
-          paletteKey={artistCoverPaletteKey(data.artist)}
-          opacity={0.72}
-          blur={56}
-          saturate={1.55}
-          scale={1.45}
-        />
-        <div class="artist-page__wash"></div>
+<div class="artist-page">
+  {#if data}
+    <div class="artist-page__ambient" aria-hidden="true">
+      <AmbientCoverBackdrop
+        src={portraitUrl}
+        seed={artistCoverSeed(data.artist)}
+        paletteKey={artistCoverPaletteKey(data.artist)}
+        opacity={0.72}
+        blur={56}
+        saturate={1.55}
+        scale={1.45}
+      />
+      <div class="artist-page__wash"></div>
+    </div>
+  {/if}
+
+  <div class="artist-page__body">
+    <MusicBreadcrumbs items={breadcrumbItems} />
+
+    {#if loading}
+      <div
+        class="artist-page__skeleton"
+        role="status"
+        aria-busy="true"
+        aria-label="Loading artist"
+      >
+        <Skeleton variant="hero" class="artist-page__skeleton-hero" />
+        <div class="artist-page__skeleton-cards">
+          {#each Array.from({ length: 8 }) as _, i (i)}
+            <Skeleton variant="card" />
+          {/each}
+        </div>
       </div>
-    {/if}
+    {:else if error || !data}
+      <EmptyState
+        title="Could not load artist"
+        message={error ?? "Artist not found"}
+        icon="alertCircle"
+      >
+        {#snippet actions()}
+          <Link href="/music" class="artist-page__back">Back to music</Link>
+        {/snippet}
+      </EmptyState>
+    {:else}
+      <header
+        class="artist-hero"
+        role="group"
+        oncontextmenu={onArtistHeroContextMenu}
+      >
+        <div class="artist-hero__layout">
+          <div
+            class="artist-hero__portrait-wrap"
+            class:artist-hero__portrait-wrap--photo={hasArtistPhoto}
+          >
+            <CoverArt
+              src={portraitUrl}
+              seed={artistCoverSeed(data.artist)}
+              paletteKey={artistCoverPaletteKey(data.artist)}
+              alt={data.artist.name}
+              fetchpriority="high"
+              loading="eager"
+            />
+          </div>
 
-    <div class="artist-page__body">
-      <MusicBreadcrumbs items={breadcrumbItems} />
-
-      {#if loading}
-        <div
-          class="artist-page__skeleton"
-          role="status"
-          aria-busy="true"
-          aria-label="Loading artist"
-        >
-          <Skeleton variant="hero" class="artist-page__skeleton-hero" />
-          <div class="artist-page__skeleton-cards">
-            {#each Array.from({ length: 8 }) as _, i (i)}
-              <Skeleton variant="card" />
-            {/each}
+          <div class="artist-hero__info">
+            <p class="artist-hero__type">Artist</p>
+            <div class="artist-hero__title-row">
+              <h1>{data.artist.name}</h1>
+              <StarButton kind="artist" artist={data.artist} size={22} onDark />
+            </div>
+            <p class="artist-hero__meta">{data.albums.length} albums</p>
+            {#if data.albums.length > 0}
+              <div class="artist-hero__actions">
+                <button
+                  type="button"
+                  class="artist-hero__play"
+                  disabled={playingAll}
+                  onclick={() => void playAllAlbums(false)}
+                >
+                  <MdiIcon name="play" size={18} />
+                  {playingAll ? "Loading..." : "Play all"}
+                </button>
+                <button
+                  type="button"
+                  class="artist-hero__shuffle"
+                  disabled={playingAll}
+                  onclick={() => void playAllAlbums(true)}
+                >
+                  <MdiIcon name="shuffle" size={16} />
+                  Shuffle
+                </button>
+              </div>
+            {/if}
           </div>
         </div>
-      {:else if error || !data}
-        <EmptyState
-          title="Could not load artist"
-          message={error ?? "Artist not found"}
-          icon="alertCircle"
-        >
-          {#snippet actions()}
-            <Link href="/music" class="artist-page__back">Back to music</Link>
-          {/snippet}
-        </EmptyState>
-      {:else}
-        <header
-          class="artist-hero"
-          role="group"
-          oncontextmenu={onArtistHeroContextMenu}
-        >
-          <div class="artist-hero__layout">
-            <div
-              class="artist-hero__portrait-wrap"
-              class:artist-hero__portrait-wrap--photo={hasArtistPhoto}
-            >
-              <CoverArt
-                src={portraitUrl}
-                seed={artistCoverSeed(data.artist)}
-                paletteKey={artistCoverPaletteKey(data.artist)}
-                alt={data.artist.name}
-                fetchpriority="high"
-                loading="eager"
-              />
-            </div>
 
-            <div class="artist-hero__info">
-              <p class="artist-hero__type">Artist</p>
-              <div class="artist-hero__title-row">
-                <h1>{data.artist.name}</h1>
-                <StarButton
-                  kind="artist"
-                  artist={data.artist}
-                  size={22}
-                  onDark
-                />
-              </div>
-              <p class="artist-hero__meta">{data.albums.length} albums</p>
-              {#if data.albums.length > 0}
-                <div class="artist-hero__actions">
-                  <button
-                    type="button"
-                    class="artist-hero__play"
-                    disabled={playingAll}
-                    onclick={() => void playAllAlbums(false)}
-                  >
-                    <MdiIcon name="play" size={18} />
-                    {playingAll ? "Loading..." : "Play all"}
-                  </button>
-                  <button
-                    type="button"
-                    class="artist-hero__shuffle"
-                    disabled={playingAll}
-                    onclick={() => void playAllAlbums(true)}
-                  >
-                    <MdiIcon name="shuffle" size={16} />
-                    Shuffle
-                  </button>
-                </div>
+        {#if biography}
+          <div class="artist-hero__bio">
+            <p class="artist-hero__bio-text">{visibleBio}</p>
+            <div class="artist-hero__bio-footer">
+              {#if showBioToggle}
+                <button
+                  type="button"
+                  class="artist-hero__bio-toggle"
+                  onclick={() => (bioExpanded = !bioExpanded)}
+                >
+                  {bioExpanded ? "Show less" : "Read more"}
+                </button>
+              {/if}
+              {#if info?.lastFmUrl}
+                <a
+                  href={info.lastFmUrl}
+                  class="artist-hero__bio-link"
+                  target="_blank"
+                  rel="noreferrer"
+                >
+                  View on Last.fm
+                </a>
               {/if}
             </div>
           </div>
-
-          {#if biography}
-            <div class="artist-hero__bio">
-              <p class="artist-hero__bio-text">{visibleBio}</p>
-              <div class="artist-hero__bio-footer">
-                {#if showBioToggle}
-                  <button
-                    type="button"
-                    class="artist-hero__bio-toggle"
-                    onclick={() => (bioExpanded = !bioExpanded)}
-                  >
-                    {bioExpanded ? "Show less" : "Read more"}
-                  </button>
-                {/if}
-                {#if info?.lastFmUrl}
-                  <a
-                    href={info.lastFmUrl}
-                    class="artist-hero__bio-link"
-                    target="_blank"
-                    rel="noreferrer"
-                  >
-                    View on Last.fm
-                  </a>
-                {/if}
-              </div>
-            </div>
-          {/if}
-        </header>
-
-        {#if data.albums.length > 0}
-          <section class="artist-section">
-            <h2 class="artist-page__heading">Albums</h2>
-            <AlbumGrid albums={data.albums} size="lg" />
-          </section>
-        {:else}
-          <EmptyState
-            title="No albums"
-            message="No albums were returned for this artist."
-            icon="album"
-          />
         {/if}
+      </header>
 
-        {#if infoLoading}
-          <section class="artist-section">
-            <h2 class="artist-page__heading">Similar artists</h2>
-            <div
-              class="similar-grid similar-grid--loading"
-              role="status"
-              aria-busy="true"
-              aria-label="Loading similar artists"
-            >
-              {#each Array.from({ length: 6 }) as _, i (i)}
-                <Skeleton variant="avatar" class="artist-similar-skeleton" />
-              {/each}
-            </div>
-          </section>
-        {:else if info && info.similarArtists.length > 0}
-          <section class="artist-section">
-            <h2 class="artist-page__heading">Similar artists</h2>
-            <div class="similar-grid">
-              {#each info.similarArtists as similar, index (stableItemKey(similar.id, index, similar.name))}
-                {#if similar.id}
-                  <ArtistCard
-                    artist={{
-                      id: similar.id,
-                      name: similar.name,
-                      coverArt: similar.coverArt,
-                    }}
-                    size="sm"
-                  />
-                {:else}
-                  <div class="similar-card similar-card--static">
-                    <div class="similar-card__art">
-                      <img
-                        src={coverArtFallbackUrl(similar.name, similar.name)}
-                        alt=""
-                        class="similar-card__art--pixelated"
-                      />
-                    </div>
-                    <span class="similar-card__name">{similar.name}</span>
-                  </div>
-                {/if}
-              {/each}
-            </div>
-          </section>
-        {/if}
+      {#if data.albums.length > 0}
+        <section class="artist-section">
+          <h2 class="artist-page__heading">Albums</h2>
+          <AlbumGrid albums={data.albums} size="lg" />
+        </section>
+      {:else}
+        <EmptyState
+          title="No albums"
+          message="No albums were returned for this artist."
+          icon="album"
+        />
       {/if}
-    </div>
+
+      {#if infoLoading}
+        <section class="artist-section">
+          <h2 class="artist-page__heading">Similar artists</h2>
+          <div
+            class="similar-grid similar-grid--loading"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading similar artists"
+          >
+            {#each Array.from({ length: 6 }) as _, i (i)}
+              <Skeleton variant="avatar" class="artist-similar-skeleton" />
+            {/each}
+          </div>
+        </section>
+      {:else if info && info.similarArtists.length > 0}
+        <section class="artist-section">
+          <h2 class="artist-page__heading">Similar artists</h2>
+          <div class="similar-grid">
+            {#each info.similarArtists as similar, index (stableItemKey(similar.id, index, similar.name))}
+              {#if similar.id}
+                <ArtistCard
+                  artist={{
+                    id: similar.id,
+                    name: similar.name,
+                    coverArt: similar.coverArt,
+                  }}
+                  size="sm"
+                />
+              {:else}
+                <div class="similar-card similar-card--static">
+                  <div class="similar-card__art">
+                    <img
+                      src={coverArtFallbackUrl(similar.name, similar.name)}
+                      alt=""
+                      class="similar-card__art--pixelated"
+                    />
+                  </div>
+                  <span class="similar-card__name">{similar.name}</span>
+                </div>
+              {/if}
+            {/each}
+          </div>
+        </section>
+      {/if}
+    {/if}
   </div>
-</AppShell>
+</div>
 
 <style>
   .artist-page {

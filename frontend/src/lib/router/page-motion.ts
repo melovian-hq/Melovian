@@ -26,7 +26,8 @@ function motionScale(): number {
 
 /**
  * Page enter. Fade only.
- * Pages mount AppShell with the sidebar, so a fly/slide moves the sidebar too.
+ * The app shell persists above the outlet, so a fly/slide would move the
+ * content while the sidebar stays put. Fade keeps the swap clean.
  */
 export function pageInFly(): FadeParams {
   const m = motionScale();
@@ -100,11 +101,27 @@ export function routeViewKey(
   return `${path}:${keys.map((k) => `${k}=${params[k]}`).join(",")}`;
 }
 
-/** Pin a leaving page so stacked intros and outros do not grow layout height. */
+/**
+ * Pin a leaving page so stacked intros and outros do not grow layout height.
+ * The shell scroll container is shared across routes, so offset by its
+ * scrollTop. The outgoing page then stays where the user saw it while the
+ * container resets to the top for the incoming page.
+ */
 export function pinOutgoingPage(node: HTMLElement) {
+  const scroller = node.closest(".app-shell__content");
+  const scrollTop = scroller instanceof HTMLElement ? scroller.scrollTop : 0;
   node.style.position = "absolute";
-  node.style.top = "0";
+  node.style.top = `${-scrollTop}px`;
   node.style.left = "0";
   node.style.right = "0";
   node.style.width = "100%";
+}
+
+/** Reset the shared shell scroll container for the incoming page. */
+export function resetPageScroll(node: HTMLElement) {
+  const scroller = node.closest(".app-shell__content");
+  if (scroller instanceof HTMLElement) {
+    scroller.scrollTop = 0;
+    scroller.scrollLeft = 0;
+  }
 }

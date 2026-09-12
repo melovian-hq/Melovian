@@ -6,21 +6,25 @@
   import { music } from "$lib/config/music.svelte";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { decorateTrack } from "$lib/extensions/registry";
+  import type { RouteContentLayout } from "$lib/router/router.svelte";
   import { layout } from "./layout.svelte";
 
   interface Props {
     children?: import("svelte").Snippet;
-    actions?: import("svelte").Snippet;
-    compactTop?: boolean;
-    fill?: boolean;
+    /** Drop the chrome (sidebar, topbar, bottom nav) for bare routes. */
+    bare?: boolean;
+    /** Content area layout for the current route. */
+    content?: RouteContentLayout;
   }
 
-  let { children, actions, compactTop = false, fill = false }: Props = $props();
+  let { children, bare = false, content = "default" }: Props = $props();
 
   const hideChromeForTv = $derived(
     layout.tvMode && Boolean(music.currentTrack),
   );
-  const showBottomNav = $derived(layout.isMobileViewport && !hideChromeForTv);
+  const showBottomNav = $derived(
+    !bare && layout.isMobileViewport && !hideChromeForTv,
+  );
   const sidebarCollapsed = $derived(
     layout.isMobileViewport ? false : layout.sidebarCollapsed,
   );
@@ -43,32 +47,38 @@
 
 <div
   class="app-shell"
+  class:app-shell--bare={bare}
   class:app-shell--collapsed={layout.sidebarCollapsed &&
     !layout.isMobileViewport}
   class:app-shell--open={layout.sidebarOpen}
 >
-  {#if layout.sidebarOpen}
-    <button
-      type="button"
-      class="app-shell__backdrop"
-      onclick={() => layout.closeSidebar()}
-      aria-label="Close navigation"
-    ></button>
+  {#if !bare}
+    {#if layout.sidebarOpen}
+      <button
+        type="button"
+        class="app-shell__backdrop"
+        onclick={() => layout.closeSidebar()}
+        aria-label="Close navigation"
+      ></button>
+    {/if}
+
+    <aside class="app-shell__sidebar jb-no-drag">
+      <Sidebar collapsed={sidebarCollapsed} />
+    </aside>
   {/if}
 
-  <aside class="app-shell__sidebar jb-no-drag">
-    <Sidebar collapsed={sidebarCollapsed} />
-  </aside>
-
   <div class="app-shell__main">
-    {#if !hideChromeForTv}
-      <TopBar {actions} />
+    {#if !bare && !hideChromeForTv}
+      <TopBar />
     {/if}
-    <OfflineBanner />
+    {#if !bare}
+      <OfflineBanner />
+    {/if}
     <main
       class="app-shell__content"
-      class:app-shell__content--compact={compactTop}
-      class:app-shell__content--fill={fill}
+      class:app-shell__content--compact={!bare && content === "compact"}
+      class:app-shell__content--fill={!bare && content === "fill"}
+      class:app-shell__content--bare={bare}
     >
       {@render children?.()}
     </main>
@@ -164,6 +174,10 @@
     height: 100%;
   }
 
+  .app-shell__content--bare {
+    padding: 0;
+  }
+
   .app-shell__backdrop {
     display: none;
   }
@@ -224,6 +238,10 @@
       padding-right: 0;
       padding-bottom: 0;
     }
+
+    .app-shell__content--bare {
+      padding: 0;
+    }
   }
 
   @media (max-width: 480px) {
@@ -246,6 +264,10 @@
       padding-left: 0;
       padding-right: 0;
       padding-bottom: 0;
+    }
+
+    .app-shell__content--bare {
+      padding: 0;
     }
   }
 </style>

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import CollectionHero from "$lib/components/music/CollectionHero.svelte";
   import TrackVirtualList from "$lib/components/music/TrackVirtualList.svelte";
@@ -210,183 +209,172 @@
   });
 </script>
 
-<AppShell compactTop>
-  <div class="favorites-page" role="group" oncontextmenu={onPageContextMenu}>
-    <MusicBreadcrumbs items={[{ label: "Favorites" }]} />
+<div class="favorites-page" role="group" oncontextmenu={onPageContextMenu}>
+  <MusicBreadcrumbs items={[{ label: "Favorites" }]} />
 
-    <CollectionHero
-      typeLabel="Playlist"
-      title="Favorites"
-      meta={heroMeta}
-      tone="favorites"
-      icon="star"
-      coverSrc={heroCoverSrc}
-      coverSeed={favoriteSongs[0]?.id ?? "favorites"}
-      {playDisabled}
-      onplay={playCollection}
-      onshuffle={activeTab === "tracks" ? shuffleTracks : undefined}
-      onplaynext={activeTab === "tracks"
-        ? () => music.playTracksNext(filteredFavoriteSongs)
-        : undefined}
-      onqueue={activeTab === "tracks"
-        ? () => music.addTracksToQueue(filteredFavoriteSongs)
-        : undefined}
-      onselect={activeTab === "tracks"
-        ? () => trackSelection.enable()
-        : undefined}
-    />
+  <CollectionHero
+    typeLabel="Playlist"
+    title="Favorites"
+    meta={heroMeta}
+    tone="favorites"
+    icon="star"
+    coverSrc={heroCoverSrc}
+    coverSeed={favoriteSongs[0]?.id ?? "favorites"}
+    {playDisabled}
+    onplay={playCollection}
+    onshuffle={activeTab === "tracks" ? shuffleTracks : undefined}
+    onplaynext={activeTab === "tracks"
+      ? () => music.playTracksNext(filteredFavoriteSongs)
+      : undefined}
+    onqueue={activeTab === "tracks"
+      ? () => music.addTracksToQueue(filteredFavoriteSongs)
+      : undefined}
+    onselect={activeTab === "tracks"
+      ? () => trackSelection.enable()
+      : undefined}
+  />
 
-    <div class="favorites-toolbar">
-      <div
-        class="favorites-tabs"
-        role="tablist"
-        aria-label="Favorite categories"
+  <div class="favorites-toolbar">
+    <div class="favorites-tabs" role="tablist" aria-label="Favorite categories">
+      <button
+        type="button"
+        role="tab"
+        class="favorites-tabs__btn"
+        class:favorites-tabs__btn--active={activeTab === "tracks"}
+        aria-selected={activeTab === "tracks"}
+        onclick={() => (activeTab = "tracks")}
       >
-        <button
-          type="button"
-          role="tab"
-          class="favorites-tabs__btn"
-          class:favorites-tabs__btn--active={activeTab === "tracks"}
-          aria-selected={activeTab === "tracks"}
-          onclick={() => (activeTab = "tracks")}
+        Songs
+        <span class="favorites-tabs__count">{music.favoriteTracks.length}</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="favorites-tabs__btn"
+        class:favorites-tabs__btn--active={activeTab === "albums"}
+        aria-selected={activeTab === "albums"}
+        onclick={() => (activeTab = "albums")}
+      >
+        Albums
+        <span class="favorites-tabs__count">{music.favoriteAlbums.length}</span>
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="favorites-tabs__btn"
+        class:favorites-tabs__btn--active={activeTab === "artists"}
+        aria-selected={activeTab === "artists"}
+        onclick={() => (activeTab = "artists")}
+      >
+        Artists
+        <span class="favorites-tabs__count">{music.favoriteArtists.length}</span
         >
-          Songs
-          <span class="favorites-tabs__count"
-            >{music.favoriteTracks.length}</span
-          >
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="favorites-tabs__btn"
-          class:favorites-tabs__btn--active={activeTab === "albums"}
-          aria-selected={activeTab === "albums"}
-          onclick={() => (activeTab = "albums")}
-        >
-          Albums
-          <span class="favorites-tabs__count"
-            >{music.favoriteAlbums.length}</span
-          >
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="favorites-tabs__btn"
-          class:favorites-tabs__btn--active={activeTab === "artists"}
-          aria-selected={activeTab === "artists"}
-          onclick={() => (activeTab = "artists")}
-        >
-          Artists
-          <span class="favorites-tabs__count"
-            >{music.favoriteArtists.length}</span
-          >
-        </button>
-      </div>
-
-      <LocalSearchBox
-        bind:value={searchQuery}
-        placeholder="Search in Favorites"
-        disabled={loading && totalCount === 0}
-        resultCount={activeTab === "tracks"
-          ? filteredFavoriteSongs.length
-          : activeTab === "albums"
-            ? filteredFavoriteAlbums.length
-            : filteredFavoriteArtists.length}
-        totalCount={activeTab === "tracks"
-          ? music.favoriteTracks.length
-          : activeTab === "albums"
-            ? music.favoriteAlbums.length
-            : music.favoriteArtists.length}
-      />
+      </button>
     </div>
 
-    {#if showInitialLoading}
-      <div
-        class="favorites-page__loading"
-        class:favorites-page__loading--tracks={activeTab === "tracks"}
-        class:favorites-page__loading--albums={activeTab === "albums"}
-        class:favorites-page__loading--artists={activeTab === "artists"}
-        role="status"
-        aria-busy="true"
-        aria-label="Loading favorites"
-      >
-        {#if activeTab === "tracks"}
-          {#each Array.from({ length: 8 }) as _, i (i)}
-            <Skeleton variant="row" />
-          {/each}
-        {:else if activeTab === "albums"}
-          {#each Array.from({ length: 12 }) as _, i (i)}
-            <Skeleton variant="card" />
-          {/each}
-        {:else}
-          {#each Array.from({ length: 12 }) as _, i (i)}
-            <Skeleton variant="avatar" class="favorites-skeleton-avatar" />
-          {/each}
-        {/if}
-      </div>
-    {:else if unavailable}
-      <LibraryUnavailable />
-    {:else if totalCount === 0}
-      <EmptyState
-        title="No favorites yet"
-        message="Star a track, album, or artist and it shows up here."
-        icon="star"
-      >
-        {#snippet actions()}
-          <Link href="/music" class="favorites-page__back">Browse music</Link>
-        {/snippet}
-      </EmptyState>
-    {:else if activeTab === "tracks"}
-      {#if filteredFavoriteSongs.length === 0}
-        <EmptyState
-          title="No matches"
-          message={hasSearch
-            ? `No favorite tracks match "${searchQuery.trim()}".`
-            : "No favorite tracks yet."}
-          icon="search"
-        />
+    <LocalSearchBox
+      bind:value={searchQuery}
+      placeholder="Search in Favorites"
+      disabled={loading && totalCount === 0}
+      resultCount={activeTab === "tracks"
+        ? filteredFavoriteSongs.length
+        : activeTab === "albums"
+          ? filteredFavoriteAlbums.length
+          : filteredFavoriteArtists.length}
+      totalCount={activeTab === "tracks"
+        ? music.favoriteTracks.length
+        : activeTab === "albums"
+          ? music.favoriteAlbums.length
+          : music.favoriteArtists.length}
+    />
+  </div>
+
+  {#if showInitialLoading}
+    <div
+      class="favorites-page__loading"
+      class:favorites-page__loading--tracks={activeTab === "tracks"}
+      class:favorites-page__loading--albums={activeTab === "albums"}
+      class:favorites-page__loading--artists={activeTab === "artists"}
+      role="status"
+      aria-busy="true"
+      aria-label="Loading favorites"
+    >
+      {#if activeTab === "tracks"}
+        {#each Array.from({ length: 8 }) as _, i (i)}
+          <Skeleton variant="row" />
+        {/each}
+      {:else if activeTab === "albums"}
+        {#each Array.from({ length: 12 }) as _, i (i)}
+          <Skeleton variant="card" />
+        {/each}
       {:else}
-        <TrackSelectionBar allTracks={filteredFavoriteSongs} />
-        <div class="favorites-tracks">
-          <div class="favorites-tracks__head">
-            <span>#</span>
-            <span>Title</span>
-            <span></span>
-            <span>Time</span>
-          </div>
-          <TrackVirtualList
-            tracks={filteredFavoriteSongs}
-            onplay={(i) => music.playTracks(filteredFavoriteSongs, i)}
-            selectable={trackSelection.active}
-            lazyThreshold={12}
-          />
-        </div>
+        {#each Array.from({ length: 12 }) as _, i (i)}
+          <Skeleton variant="avatar" class="favorites-skeleton-avatar" />
+        {/each}
       {/if}
-    {:else if activeTab === "albums"}
-      {#if filteredFavoriteAlbums.length === 0}
-        <EmptyState
-          title="No matches"
-          message={hasSearch
-            ? `No favorite albums match "${searchQuery.trim()}".`
-            : "No favorite albums yet."}
-          icon="search"
-        />
-      {:else}
-        <AlbumGrid albums={filteredFavoriteAlbums} />
-      {/if}
-    {:else if filteredFavoriteArtists.length === 0}
+    </div>
+  {:else if unavailable}
+    <LibraryUnavailable />
+  {:else if totalCount === 0}
+    <EmptyState
+      title="No favorites yet"
+      message="Star a track, album, or artist and it shows up here."
+      icon="star"
+    >
+      {#snippet actions()}
+        <Link href="/music" class="favorites-page__back">Browse music</Link>
+      {/snippet}
+    </EmptyState>
+  {:else if activeTab === "tracks"}
+    {#if filteredFavoriteSongs.length === 0}
       <EmptyState
         title="No matches"
         message={hasSearch
-          ? `No favorite artists match "${searchQuery.trim()}".`
-          : "No favorite artists yet."}
+          ? `No favorite tracks match "${searchQuery.trim()}".`
+          : "No favorite tracks yet."}
         icon="search"
       />
     {:else}
-      <ArtistGrid artists={filteredFavoriteArtists} lazyThreshold={24} />
+      <TrackSelectionBar allTracks={filteredFavoriteSongs} />
+      <div class="favorites-tracks">
+        <div class="favorites-tracks__head">
+          <span>#</span>
+          <span>Title</span>
+          <span></span>
+          <span>Time</span>
+        </div>
+        <TrackVirtualList
+          tracks={filteredFavoriteSongs}
+          onplay={(i) => music.playTracks(filteredFavoriteSongs, i)}
+          selectable={trackSelection.active}
+          lazyThreshold={12}
+        />
+      </div>
     {/if}
-  </div>
-</AppShell>
+  {:else if activeTab === "albums"}
+    {#if filteredFavoriteAlbums.length === 0}
+      <EmptyState
+        title="No matches"
+        message={hasSearch
+          ? `No favorite albums match "${searchQuery.trim()}".`
+          : "No favorite albums yet."}
+        icon="search"
+      />
+    {:else}
+      <AlbumGrid albums={filteredFavoriteAlbums} />
+    {/if}
+  {:else if filteredFavoriteArtists.length === 0}
+    <EmptyState
+      title="No matches"
+      message={hasSearch
+        ? `No favorite artists match "${searchQuery.trim()}".`
+        : "No favorite artists yet."}
+      icon="search"
+    />
+  {:else}
+    <ArtistGrid artists={filteredFavoriteArtists} lazyThreshold={24} />
+  {/if}
+</div>
 
 {#if pageMenu}
   <ContextMenu

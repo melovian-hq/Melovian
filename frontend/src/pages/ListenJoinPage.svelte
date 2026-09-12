@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import { APP_NAME } from "$lib/brand";
   import Button from "$lib/components/ui/Button.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
@@ -56,39 +55,37 @@
   });
 </script>
 
-<AppShell>
-  <div class="listen-join">
-    {#if !auth.enabled || !auth.authenticated}
-      <EmptyState
-        title="Sign in to join"
-        message={`Listen together parties need a ${APP_NAME} account.`}
-      >
-        {#snippet actions()}
-          <Link href="/account/login" class="listen-join__link">Sign in</Link>
-        {/snippet}
-      </EmptyState>
-    {:else if joining && !error}
-      <div class="listen-join__loading">
-        <Spinner />
-        <p>Joining party…</p>
-      </div>
-    {:else if error}
-      <EmptyState title="Could not join" message={error}>
-        {#snippet actions()}
-          <Button onclick={() => void join()} disabled={joining}>
-            Try again
-          </Button>
-          <Link href="/music" class="listen-join__link">Home</Link>
-        {/snippet}
-      </EmptyState>
-    {:else}
-      <div class="listen-join__loading">
-        <Spinner />
-        <p>Opening player…</p>
-      </div>
-    {/if}
-  </div>
-</AppShell>
+<div class="listen-join">
+  {#if !auth.enabled || !auth.authenticated}
+    <EmptyState
+      title="Sign in to join"
+      message={`Listen together parties need a ${APP_NAME} account.`}
+    >
+      {#snippet actions()}
+        <Link href="/account/login" class="listen-join__link">Sign in</Link>
+      {/snippet}
+    </EmptyState>
+  {:else if joining && !error}
+    <div class="listen-join__loading">
+      <Spinner />
+      <p>Joining party…</p>
+    </div>
+  {:else if error}
+    <EmptyState title="Could not join" message={error}>
+      {#snippet actions()}
+        <Button onclick={() => void join()} disabled={joining}>
+          Try again
+        </Button>
+        <Link href="/music" class="listen-join__link">Home</Link>
+      {/snippet}
+    </EmptyState>
+  {:else}
+    <div class="listen-join__loading">
+      <Spinner />
+      <p>Opening player…</p>
+    </div>
+  {/if}
+</div>
 
 <style>
   .listen-join {

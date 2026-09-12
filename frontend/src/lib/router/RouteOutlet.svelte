@@ -9,6 +9,7 @@
     pageInFly,
     pageOutFade,
     pinOutgoingPage,
+    resetPageScroll,
     routeViewKey,
   } from "./page-motion";
 
@@ -27,11 +28,23 @@
   let coldLoading = $state(true);
   let loadError = $state<string | null>(null);
   let retryToken = $state(0);
+  let outletEl = $state<HTMLDivElement | null>(null);
 
   const viewKey = $derived(routeViewKey(shownPath, shownParams));
   const pageProps: Record<string, string> = $derived(
     routePropsFromMatch(shownPath, shownParams),
   );
+
+  // The shell scroll container is shared across routes. Reset it when a new
+  // view commits. onoutrostart already resets during crossfades, but zero
+  // duration transitions and environments without WAAPI never fire it.
+  $effect(() => {
+    void viewKey;
+    const el = outletEl;
+    if (!el) return;
+    const raf = requestAnimationFrame(() => resetPageScroll(el));
+    return () => cancelAnimationFrame(raf);
+  });
 
   function paramsEqual(
     a: Record<string, string>,
@@ -108,6 +121,7 @@
     const node = event.currentTarget;
     if (node instanceof HTMLElement) {
       pinOutgoingPage(node);
+      resetPageScroll(node);
     }
   }
 </script>
@@ -117,7 +131,7 @@
 {:else if loadError && !Page}
   <ErrorFallback error={loadError} onretry={retryLoad} />
 {:else if Page}
-  <div class="route-outlet">
+  <div class="route-outlet" bind:this={outletEl}>
     {#key viewKey}
       <div
         class="route-page"

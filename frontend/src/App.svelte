@@ -18,6 +18,7 @@
   import CompatBanner from "$lib/components/ui/CompatBanner.svelte";
   import RouteOutlet from "$lib/router/RouteOutlet.svelte";
   import RouteBoundary from "$lib/router/RouteBoundary.svelte";
+  import AppShell from "$lib/components/layout/AppShell.svelte";
   import { getCompatState } from "$lib/compat";
   import {
     bindAndroidMediaActions,
@@ -176,14 +177,19 @@
     class:app-root--mobile-nav={showMobileNav}
     class:app-root--now-playing-mobile={nowPlayingMobile}
   >
-    <RouteBoundary>
-      <RouteOutlet
-        load={match.route.load}
-        component={match.route.component}
-        path={match.route.path}
-        params={match.match.params}
-      />
-    </RouteBoundary>
+    <AppShell
+      bare={match.route.bare ?? false}
+      content={match.route.content ?? "default"}
+    >
+      <RouteBoundary>
+        <RouteOutlet
+          load={match.route.load}
+          component={match.route.component}
+          path={match.route.path}
+          params={match.match.params}
+        />
+      </RouteBoundary>
+    </AppShell>
   </div>
 {:else}
   <div class="not-found">

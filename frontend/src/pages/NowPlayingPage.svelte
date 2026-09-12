@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import AmbientCoverBackdrop from "$lib/components/ui/AmbientCoverBackdrop.svelte";
@@ -141,122 +140,117 @@
 
 <svelte:window onkeydown={onTvShortcut} />
 
-<AppShell fill>
-  <div class="now-playing-page">
-    {#if !track}
-      <EmptyState
-        title="Nothing playing"
-        message="Start a track from your library to see artwork, queue, lyrics, and related songs here."
-        icon="disc"
+<div class="now-playing-page">
+  {#if !track}
+    <EmptyState
+      title="Nothing playing"
+      message="Start a track from your library to see artwork, queue, lyrics, and related songs here."
+      icon="disc"
+    />
+  {:else}
+    <div class="now-playing-page__ambient" aria-hidden="true">
+      <AmbientCoverBackdrop
+        src={previewImage ?? image}
+        seed={trackCoverSeed(track)}
+        paletteKey={trackCoverPaletteKey(track)}
+        opacity={0.72}
+        blur={56}
+        saturate={1.55}
+        scale={1.45}
       />
-    {:else}
-      <div class="now-playing-page__ambient" aria-hidden="true">
-        <AmbientCoverBackdrop
-          src={previewImage ?? image}
-          seed={trackCoverSeed(track)}
-          paletteKey={trackCoverPaletteKey(track)}
-          opacity={0.72}
-          blur={56}
-          saturate={1.55}
-          scale={1.45}
-        />
-        <div class="now-playing-page__wash"></div>
-      </div>
+      <div class="now-playing-page__wash"></div>
+    </div>
 
-      <div class="now-playing-page__toolbar">
-        <button
-          type="button"
-          class="now-playing-page__tool now-playing-page__tool--tv"
-          onclick={() => layout.enterTvMode()}
-          aria-label="TV mode"
-          title="TV mode"
+    <div class="now-playing-page__toolbar">
+      <button
+        type="button"
+        class="now-playing-page__tool now-playing-page__tool--tv"
+        onclick={() => layout.enterTvMode()}
+        aria-label="TV mode"
+        title="TV mode"
+      >
+        <MdiIcon name="fullscreen" size={20} />
+      </button>
+    </div>
+
+    <div class="now-playing-layout">
+      <div class="now-playing-main">
+        <NowPlayingArtHero
+          {track}
+          {liveStream}
+          {image}
+          {previewImage}
+          oncontextmenu={(event) => {
+            if (!track || liveStream) return;
+            const pos = contextMenuPositionFromEvent(event);
+            if (!pos) return;
+            trackMenu = { ...pos, track };
+          }}
         >
-          <MdiIcon name="fullscreen" size={20} />
-        </button>
+          {#snippet actions()}
+            {#if videoFeature.enabled}
+              <button
+                type="button"
+                class="now-playing-page__video-btn"
+                onclick={() => (activeTab = "video")}
+                aria-label="Watch video"
+                title="Watch video"
+              >
+                <MdiIcon name="video" size={20} />
+              </button>
+            {/if}
+          {/snippet}
+        </NowPlayingArtHero>
       </div>
 
-      <div class="now-playing-layout">
-        <div class="now-playing-main">
-          <NowPlayingArtHero
-            {track}
-            {liveStream}
-            {image}
-            {previewImage}
-            oncontextmenu={(event) => {
-              if (!track || liveStream) return;
-              const pos = contextMenuPositionFromEvent(event);
-              if (!pos) return;
-              trackMenu = { ...pos, track };
-            }}
-          >
-            {#snippet actions()}
-              {#if videoFeature.enabled}
-                <button
-                  type="button"
-                  class="now-playing-page__video-btn"
-                  onclick={() => (activeTab = "video")}
-                  aria-label="Watch video"
-                  title="Watch video"
-                >
-                  <MdiIcon name="video" size={20} />
-                </button>
-              {/if}
-            {/snippet}
-          </NowPlayingArtHero>
-        </div>
-
-        <section class="now-playing-side" aria-label="Queue and related">
+      <section class="now-playing-side" aria-label="Queue and related">
+        <div
+          class="now-playing-side__queue"
+          class:now-playing-side__queue--full={liveStream}
+        >
           <div
-            class="now-playing-side__queue"
-            class:now-playing-side__queue--full={liveStream}
+            class="now-playing-side__tabs"
+            role="tablist"
+            aria-label="Queue panels"
           >
-            <div
-              class="now-playing-side__tabs"
-              role="tablist"
-              aria-label="Queue panels"
-            >
-              {#each tabs as tab (tab.id)}
-                <button
-                  type="button"
-                  role="tab"
-                  class="now-playing-side__tab"
-                  class:now-playing-side__tab--active={activeTab === tab.id}
-                  aria-selected={activeTab === tab.id}
-                  onclick={() => (activeTab = tab.id)}
-                >
-                  {tab.label}
-                </button>
-              {/each}
-            </div>
-
-            <div class="now-playing-side__panel" role="tabpanel">
-              {#key activeTab}
-                <div
-                  class="now-playing-side__panel-body"
-                  in:fade={overlayFade()}
-                >
-                  {#if activeTab === "queue"}
-                    <NowPlayingQueueTab
-                      ontrackmenu={(menu) => {
-                        trackMenu = menu;
-                      }}
-                    />
-                  {:else if activeTab === "lyrics"}
-                    <NowPlayingLyricsTab />
-                  {:else if activeTab === "related"}
-                    <NowPlayingRelatedTab {relatedTracks} {relatedLoading} />
-                  {:else if activeTab === "video"}
-                    <VideoWatchPanel {track} embedded />
-                  {/if}
-                </div>
-              {/key}
-            </div>
+            {#each tabs as tab (tab.id)}
+              <button
+                type="button"
+                role="tab"
+                class="now-playing-side__tab"
+                class:now-playing-side__tab--active={activeTab === tab.id}
+                aria-selected={activeTab === tab.id}
+                onclick={() => (activeTab = tab.id)}
+              >
+                {tab.label}
+              </button>
+            {/each}
           </div>
-        </section>
-      </div>
-    {/if}
-  </div>
-</AppShell>
+
+          <div class="now-playing-side__panel" role="tabpanel">
+            {#key activeTab}
+              <div class="now-playing-side__panel-body" in:fade={overlayFade()}>
+                {#if activeTab === "queue"}
+                  <NowPlayingQueueTab
+                    ontrackmenu={(menu) => {
+                      trackMenu = menu;
+                    }}
+                  />
+                {:else if activeTab === "lyrics"}
+                  <NowPlayingLyricsTab />
+                {:else if activeTab === "related"}
+                  <NowPlayingRelatedTab {relatedTracks} {relatedLoading} />
+                {:else if activeTab === "video"}
+                  <VideoWatchPanel {track} embedded />
+                {/if}
+              </div>
+            {/key}
+          </div>
+        </div>
+      </section>
+    </div>
+  {/if}
+</div>
 
 {#if layout.tvMode && track}
   <NowPlayingTvMode />

@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import Section from "$lib/components/ui/Section.svelte";
   import Input from "$lib/components/ui/Input.svelte";
@@ -221,184 +220,182 @@
   });
 </script>
 
-<AppShell compactTop>
-  <div class="search-page" role="group" oncontextmenu={onPageContextMenu}>
-    <PageHeader title="Search" subtitle="Find artists, albums, and tracks." />
+<div class="search-page" role="group" oncontextmenu={onPageContextMenu}>
+  <PageHeader title="Search" subtitle="Find artists, albums, and tracks." />
 
-    {#if unavailable}
-      <LibraryUnavailable />
-    {:else}
-      <div class="search-box">
-        <MdiIcon name="search" size={20} />
-        <Input bind:value={query} placeholder="Search your library" />
-        {#if searching}
-          <Spinner />
-        {/if}
-      </div>
-
-      {#if showSourceFilter}
-        <div class="search-source" role="tablist" aria-label="Source filter">
-          {#each [{ id: "all", label: "All sources" }, { id: "local", label: "Local" }, { id: "server", label: "Server" }] as option (option.id)}
-            <button
-              type="button"
-              role="tab"
-              class="search-source__btn"
-              class:search-source__btn--active={sourceFilter === option.id}
-              aria-selected={sourceFilter === option.id}
-              onclick={() => {
-                sourceFilter = option.id as "all" | "local" | "server";
-              }}
-            >
-              {option.label}
-            </button>
-          {/each}
-        </div>
+  {#if unavailable}
+    <LibraryUnavailable />
+  {:else}
+    <div class="search-box">
+      <MdiIcon name="search" size={20} />
+      <Input bind:value={query} placeholder="Search your library" />
+      {#if searching}
+        <Spinner />
       {/if}
+    </div>
 
-      {#if showHistory}
-        <div class="search-history" aria-label="Recent searches">
-          <div class="search-history__head">
-            <span class="search-history__label">Recent searches</span>
-            <button
-              type="button"
-              class="search-history__clear"
-              onclick={() => void clearHistory()}
-            >
-              Clear
-            </button>
-          </div>
-          {#each history as term (term)}
-            <button
-              type="button"
-              class="search-history__item"
-              onclick={() => applyHistory(term)}
-            >
-              {term}
-            </button>
-          {/each}
-        </div>
-      {/if}
-
-      {#if searching && lastQuery && !hasResults}
-        <div
-          class="search-skeleton"
-          role="status"
-          aria-busy="true"
-          aria-label="Searching"
-        >
-          <div class="search-skeleton__section">
-            <Skeleton class="search-skeleton__heading" />
-            <div class="search-skeleton__avatars">
-              {#each Array.from({ length: 4 }) as _, i (i)}
-                <Skeleton variant="avatar" class="search-skeleton__avatar" />
-              {/each}
-            </div>
-          </div>
-          <div class="search-skeleton__section">
-            <Skeleton class="search-skeleton__heading" />
-            <div class="search-skeleton__cards">
-              {#each Array.from({ length: 4 }) as _, i (i)}
-                <Skeleton variant="card" />
-              {/each}
-            </div>
-          </div>
-          <div class="search-skeleton__section">
-            <Skeleton class="search-skeleton__heading" />
-            <div class="search-skeleton__rows">
-              {#each Array.from({ length: 5 }) as _, i (i)}
-                <Skeleton variant="row" />
-              {/each}
-            </div>
-          </div>
-        </div>
-      {/if}
-
-      {#if searching && lastQuery && hasResults}
-        <p class="search-status" aria-live="polite">
-          Searching for "{lastQuery}"…
-        </p>
-      {/if}
-
-      {#if didYouMean}
-        <p class="did-you-mean">
-          Did you mean
-          <button type="button" onclick={() => applySuggestion(didYouMean!)}>
-            {didYouMean}
-          </button>?
-        </p>
-      {/if}
-
-      {#if searchError && !searching}
-        <EmptyState
-          title="Search failed"
-          message={searchError}
-          icon="alertCircle"
-        />
-      {/if}
-
-      {#if showEmpty}
-        <EmptyState
-          title="No matches"
-          message={`Nothing found for "${lastQuery}".`}
-          icon="search"
-        />
-      {/if}
-
-      <div class="search-results" class:search-results--pending={searching}>
-        {#if visibleArtists.length > 0}
-          <Section title="Artists">
-            <ArtistGrid artists={visibleArtists} size="sm" />
-          </Section>
-        {/if}
-
-        {#if visibleAlbums.length > 0}
-          <Section title="Albums">
-            <AlbumGrid albums={visibleAlbums} />
-          </Section>
-        {/if}
-
-        {#if visibleSongs.length > 0}
-          <Section title="Songs">
-            <div class="track-list-island">
-              <TrackVirtualList
-                tracks={visibleSongs}
-                onplay={(i) => music.playTracks(visibleSongs, i)}
-                lazyThreshold={12}
-              />
-            </div>
-          </Section>
-        {/if}
-
-        {#if similarLoading && visibleSimilar.length === 0}
-          <Section title="Similar tracks">
-            <div
-              class="search-skeleton__rows"
-              role="status"
-              aria-busy="true"
-              aria-label="Loading similar tracks"
-            >
-              {#each Array.from({ length: 4 }) as _, i (i)}
-                <Skeleton variant="row" />
-              {/each}
-            </div>
-          </Section>
-        {/if}
-
-        {#if visibleSimilar.length > 0}
-          <Section title="Similar tracks">
-            <div class="track-list-island">
-              <TrackVirtualList
-                tracks={visibleSimilar}
-                onplay={(i) => music.playTracks(visibleSimilar, i)}
-                lazyThreshold={12}
-              />
-            </div>
-          </Section>
-        {/if}
+    {#if showSourceFilter}
+      <div class="search-source" role="tablist" aria-label="Source filter">
+        {#each [{ id: "all", label: "All sources" }, { id: "local", label: "Local" }, { id: "server", label: "Server" }] as option (option.id)}
+          <button
+            type="button"
+            role="tab"
+            class="search-source__btn"
+            class:search-source__btn--active={sourceFilter === option.id}
+            aria-selected={sourceFilter === option.id}
+            onclick={() => {
+              sourceFilter = option.id as "all" | "local" | "server";
+            }}
+          >
+            {option.label}
+          </button>
+        {/each}
       </div>
     {/if}
-  </div>
-</AppShell>
+
+    {#if showHistory}
+      <div class="search-history" aria-label="Recent searches">
+        <div class="search-history__head">
+          <span class="search-history__label">Recent searches</span>
+          <button
+            type="button"
+            class="search-history__clear"
+            onclick={() => void clearHistory()}
+          >
+            Clear
+          </button>
+        </div>
+        {#each history as term (term)}
+          <button
+            type="button"
+            class="search-history__item"
+            onclick={() => applyHistory(term)}
+          >
+            {term}
+          </button>
+        {/each}
+      </div>
+    {/if}
+
+    {#if searching && lastQuery && !hasResults}
+      <div
+        class="search-skeleton"
+        role="status"
+        aria-busy="true"
+        aria-label="Searching"
+      >
+        <div class="search-skeleton__section">
+          <Skeleton class="search-skeleton__heading" />
+          <div class="search-skeleton__avatars">
+            {#each Array.from({ length: 4 }) as _, i (i)}
+              <Skeleton variant="avatar" class="search-skeleton__avatar" />
+            {/each}
+          </div>
+        </div>
+        <div class="search-skeleton__section">
+          <Skeleton class="search-skeleton__heading" />
+          <div class="search-skeleton__cards">
+            {#each Array.from({ length: 4 }) as _, i (i)}
+              <Skeleton variant="card" />
+            {/each}
+          </div>
+        </div>
+        <div class="search-skeleton__section">
+          <Skeleton class="search-skeleton__heading" />
+          <div class="search-skeleton__rows">
+            {#each Array.from({ length: 5 }) as _, i (i)}
+              <Skeleton variant="row" />
+            {/each}
+          </div>
+        </div>
+      </div>
+    {/if}
+
+    {#if searching && lastQuery && hasResults}
+      <p class="search-status" aria-live="polite">
+        Searching for "{lastQuery}"…
+      </p>
+    {/if}
+
+    {#if didYouMean}
+      <p class="did-you-mean">
+        Did you mean
+        <button type="button" onclick={() => applySuggestion(didYouMean!)}>
+          {didYouMean}
+        </button>?
+      </p>
+    {/if}
+
+    {#if searchError && !searching}
+      <EmptyState
+        title="Search failed"
+        message={searchError}
+        icon="alertCircle"
+      />
+    {/if}
+
+    {#if showEmpty}
+      <EmptyState
+        title="No matches"
+        message={`Nothing found for "${lastQuery}".`}
+        icon="search"
+      />
+    {/if}
+
+    <div class="search-results" class:search-results--pending={searching}>
+      {#if visibleArtists.length > 0}
+        <Section title="Artists">
+          <ArtistGrid artists={visibleArtists} size="sm" />
+        </Section>
+      {/if}
+
+      {#if visibleAlbums.length > 0}
+        <Section title="Albums">
+          <AlbumGrid albums={visibleAlbums} />
+        </Section>
+      {/if}
+
+      {#if visibleSongs.length > 0}
+        <Section title="Songs">
+          <div class="track-list-island">
+            <TrackVirtualList
+              tracks={visibleSongs}
+              onplay={(i) => music.playTracks(visibleSongs, i)}
+              lazyThreshold={12}
+            />
+          </div>
+        </Section>
+      {/if}
+
+      {#if similarLoading && visibleSimilar.length === 0}
+        <Section title="Similar tracks">
+          <div
+            class="search-skeleton__rows"
+            role="status"
+            aria-busy="true"
+            aria-label="Loading similar tracks"
+          >
+            {#each Array.from({ length: 4 }) as _, i (i)}
+              <Skeleton variant="row" />
+            {/each}
+          </div>
+        </Section>
+      {/if}
+
+      {#if visibleSimilar.length > 0}
+        <Section title="Similar tracks">
+          <div class="track-list-island">
+            <TrackVirtualList
+              tracks={visibleSimilar}
+              onplay={(i) => music.playTracks(visibleSimilar, i)}
+              lazyThreshold={12}
+            />
+          </div>
+        </Section>
+      {/if}
+    </div>
+  {/if}
+</div>
 
 {#if pageMenu && pageMenuItems.length > 0}
   <ContextMenu

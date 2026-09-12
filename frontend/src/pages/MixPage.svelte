@@ -1,6 +1,5 @@
 <script lang="ts">
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import TrackVirtualList from "$lib/components/music/TrackVirtualList.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -54,68 +53,66 @@
   );
 </script>
 
-<AppShell compactTop>
-  <div class="mix-page">
-    <MusicBreadcrumbs items={breadcrumbItems} />
+<div class="mix-page">
+  <MusicBreadcrumbs items={breadcrumbItems} />
 
-    {#if loading}
-      <div class="mix-page__loading"><Spinner /></div>
-    {:else if !mix}
-      <EmptyState
-        title="Mix not found"
-        message="This mix is no longer available."
-        icon="listMusic"
-      >
-        {#snippet actions()}
-          <Link href="/music">Back to music</Link>
-        {/snippet}
-      </EmptyState>
-    {:else}
-      <header
-        class="mix-hero"
-        style="--mix-gradient: {mix.gradient}"
-        role="group"
-        oncontextmenu={(event) => {
-          heroMenu = contextMenuPositionFromEvent(event);
-        }}
-      >
-        {#if image}
-          <img class="mix-hero__bg" src={image} alt="" fetchpriority="high" />
-        {/if}
-        <div class="mix-hero__overlay"></div>
-        <div class="mix-hero__content">
-          <p class="mix-hero__type">Made for you</p>
-          <h1 class="mix-hero__title">{mix.title}</h1>
-          <p class="mix-hero__subtitle">{mix.subtitle}</p>
-          <p class="mix-hero__meta">{mixTrackCount(mix)} tracks</p>
-          <div class="mix-hero__actions">
-            <Button size="lg" onclick={() => music.playMix(mix)}>
-              <MdiIcon name="play" size={18} fill="currentColor" />
-              Play mix
-            </Button>
-            <Button
-              size="lg"
-              variant="ghost"
-              onclick={() => {
-                music.shuffle = true;
-                music.playMix(mix);
-              }}
-            >
-              <MdiIcon name="shuffle" size={18} />
-              Shuffle
-            </Button>
-          </div>
+  {#if loading}
+    <div class="mix-page__loading"><Spinner /></div>
+  {:else if !mix}
+    <EmptyState
+      title="Mix not found"
+      message="This mix is no longer available."
+      icon="listMusic"
+    >
+      {#snippet actions()}
+        <Link href="/music">Back to music</Link>
+      {/snippet}
+    </EmptyState>
+  {:else}
+    <header
+      class="mix-hero"
+      style="--mix-gradient: {mix.gradient}"
+      role="group"
+      oncontextmenu={(event) => {
+        heroMenu = contextMenuPositionFromEvent(event);
+      }}
+    >
+      {#if image}
+        <img class="mix-hero__bg" src={image} alt="" fetchpriority="high" />
+      {/if}
+      <div class="mix-hero__overlay"></div>
+      <div class="mix-hero__content">
+        <p class="mix-hero__type">Made for you</p>
+        <h1 class="mix-hero__title">{mix.title}</h1>
+        <p class="mix-hero__subtitle">{mix.subtitle}</p>
+        <p class="mix-hero__meta">{mixTrackCount(mix)} tracks</p>
+        <div class="mix-hero__actions">
+          <Button size="lg" onclick={() => music.playMix(mix)}>
+            <MdiIcon name="play" size={18} fill="currentColor" />
+            Play mix
+          </Button>
+          <Button
+            size="lg"
+            variant="ghost"
+            onclick={() => {
+              music.shuffle = true;
+              music.playMix(mix);
+            }}
+          >
+            <MdiIcon name="shuffle" size={18} />
+            Shuffle
+          </Button>
         </div>
-      </header>
+      </div>
+    </header>
 
-      <TrackVirtualList
-        tracks={mix.tracks}
-        onplay={(index) => music.playTracks(mix.tracks, index)}
-        class="mix-tracks"
-      />
-    {/if}
-  </div>
-</AppShell>
+    <TrackVirtualList
+      tracks={mix.tracks}
+      onplay={(index) => music.playTracks(mix.tracks, index)}
+      class="mix-tracks"
+    />
+  {/if}
+</div>
 
 {#if heroMenu && mix}
   <MixContextMenu

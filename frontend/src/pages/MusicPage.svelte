@@ -1,6 +1,5 @@
 <script lang="ts">
   import { createSubscriber } from "svelte/reactivity";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import AlbumCard from "$lib/components/music/AlbumCard.svelte";
   import ArtistCard from "$lib/components/music/ArtistCard.svelte";
   import HomePlaylistCard from "$lib/components/music/HomePlaylistCard.svelte";
@@ -167,165 +166,163 @@
   }
 </script>
 
-<AppShell compactTop>
-  <div class="music-home">
-    <header class="home-head">
-      <p class="home-head__eyebrow">{music.serverName}</p>
-      <div class="home-head__row">
-        <h1 class="home-head__title">{greeting}</h1>
-        {#if hasContent}
-          <Button
-            variant="surface"
-            size="sm"
-            onclick={() => (customizeOpen = true)}
-          >
-            <MdiIcon name="slidersHorizontal" size={16} />
-            Customize
-          </Button>
-        {/if}
-      </div>
-    </header>
+<div class="music-home">
+  <header class="home-head">
+    <p class="home-head__eyebrow">{music.serverName}</p>
+    <div class="home-head__row">
+      <h1 class="home-head__title">{greeting}</h1>
+      {#if hasContent}
+        <Button
+          variant="surface"
+          size="sm"
+          onclick={() => (customizeOpen = true)}
+        >
+          <MdiIcon name="slidersHorizontal" size={16} />
+          Customize
+        </Button>
+      {/if}
+    </div>
+  </header>
 
-    {#if extensionFeatures.metadata && metadataSummary && metadataSummary.any > 0}
-      <div class="metadata-alert">
-        <MdiIcon name="autoFix" size={18} />
-        <p>
-          {metadataSummary.any.toLocaleString()} local tracks need metadata attention.
-        </p>
-        <Link href="/music/metadata" class="metadata-alert__link">
-          Open metadata editor
+  {#if extensionFeatures.metadata && metadataSummary && metadataSummary.any > 0}
+    <div class="metadata-alert">
+      <MdiIcon name="autoFix" size={18} />
+      <p>
+        {metadataSummary.any.toLocaleString()} local tracks need metadata attention.
+      </p>
+      <Link href="/music/metadata" class="metadata-alert__link">
+        Open metadata editor
+      </Link>
+    </div>
+  {/if}
+
+  {#if hasContent}
+    <HomeTipsBanner />
+  {/if}
+
+  {#if unavailable && !loading}
+    <LibraryUnavailable />
+  {:else if loading}
+    <div
+      class="home-loading"
+      role="status"
+      aria-busy="true"
+      aria-label="Loading library"
+    >
+      <div class="skeleton-shortcuts">
+        {#each Array.from({ length: 4 }) as _, i (i)}
+          <Skeleton class="skeleton-shortcut" />
+        {/each}
+      </div>
+      <div class="skeleton-shelf">
+        {#each Array.from({ length: 6 }) as _, i (i)}
+          <Skeleton class="skeleton-album" />
+        {/each}
+      </div>
+    </div>
+  {:else if !hasContent}
+    <EmptyState
+      title="Nothing to play yet"
+      message="Your library is empty. Try another source or add more music."
+      icon="music"
+    >
+      {#snippet actions()}
+        <Link href="/settings/servers" class="home-empty-link">
+          Source settings
         </Link>
-      </div>
+      {/snippet}
+    </EmptyState>
+  {:else}
+    <HomeShortcutGrid {shortcuts} />
+
+    {#if jumpBackAlbums.length > 0}
+      <HomeShelf title="Jump back in" href="/music/history">
+        {#each jumpBackAlbums as album (album.id)}
+          <AlbumCard {album} size="sm" hideable />
+        {/each}
+      </HomeShelf>
     {/if}
 
-    {#if hasContent}
-      <HomeTipsBanner />
-    {/if}
-
-    {#if unavailable && !loading}
-      <LibraryUnavailable />
-    {:else if loading}
-      <div
-        class="home-loading"
-        role="status"
-        aria-busy="true"
-        aria-label="Loading library"
-      >
-        <div class="skeleton-shortcuts">
-          {#each Array.from({ length: 4 }) as _, i (i)}
-            <Skeleton class="skeleton-shortcut" />
-          {/each}
-        </div>
-        <div class="skeleton-shelf">
-          {#each Array.from({ length: 6 }) as _, i (i)}
-            <Skeleton class="skeleton-album" />
-          {/each}
-        </div>
-      </div>
-    {:else if !hasContent}
-      <EmptyState
-        title="Nothing to play yet"
-        message="Your library is empty. Try another source or add more music."
-        icon="music"
-      >
-        {#snippet actions()}
-          <Link href="/settings/servers" class="home-empty-link">
-            Source settings
-          </Link>
+    {#if visibleMixes.length > 0}
+      <HomeShelf title="Made for you">
+        {#snippet action()}
+          <button
+            type="button"
+            class="mix-refresh-btn"
+            disabled={music.mixesRegenerating}
+            onclick={() => void regenerateMixes()}
+          >
+            {music.mixesRegenerating ? "Refreshing..." : "Refresh mixes"}
+          </button>
         {/snippet}
-      </EmptyState>
-    {:else}
-      <HomeShortcutGrid {shortcuts} />
-
-      {#if jumpBackAlbums.length > 0}
-        <HomeShelf title="Jump back in" href="/music/history">
-          {#each jumpBackAlbums as album (album.id)}
-            <AlbumCard {album} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if visibleMixes.length > 0}
-        <HomeShelf title="Made for you">
-          {#snippet action()}
-            <button
-              type="button"
-              class="mix-refresh-btn"
-              disabled={music.mixesRegenerating}
-              onclick={() => void regenerateMixes()}
-            >
-              {music.mixesRegenerating ? "Refreshing..." : "Refresh mixes"}
-            </button>
-          {/snippet}
-          {#each visibleMixes as mix (mix.id)}
-            <MixCard {mix} displayStyle={mixDisplayStyle} hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if because}
-        <HomeShelf title="Because you listened to {because.artist}">
-          {#each because.albums as album (album.id)}
-            <AlbumCard {album} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if playlists.length > 0}
-        <HomeShelf title="Your playlists" href="/music/playlists">
-          {#each playlists as playlist (playlist.id)}
-            <HomePlaylistCard {playlist} hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if visibleArtists.length > 0}
-        <HomeShelf title="Your favorite artists" href="/music/favorites">
-          {#each visibleArtists.slice(0, 12) as artist (artist.id)}
-            <ArtistCard {artist} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if laterShelves.favoriteAlbums.length > 0}
-        <HomeShelf title="Favorite albums" href="/music/favorites">
-          {#each laterShelves.favoriteAlbums as album (album.id)}
-            <AlbumCard {album} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if laterShelves.newAlbums.length > 0}
-        <HomeShelf title="New in your library" href="/music/albums">
-          {#each laterShelves.newAlbums as album (album.id)}
-            <AlbumCard {album} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if laterShelves.recommended.length > 0}
-        <HomeShelf title="Recommended for you">
-          {#each laterShelves.recommended as album (album.id)}
-            <AlbumCard {album} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
-
-      {#if laterShelves.frequent.length > 0}
-        <HomeShelf title="Popular on your server">
-          {#each laterShelves.frequent as album (album.id)}
-            <AlbumCard {album} size="sm" hideable />
-          {/each}
-        </HomeShelf>
-      {/if}
+        {#each visibleMixes as mix (mix.id)}
+          <MixCard {mix} displayStyle={mixDisplayStyle} hideable />
+        {/each}
+      </HomeShelf>
     {/if}
-  </div>
 
-  <HomeCustomizeDialog
-    open={customizeOpen}
-    onclose={() => (customizeOpen = false)}
-  />
-</AppShell>
+    {#if because}
+      <HomeShelf title="Because you listened to {because.artist}">
+        {#each because.albums as album (album.id)}
+          <AlbumCard {album} size="sm" hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+
+    {#if playlists.length > 0}
+      <HomeShelf title="Your playlists" href="/music/playlists">
+        {#each playlists as playlist (playlist.id)}
+          <HomePlaylistCard {playlist} hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+
+    {#if visibleArtists.length > 0}
+      <HomeShelf title="Your favorite artists" href="/music/favorites">
+        {#each visibleArtists.slice(0, 12) as artist (artist.id)}
+          <ArtistCard {artist} size="sm" hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+
+    {#if laterShelves.favoriteAlbums.length > 0}
+      <HomeShelf title="Favorite albums" href="/music/favorites">
+        {#each laterShelves.favoriteAlbums as album (album.id)}
+          <AlbumCard {album} size="sm" hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+
+    {#if laterShelves.newAlbums.length > 0}
+      <HomeShelf title="New in your library" href="/music/albums">
+        {#each laterShelves.newAlbums as album (album.id)}
+          <AlbumCard {album} size="sm" hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+
+    {#if laterShelves.recommended.length > 0}
+      <HomeShelf title="Recommended for you">
+        {#each laterShelves.recommended as album (album.id)}
+          <AlbumCard {album} size="sm" hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+
+    {#if laterShelves.frequent.length > 0}
+      <HomeShelf title="Popular on your server">
+        {#each laterShelves.frequent as album (album.id)}
+          <AlbumCard {album} size="sm" hideable />
+        {/each}
+      </HomeShelf>
+    {/if}
+  {/if}
+</div>
+
+<HomeCustomizeDialog
+  open={customizeOpen}
+  onclose={() => (customizeOpen = false)}
+/>
 
 <style>
   .music-home {

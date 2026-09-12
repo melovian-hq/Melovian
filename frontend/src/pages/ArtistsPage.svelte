@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
@@ -49,43 +48,41 @@
   });
 </script>
 
-<AppShell compactTop>
-  <div class="artists-page">
-    <PageHeader title="Artists" subtitle="Browse your library by artist." />
+<div class="artists-page">
+  <PageHeader title="Artists" subtitle="Browse your library by artist." />
 
-    <LocalSearchBox
-      bind:value={searchQuery}
-      placeholder="Search artists"
-      disabled={unavailable || (loading && music.allArtists.length === 0)}
-      resultCount={filteredArtists.length}
-      totalCount={visibleArtists.length}
+  <LocalSearchBox
+    bind:value={searchQuery}
+    placeholder="Search artists"
+    disabled={unavailable || (loading && music.allArtists.length === 0)}
+    resultCount={filteredArtists.length}
+    totalCount={visibleArtists.length}
+  />
+
+  {#if showInitialLoading}
+    <div class="artists-page__loading">
+      {#each Array.from({ length: 12 }) as _, i (i)}
+        <Skeleton class="artist-skeleton" />
+      {/each}
+    </div>
+  {:else if unavailable}
+    <LibraryUnavailable />
+  {:else if visibleArtists.length === 0}
+    <EmptyState
+      title="No artists"
+      message="Your server did not report any artists."
+      icon="accountMusic"
     />
-
-    {#if showInitialLoading}
-      <div class="artists-page__loading">
-        {#each Array.from({ length: 12 }) as _, i (i)}
-          <Skeleton class="artist-skeleton" />
-        {/each}
-      </div>
-    {:else if unavailable}
-      <LibraryUnavailable />
-    {:else if visibleArtists.length === 0}
-      <EmptyState
-        title="No artists"
-        message="Your server did not report any artists."
-        icon="accountMusic"
-      />
-    {:else if filteredArtists.length === 0}
-      <EmptyState
-        title="No matches"
-        message={`No artists match "${searchQuery.trim()}".`}
-        icon="search"
-      />
-    {:else}
-      <ArtistGrid artists={filteredArtists} lazyThreshold={12} />
-    {/if}
-  </div>
-</AppShell>
+  {:else if filteredArtists.length === 0}
+    <EmptyState
+      title="No matches"
+      message={`No artists match "${searchQuery.trim()}".`}
+      icon="search"
+    />
+  {:else}
+    <ArtistGrid artists={filteredArtists} lazyThreshold={12} />
+  {/if}
+</div>
 
 <style>
   .artists-page {

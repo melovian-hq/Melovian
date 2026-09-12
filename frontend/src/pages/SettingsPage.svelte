@@ -1,6 +1,5 @@
 <script lang="ts">
   import { fade, fly } from "svelte/transition";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import SettingsNav from "$lib/components/settings/SettingsNav.svelte";
   import SettingsProfilePanel from "$lib/components/settings/panels/SettingsProfilePanel.svelte";
   import SettingsGeneralPanel from "$lib/components/settings/panels/SettingsGeneralPanel.svelte";
@@ -96,80 +95,78 @@
   }
 </script>
 
-<AppShell compactTop>
-  <div class="settings-page">
-    <header class="settings-page__header">
-      <div class="settings-page__heading">
-        <h1>Settings</h1>
-        <p class="settings-page__subtitle">
-          Sources, playback, and personalization.
-        </p>
-      </div>
-      <LocalSearchBox
-        bind:value={searchQuery}
-        placeholder="Search settings"
-        resultCount={filteredTabs.length}
-        totalCount={tabs.length}
-        class="settings-page__search"
-      />
-    </header>
+<div class="settings-page">
+  <header class="settings-page__header">
+    <div class="settings-page__heading">
+      <h1>Settings</h1>
+      <p class="settings-page__subtitle">
+        Sources, playback, and personalization.
+      </p>
+    </div>
+    <LocalSearchBox
+      bind:value={searchQuery}
+      placeholder="Search settings"
+      resultCount={filteredTabs.length}
+      totalCount={tabs.length}
+      class="settings-page__search"
+    />
+  </header>
 
-    {#if filteredTabs.length === 0}
-      <EmptyState
-        title="No matching settings"
-        message={`No settings match "${searchQuery.trim()}".`}
-        icon="search"
-      />
-    {:else}
-      <div class="settings-layout">
-        <SettingsNav tabs={filteredTabs} active={tab} onselect={goTab} />
+  {#if filteredTabs.length === 0}
+    <EmptyState
+      title="No matching settings"
+      message={`No settings match "${searchQuery.trim()}".`}
+      icon="search"
+    />
+  {:else}
+    <div class="settings-layout">
+      <SettingsNav tabs={filteredTabs} active={tab} onselect={goTab} />
 
-        <div class="settings-layout__content">
-          {#key tab}
-            <div
-              class="settings-layout__pane"
-              in:fly={tabInFly()}
-              out:fade={tabOutFade()}
-              onoutrostart={onTabOutroStart}
-            >
-              {#if tab === "profile"}
-                <SettingsProfilePanel />
-              {:else if tab === "general"}
-                <SettingsGeneralPanel />
-              {:else if tab === "servers"}
-                <SettingsServersPanel />
-              {:else if tab === "playback"}
-                <SettingsPlaybackPanel />
-              {:else if tab === "downloads"}
-                <SettingsDownloadsPanel />
-              {:else if tab === "mixes"}
-                <SettingsMixesPanel />
-              {:else if tab === "connection"}
-                <SettingsConnectionPanel />
-              {:else if tab === "lyrics" && extensionFeatures.lyrics}
-                <SettingsLyricsPanel />
-              {:else if tab === "video"}
-                <SettingsVideoPanel />
-              {:else if tab === "rocksky" && extensionFeatures.isEnabled("rocksky")}
-                <SettingsRockskyPanel />
-              {:else if tab === "listenbrainz" && extensionFeatures.isEnabled("listenbrainz")}
-                <SettingsListenBrainzPanel />
-              {:else if tab === "lastfm" && extensionFeatures.isEnabled("lastfm")}
-                <SettingsLastFMPanel />
-              {:else if tab === "extensions"}
-                <SettingsExtensionsPanel />
-              {:else if tab === "about"}
-                <SettingsAboutPanel />
-              {:else if tab === "tasks"}
-                <SettingsTasksPanel />
-              {/if}
-            </div>
-          {/key}
-        </div>
+      <div class="settings-layout__content">
+        {#key tab}
+          <div
+            class="settings-layout__pane"
+            in:fly={tabInFly()}
+            out:fade={tabOutFade()}
+            onoutrostart={onTabOutroStart}
+          >
+            {#if tab === "profile"}
+              <SettingsProfilePanel />
+            {:else if tab === "general"}
+              <SettingsGeneralPanel />
+            {:else if tab === "servers"}
+              <SettingsServersPanel />
+            {:else if tab === "playback"}
+              <SettingsPlaybackPanel />
+            {:else if tab === "downloads"}
+              <SettingsDownloadsPanel />
+            {:else if tab === "mixes"}
+              <SettingsMixesPanel />
+            {:else if tab === "connection"}
+              <SettingsConnectionPanel />
+            {:else if tab === "lyrics" && extensionFeatures.lyrics}
+              <SettingsLyricsPanel />
+            {:else if tab === "video"}
+              <SettingsVideoPanel />
+            {:else if tab === "rocksky" && extensionFeatures.isEnabled("rocksky")}
+              <SettingsRockskyPanel />
+            {:else if tab === "listenbrainz" && extensionFeatures.isEnabled("listenbrainz")}
+              <SettingsListenBrainzPanel />
+            {:else if tab === "lastfm" && extensionFeatures.isEnabled("lastfm")}
+              <SettingsLastFMPanel />
+            {:else if tab === "extensions"}
+              <SettingsExtensionsPanel />
+            {:else if tab === "about"}
+              <SettingsAboutPanel />
+            {:else if tab === "tasks"}
+              <SettingsTasksPanel />
+            {/if}
+          </div>
+        {/key}
       </div>
-    {/if}
-  </div>
-</AppShell>
+    </div>
+  {/if}
+</div>
 
 <style>
   .settings-page {

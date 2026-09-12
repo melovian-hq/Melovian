@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import LocalSearchBox from "$lib/components/ui/LocalSearchBox.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
@@ -477,211 +476,208 @@
   ]);
 </script>
 
-<AppShell compactTop>
-  {#if !extensionFeatures.metadata}
+{#if !extensionFeatures.metadata}
+  <EmptyState
+    title="Metadata extension is off"
+    message="Turn on Metadata under Settings, Extensions to edit local tags and enhance artwork."
+    icon="autoFix"
+  >
+    {#snippet actions()}
+      <Link href="/settings/extensions">Open Extensions</Link>
+    {/snippet}
+  </EmptyState>
+{:else}
+  <PageHeader
+    title="Metadata editor"
+    subtitle="Search local tracks, fix tags manually, or apply matches from iTunes, MusicBrainz, Deezer, or TheAudioDB."
+  >
+    {#snippet actions()}
+      {#if hasLocalLibrary && tracks.length > 0}
+        <Button
+          variant="surface"
+          disabled={batchRunning || saving}
+          onclick={() => handleBatchAutofix("filename")}
+        >
+          {#if batchRunning}
+            <Spinner />
+          {:else}
+            <MdiIcon name="autoFix" size={18} />
+          {/if}
+          Fix visible from filename
+        </Button>
+      {/if}
+    {/snippet}
+  </PageHeader>
+
+  {#if batchProgress}
+    <BatchProgress
+      done={batchProgress.done}
+      total={batchProgress.total}
+      label={batchProgress.label}
+    />
+  {/if}
+
+  {#if summary}
+    <div class="metadata-page__summary">
+      <div class="metadata-page__stat">
+        <span class="metadata-page__stat-value">{summary.any}</span>
+        <span class="metadata-page__stat-label">Need attention</span>
+      </div>
+      <div class="metadata-page__stat">
+        <span class="metadata-page__stat-value">{summary.unknownArtist}</span>
+        <span class="metadata-page__stat-label">Unknown artist</span>
+      </div>
+      <div class="metadata-page__stat">
+        <span class="metadata-page__stat-value">{summary.unknownAlbum}</span>
+        <span class="metadata-page__stat-label">Unknown album</span>
+      </div>
+      <div class="metadata-page__stat">
+        <span class="metadata-page__stat-value">{summary.totalTracks}</span>
+        <span class="metadata-page__stat-label">Total tracks</span>
+      </div>
+    </div>
+  {/if}
+
+  {#if !hasLocalLibrary}
     <EmptyState
-      title="Metadata extension is off"
-      message="Turn on Metadata under Settings, Extensions to edit local tags and enhance artwork."
-      icon="autoFix"
+      title="No active local library"
+      message="Add a local library in Settings, then come back here to clean up tags."
+      icon="folderMusic"
     >
       {#snippet actions()}
-        <Link href="/settings/extensions">Open Extensions</Link>
+        <Button onclick={goToLibraries}>Open library settings</Button>
       {/snippet}
     </EmptyState>
   {:else}
-    <PageHeader
-      title="Metadata editor"
-      subtitle="Search local tracks, fix tags manually, or apply matches from iTunes, MusicBrainz, Deezer, or TheAudioDB."
-    >
-      {#snippet actions()}
-        {#if hasLocalLibrary && tracks.length > 0}
-          <Button
-            variant="surface"
-            disabled={batchRunning || saving}
-            onclick={() => handleBatchAutofix("filename")}
-          >
-            {#if batchRunning}
-              <Spinner />
-            {:else}
-              <MdiIcon name="autoFix" size={18} />
-            {/if}
-            Fix visible from filename
-          </Button>
-        {/if}
-      {/snippet}
-    </PageHeader>
-
-    {#if batchProgress}
-      <BatchProgress
-        done={batchProgress.done}
-        total={batchProgress.total}
-        label={batchProgress.label}
-      />
-    {/if}
-
-    {#if summary}
-      <div class="metadata-page__summary">
-        <div class="metadata-page__stat">
-          <span class="metadata-page__stat-value">{summary.any}</span>
-          <span class="metadata-page__stat-label">Need attention</span>
-        </div>
-        <div class="metadata-page__stat">
-          <span class="metadata-page__stat-value">{summary.unknownArtist}</span>
-          <span class="metadata-page__stat-label">Unknown artist</span>
-        </div>
-        <div class="metadata-page__stat">
-          <span class="metadata-page__stat-value">{summary.unknownAlbum}</span>
-          <span class="metadata-page__stat-label">Unknown album</span>
-        </div>
-        <div class="metadata-page__stat">
-          <span class="metadata-page__stat-value">{summary.totalTracks}</span>
-          <span class="metadata-page__stat-label">Total tracks</span>
-        </div>
-      </div>
-    {/if}
-
-    {#if !hasLocalLibrary}
-      <EmptyState
-        title="No active local library"
-        message="Add a local library in Settings, then come back here to clean up tags."
-        icon="folderMusic"
+    <div class="metadata-page">
+      <aside
+        class="metadata-page__list-panel"
+        role="group"
+        oncontextmenu={onListContextMenu}
       >
-        {#snippet actions()}
-          <Button onclick={goToLibraries}>Open library settings</Button>
-        {/snippet}
-      </EmptyState>
-    {:else}
-      <div class="metadata-page">
-        <aside
-          class="metadata-page__list-panel"
-          role="group"
-          oncontextmenu={onListContextMenu}
-        >
-          <div class="metadata-page__filters">
-            {#each issueFilters as filter (filter.id)}
-              <button
-                type="button"
-                class="metadata-page__filter"
-                class:metadata-page__filter--active={issueFilter === filter.id}
-                onclick={() => {
-                  void (async () => {
-                    if (!(await confirmDiscard())) return;
-                    issueFilter = filter.id;
-                  })();
-                }}
-              >
-                {filter.label}
-                {#if summary && filter.countKey}
-                  <span class="metadata-page__filter-count">
-                    {summary[filter.countKey]}
-                  </span>
-                {/if}
-              </button>
-            {/each}
-          </div>
-
-          <LocalSearchBox
-            bind:value={query}
-            placeholder="Search by title, artist, album, or path"
-            resultCount={tracks.length}
-            totalCount={total}
-          />
-
-          {#if loading}
-            <div class="metadata-page__loading">
-              <Spinner />
-            </div>
-          {:else if loadError}
-            <EmptyState
-              title="Could not load tracks"
-              message={loadError}
-              icon="alertCircle"
-            />
-          {:else if tracks.length === 0}
-            <EmptyState
-              title="No tracks found"
-              message="Try another search term or filter."
-              icon="search"
-            />
-          {:else}
-            <ul class="metadata-page__tracks" aria-label="Tracks">
-              {#each tracks as track (track.id)}
-                <li>
-                  <button
-                    type="button"
-                    class="metadata-page__track"
-                    class:metadata-page__track--active={track.id === selectedId}
-                    onclick={() => void selectTrack(track.id)}
-                    oncontextmenu={(event) => onTrackContextMenu(event, track)}
-                  >
-                    <span class="metadata-page__track-title">{track.title}</span
-                    >
-                    <span class="metadata-page__track-meta">
-                      {track.artist || "Unknown artist"}
-                      {#if track.album}
-                        · {track.album}
-                      {/if}
-                    </span>
-                    {#if track.issues.length > 0}
-                      <span class="metadata-page__track-issues">
-                        {track.issues.length} issue{track.issues.length === 1
-                          ? ""
-                          : "s"}
-                      </span>
-                    {/if}
-                  </button>
-                </li>
-              {/each}
-            </ul>
-            {#if hasMore}
-              <div class="metadata-page__more">
-                <Button
-                  variant="surface"
-                  disabled={loadingMore}
-                  onclick={() => loadTracks(false)}
-                >
-                  {#if loadingMore}
-                    <Spinner />
-                  {/if}
-                  Load more
-                </Button>
-              </div>
-            {/if}
-          {/if}
-        </aside>
-
-        <section class="metadata-page__editor-panel">
-          {#if selectedTrack}
-            <MetadataTrackEditor
-              track={selectedTrack}
-              {saving}
-              {lookupLoading}
-              {matches}
-              {filenameSuggestion}
-              hasPrevious={selectedIndex > 0}
-              hasNext={selectedIndex >= 0 && selectedIndex < tracks.length - 1}
-              onsave={handleSave}
-              onlookup={handleLookup}
-              onapplymatch={handleApplyMatch}
-              onapplyalbum={handleApplyMatchToAlbum}
-              onprevious={() => navigateTrack(-1)}
-              onnext={() => navigateTrack(1)}
-              ondirtychange={(dirty) => {
-                editorDirty = dirty;
+        <div class="metadata-page__filters">
+          {#each issueFilters as filter (filter.id)}
+            <button
+              type="button"
+              class="metadata-page__filter"
+              class:metadata-page__filter--active={issueFilter === filter.id}
+              onclick={() => {
+                void (async () => {
+                  if (!(await confirmDiscard())) return;
+                  issueFilter = filter.id;
+                })();
               }}
-            />
-          {:else if !loading}
-            <EmptyState
-              title="Select a track"
-              message="Pick a track from the list to edit its metadata."
-              icon="tag"
-            />
+            >
+              {filter.label}
+              {#if summary && filter.countKey}
+                <span class="metadata-page__filter-count">
+                  {summary[filter.countKey]}
+                </span>
+              {/if}
+            </button>
+          {/each}
+        </div>
+
+        <LocalSearchBox
+          bind:value={query}
+          placeholder="Search by title, artist, album, or path"
+          resultCount={tracks.length}
+          totalCount={total}
+        />
+
+        {#if loading}
+          <div class="metadata-page__loading">
+            <Spinner />
+          </div>
+        {:else if loadError}
+          <EmptyState
+            title="Could not load tracks"
+            message={loadError}
+            icon="alertCircle"
+          />
+        {:else if tracks.length === 0}
+          <EmptyState
+            title="No tracks found"
+            message="Try another search term or filter."
+            icon="search"
+          />
+        {:else}
+          <ul class="metadata-page__tracks" aria-label="Tracks">
+            {#each tracks as track (track.id)}
+              <li>
+                <button
+                  type="button"
+                  class="metadata-page__track"
+                  class:metadata-page__track--active={track.id === selectedId}
+                  onclick={() => void selectTrack(track.id)}
+                  oncontextmenu={(event) => onTrackContextMenu(event, track)}
+                >
+                  <span class="metadata-page__track-title">{track.title}</span>
+                  <span class="metadata-page__track-meta">
+                    {track.artist || "Unknown artist"}
+                    {#if track.album}
+                      · {track.album}
+                    {/if}
+                  </span>
+                  {#if track.issues.length > 0}
+                    <span class="metadata-page__track-issues">
+                      {track.issues.length} issue{track.issues.length === 1
+                        ? ""
+                        : "s"}
+                    </span>
+                  {/if}
+                </button>
+              </li>
+            {/each}
+          </ul>
+          {#if hasMore}
+            <div class="metadata-page__more">
+              <Button
+                variant="surface"
+                disabled={loadingMore}
+                onclick={() => loadTracks(false)}
+              >
+                {#if loadingMore}
+                  <Spinner />
+                {/if}
+                Load more
+              </Button>
+            </div>
           {/if}
-        </section>
-      </div>
-    {/if}
+        {/if}
+      </aside>
+
+      <section class="metadata-page__editor-panel">
+        {#if selectedTrack}
+          <MetadataTrackEditor
+            track={selectedTrack}
+            {saving}
+            {lookupLoading}
+            {matches}
+            {filenameSuggestion}
+            hasPrevious={selectedIndex > 0}
+            hasNext={selectedIndex >= 0 && selectedIndex < tracks.length - 1}
+            onsave={handleSave}
+            onlookup={handleLookup}
+            onapplymatch={handleApplyMatch}
+            onapplyalbum={handleApplyMatchToAlbum}
+            onprevious={() => navigateTrack(-1)}
+            onnext={() => navigateTrack(1)}
+            ondirtychange={(dirty) => {
+              editorDirty = dirty;
+            }}
+          />
+        {:else if !loading}
+          <EmptyState
+            title="Select a track"
+            message="Pick a track from the list to edit its metadata."
+            icon="tag"
+          />
+        {/if}
+      </section>
+    </div>
   {/if}
-</AppShell>
+{/if}
 
 {#if trackMenu}
   <TrackContextMenu

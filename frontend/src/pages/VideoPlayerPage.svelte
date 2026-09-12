@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -229,117 +228,115 @@
 
 <svelte:window onkeydown={onKeydown} />
 
-<AppShell fill>
-  <div class="video-player-page">
-    <div class="video-player-page__bar">
-      <Button variant="ghost" onclick={() => router.navigate("/music/videos")}>
-        <MdiIcon name="chevronLeft" size={18} />
-        Videos
-      </Button>
-      <Link href="/music/now-playing" class="video-player-page__now">
-        Now playing
-      </Link>
-    </div>
+<div class="video-player-page">
+  <div class="video-player-page__bar">
+    <Button variant="ghost" onclick={() => router.navigate("/music/videos")}>
+      <MdiIcon name="chevronLeft" size={18} />
+      Videos
+    </Button>
+    <Link href="/music/now-playing" class="video-player-page__now">
+      Now playing
+    </Link>
+  </div>
 
-    {#if loading}
-      <div class="video-player-page__center">
-        <Spinner />
-        <p class="video-player-page__loading-label">Loading video…</p>
-      </div>
-    {:else if error}
-      <EmptyState title="Cannot play video" message={error} icon="alert">
-        {#snippet actions()}
-          <Button
-            variant="surface"
-            onclick={() => router.navigate("/music/videos")}
-          >
-            Back to videos
-          </Button>
-        {/snippet}
-      </EmptyState>
-    {:else if embedUrl}
-      <div class="video-player-page__stage">
-        <h1 class="video-player-page__title">{pageTitle}</h1>
-        {#if embedAuthor}
-          <p class="video-player-page__artist">{embedAuthor}</p>
-        {/if}
-        <div
-          class="video-player-page__frame"
-          role="presentation"
-          onclick={focusEmbed}
-          onfocusin={focusEmbed}
+  {#if loading}
+    <div class="video-player-page__center">
+      <Spinner />
+      <p class="video-player-page__loading-label">Loading video…</p>
+    </div>
+  {:else if error}
+    <EmptyState title="Cannot play video" message={error} icon="alert">
+      {#snippet actions()}
+        <Button
+          variant="surface"
+          onclick={() => router.navigate("/music/videos")}
         >
-          <iframe
-            title={pageTitle}
-            src={embedUrl}
-            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
-          ></iframe>
-        </div>
+          Back to videos
+        </Button>
+      {/snippet}
+    </EmptyState>
+  {:else if embedUrl}
+    <div class="video-player-page__stage">
+      <h1 class="video-player-page__title">{pageTitle}</h1>
+      {#if embedAuthor}
+        <p class="video-player-page__artist">{embedAuthor}</p>
+      {/if}
+      <div
+        class="video-player-page__frame"
+        role="presentation"
+        onclick={focusEmbed}
+        onfocusin={focusEmbed}
+      >
+        <iframe
+          title={pageTitle}
+          src={embedUrl}
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
+        ></iframe>
       </div>
-    {:else if heldEmbedUrl}
-      <div class="video-player-page__stage">
-        <h1 class="video-player-page__title">{pageTitle}</h1>
-        <EmptyState
-          title="Video paused for music"
-          message="Music started, so the embed was unloaded. Resume the video when you want it back."
-          icon="video"
-        >
-          {#snippet actions()}
-            <Button variant="surface" onclick={restoreHeldEmbed}>
-              Resume video
-            </Button>
-          {/snippet}
-        </EmptyState>
-      </div>
-    {:else if localVideo}
-      <div class="video-player-page__stage">
-        <h1 class="video-player-page__title">{localVideo.title}</h1>
-        {#if localVideo.artist}
-          <p class="video-player-page__artist">{localVideo.artist}</p>
-        {/if}
-        <!-- svelte-ignore a11y_media_has_caption -->
-        <video
-          bind:this={videoEl}
-          class="video-player-page__video"
-          src={localVideoStreamUrl(localVideo.id)}
-          controls
-          playsinline
-          onplay={onLocalPlay}
-          onpause={() => (playing = false)}
-        ></video>
-        <div class="video-player-page__controls">
-          <Button variant="surface" onclick={togglePlay}>
-            <MdiIcon name={playing ? "pause" : "play"} size={18} />
-            {playing ? "Pause" : "Play"}
-          </Button>
-          <Button variant="ghost" onclick={goFullscreen}>
-            <MdiIcon name="fullscreen" size={18} />
-            Fullscreen
-          </Button>
-          <Button variant="ghost" onclick={downloadLocalVideo}>
-            <MdiIcon name="download" size={18} />
-            Download
-          </Button>
-        </div>
-      </div>
-    {:else}
+    </div>
+  {:else if heldEmbedUrl}
+    <div class="video-player-page__stage">
+      <h1 class="video-player-page__title">{pageTitle}</h1>
       <EmptyState
-        title="Nothing to play"
-        message="Open a local video from Videos or link one from Now Playing."
+        title="Video paused for music"
+        message="Music started, so the embed was unloaded. Resume the video when you want it back."
         icon="video"
       >
         {#snippet actions()}
-          <Button
-            variant="surface"
-            onclick={() => router.navigate("/music/videos")}
-          >
-            Browse videos
+          <Button variant="surface" onclick={restoreHeldEmbed}>
+            Resume video
           </Button>
         {/snippet}
       </EmptyState>
-    {/if}
-  </div>
-</AppShell>
+    </div>
+  {:else if localVideo}
+    <div class="video-player-page__stage">
+      <h1 class="video-player-page__title">{localVideo.title}</h1>
+      {#if localVideo.artist}
+        <p class="video-player-page__artist">{localVideo.artist}</p>
+      {/if}
+      <!-- svelte-ignore a11y_media_has_caption -->
+      <video
+        bind:this={videoEl}
+        class="video-player-page__video"
+        src={localVideoStreamUrl(localVideo.id)}
+        controls
+        playsinline
+        onplay={onLocalPlay}
+        onpause={() => (playing = false)}
+      ></video>
+      <div class="video-player-page__controls">
+        <Button variant="surface" onclick={togglePlay}>
+          <MdiIcon name={playing ? "pause" : "play"} size={18} />
+          {playing ? "Pause" : "Play"}
+        </Button>
+        <Button variant="ghost" onclick={goFullscreen}>
+          <MdiIcon name="fullscreen" size={18} />
+          Fullscreen
+        </Button>
+        <Button variant="ghost" onclick={downloadLocalVideo}>
+          <MdiIcon name="download" size={18} />
+          Download
+        </Button>
+      </div>
+    </div>
+  {:else}
+    <EmptyState
+      title="Nothing to play"
+      message="Open a local video from Videos or link one from Now Playing."
+      icon="video"
+    >
+      {#snippet actions()}
+        <Button
+          variant="surface"
+          onclick={() => router.navigate("/music/videos")}
+        >
+          Browse videos
+        </Button>
+      {/snippet}
+    </EmptyState>
+  {/if}
+</div>
 
 <style>
   .video-player-page {

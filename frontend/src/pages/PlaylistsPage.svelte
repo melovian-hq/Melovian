@@ -1,7 +1,6 @@
 <script lang="ts">
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import SourceIcon from "$lib/components/ui/SourceIcon.svelte";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import PlaylistTile from "$lib/components/music/PlaylistTile.svelte";
   import SmartPlaylistCreator from "$lib/components/music/SmartPlaylistCreator.svelte";
@@ -411,231 +410,256 @@
   });
 </script>
 
-<AppShell compactTop>
-  <div
-    class="playlists-page"
-    class:playlists-page--list={playlistView === "list"}
-    class:playlists-page--grid={playlistView === "grid"}
-    class:playlists-page--card={playlistView === "card"}
-    role="group"
-    oncontextmenu={onPageContextMenu}
-  >
-    <MusicBreadcrumbs items={[{ label: "Playlists" }]} />
+<div
+  class="playlists-page"
+  class:playlists-page--list={playlistView === "list"}
+  class:playlists-page--grid={playlistView === "grid"}
+  class:playlists-page--card={playlistView === "card"}
+  role="group"
+  oncontextmenu={onPageContextMenu}
+>
+  <MusicBreadcrumbs items={[{ label: "Playlists" }]} />
 
-    <header class="playlists-header">
-      <div>
-        <p class="playlists-header__eyebrow">
-          <MdiIcon name="listMusic" size={18} />
-          Your library
-        </p>
-        <h1>Playlists</h1>
-        <p class="playlists-header__sub">
-          {#if showKindToggle}
-            Switch between server and local playlists. Imports match tracks from
-            your active library.
-          {:else if canUseServer}
-            Server playlists sync from your Subsonic or Navidrome server.
-          {:else}
-            Local playlists are stored in {APP_NAME} on this device.
-          {/if}
-        </p>
-      </div>
-      <div class="playlists-header__tools">
-        <input
-          bind:this={importInput}
-          type="file"
-          accept=".m3u,.m3u8,audio/x-mpegurl"
-          class="playlists-header__import-input"
-          onchange={onImportSelected}
-        />
-        <Button
-          variant="surface"
-          disabled={importing}
-          onclick={() => importInput?.click()}
-        >
-          <MdiIcon name="upload" size={16} />
-          Import M3U
-        </Button>
-      </div>
-    </header>
+  <header class="playlists-header">
+    <div>
+      <p class="playlists-header__eyebrow">
+        <MdiIcon name="listMusic" size={18} />
+        Your library
+      </p>
+      <h1>Playlists</h1>
+      <p class="playlists-header__sub">
+        {#if showKindToggle}
+          Switch between server and local playlists. Imports match tracks from
+          your active library.
+        {:else if canUseServer}
+          Server playlists sync from your Subsonic or Navidrome server.
+        {:else}
+          Local playlists are stored in {APP_NAME} on this device.
+        {/if}
+      </p>
+    </div>
+    <div class="playlists-header__tools">
+      <input
+        bind:this={importInput}
+        type="file"
+        accept=".m3u,.m3u8,audio/x-mpegurl"
+        class="playlists-header__import-input"
+        onchange={onImportSelected}
+      />
+      <Button
+        variant="surface"
+        disabled={importing}
+        onclick={() => importInput?.click()}
+      >
+        <MdiIcon name="upload" size={16} />
+        Import M3U
+      </Button>
+    </div>
+  </header>
 
-    {#if showKindToggle}
-      <div class="playlists-kind" role="tablist" aria-label="Playlist source">
-        <button
-          type="button"
-          role="tab"
-          class="playlists-kind__btn"
-          class:playlists-kind__btn--active={playlistKind === "server"}
-          aria-selected={playlistKind === "server"}
-          onclick={() => (playlistKind = "server")}
-        >
-          <SourceIcon kind="server" size={16} />
-          Server
-        </button>
-        <button
-          type="button"
-          role="tab"
-          class="playlists-kind__btn"
-          class:playlists-kind__btn--active={playlistKind === "local"}
-          aria-selected={playlistKind === "local"}
-          onclick={() => (playlistKind = "local")}
-        >
-          <MdiIcon name="folderOpen" size={16} />
-          Local
-        </button>
-      </div>
-    {/if}
+  {#if showKindToggle}
+    <div class="playlists-kind" role="tablist" aria-label="Playlist source">
+      <button
+        type="button"
+        role="tab"
+        class="playlists-kind__btn"
+        class:playlists-kind__btn--active={playlistKind === "server"}
+        aria-selected={playlistKind === "server"}
+        onclick={() => (playlistKind = "server")}
+      >
+        <SourceIcon kind="server" size={16} />
+        Server
+      </button>
+      <button
+        type="button"
+        role="tab"
+        class="playlists-kind__btn"
+        class:playlists-kind__btn--active={playlistKind === "local"}
+        aria-selected={playlistKind === "local"}
+        onclick={() => (playlistKind = "local")}
+      >
+        <MdiIcon name="folderOpen" size={16} />
+        Local
+      </button>
+    </div>
+  {/if}
 
-    <LocalSearchBox
-      bind:value={searchQuery}
-      placeholder="Search playlists"
-      disabled={loading && totalPlaylistCount === 0}
-      resultCount={activePlaylists.length}
-      totalCount={totalPlaylistCount}
-    />
+  <LocalSearchBox
+    bind:value={searchQuery}
+    placeholder="Search playlists"
+    disabled={loading && totalPlaylistCount === 0}
+    resultCount={activePlaylists.length}
+    totalCount={totalPlaylistCount}
+  />
 
-    {#if inboxShares.length > 0}
-      <section class="playlists-section">
-        <div class="playlists-section__head">
-          <div class="playlists-section__lead">
-            <h2 class="playlists-section__title">
-              <MdiIcon name="share" size={18} />
-              Shared with me
-            </h2>
-          </div>
-        </div>
-        <ul class="playlists-collection playlists-collection--list">
-          {#each inboxShares as share (share.id)}
-            <li class="playlists-inbox__item">
-              <Link
-                href={`/share/${encodeURIComponent(share.token)}`}
-                class="playlists-inbox__link"
-              >
-                <span class="playlists-inbox__name"
-                  >{share.title || share.description || "Shared playlist"}</span
-                >
-                <span class="playlists-inbox__meta"
-                  >{share.accessMode} · open share</span
-                >
-              </Link>
-            </li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
-
+  {#if inboxShares.length > 0}
     <section class="playlists-section">
       <div class="playlists-section__head">
         <div class="playlists-section__lead">
           <h2 class="playlists-section__title">
-            {#if playlistKind === "server"}
-              <SourceIcon kind="server" size={18} />
-              Server playlists
-            {:else}
-              <MdiIcon name="folderOpen" size={18} />
-              Local playlists
-            {/if}
+            <MdiIcon name="share" size={18} />
+            Shared with me
           </h2>
-          <div
-            class="playlists-view"
-            role="tablist"
-            aria-label="Playlist layout"
-          >
-            {#each VIEW_OPTIONS as option (option.id)}
-              <button
-                type="button"
-                role="tab"
-                class="playlists-view__btn"
-                class:playlists-view__btn--active={playlistView === option.id}
-                aria-selected={playlistView === option.id}
-                aria-label={option.label}
-                title={option.label}
-                onclick={() => (playlistView = option.id)}
-              >
-                <MdiIcon name={option.icon} size={17} />
-              </button>
-            {/each}
-          </div>
         </div>
-        <form
-          class="playlists-create playlists-create--inline"
-          onsubmit={(e) => {
-            e.preventDefault();
-            createPlaylist();
-          }}
-        >
-          <input
-            bind:value={newName}
-            placeholder={playlistKind === "server"
-              ? "New server playlist"
-              : "New local playlist"}
-            autocomplete="off"
-          />
-          <Button type="submit" disabled={creating || !newName.trim()}>
-            <MdiIcon name="plus" size={16} />
-            Create
-          </Button>
-          {#if showSmartPlaylist}
-            <Button
-              type="button"
-              variant="surface"
-              onclick={() => (smartPlaylistOpen = true)}
+      </div>
+      <ul class="playlists-collection playlists-collection--list">
+        {#each inboxShares as share (share.id)}
+          <li class="playlists-inbox__item">
+            <Link
+              href={`/share/${encodeURIComponent(share.token)}`}
+              class="playlists-inbox__link"
             >
-              <MdiIcon name="slidersHorizontal" size={16} />
-              Smart
-            </Button>
+              <span class="playlists-inbox__name"
+                >{share.title || share.description || "Shared playlist"}</span
+              >
+              <span class="playlists-inbox__meta"
+                >{share.accessMode} · open share</span
+              >
+            </Link>
+          </li>
+        {/each}
+      </ul>
+    </section>
+  {/if}
+
+  <section class="playlists-section">
+    <div class="playlists-section__head">
+      <div class="playlists-section__lead">
+        <h2 class="playlists-section__title">
+          {#if playlistKind === "server"}
+            <SourceIcon kind="server" size={18} />
+            Server playlists
+          {:else}
+            <MdiIcon name="folderOpen" size={18} />
+            Local playlists
           {/if}
-        </form>
-        {#if playlistKind === "server" && !smartPlaylistSupported && smartPlaylistSupportReason}
-          <p class="playlists-smart-hint">{smartPlaylistSupportReason}</p>
+        </h2>
+        <div class="playlists-view" role="tablist" aria-label="Playlist layout">
+          {#each VIEW_OPTIONS as option (option.id)}
+            <button
+              type="button"
+              role="tab"
+              class="playlists-view__btn"
+              class:playlists-view__btn--active={playlistView === option.id}
+              aria-selected={playlistView === option.id}
+              aria-label={option.label}
+              title={option.label}
+              onclick={() => (playlistView = option.id)}
+            >
+              <MdiIcon name={option.icon} size={17} />
+            </button>
+          {/each}
+        </div>
+      </div>
+      <form
+        class="playlists-create playlists-create--inline"
+        onsubmit={(e) => {
+          e.preventDefault();
+          createPlaylist();
+        }}
+      >
+        <input
+          bind:value={newName}
+          placeholder={playlistKind === "server"
+            ? "New server playlist"
+            : "New local playlist"}
+          autocomplete="off"
+        />
+        <Button type="submit" disabled={creating || !newName.trim()}>
+          <MdiIcon name="plus" size={16} />
+          Create
+        </Button>
+        {#if showSmartPlaylist}
+          <Button
+            type="button"
+            variant="surface"
+            onclick={() => (smartPlaylistOpen = true)}
+          >
+            <MdiIcon name="slidersHorizontal" size={16} />
+            Smart
+          </Button>
+        {/if}
+      </form>
+      {#if playlistKind === "server" && !smartPlaylistSupported && smartPlaylistSupportReason}
+        <p class="playlists-smart-hint">{smartPlaylistSupportReason}</p>
+      {/if}
+    </div>
+
+    {#if showInitialLoading}
+      <div
+        class="playlists-page__loading"
+        class:playlists-page__loading--list={playlistView === "list"}
+        class:playlists-page__loading--grid={playlistView !== "list"}
+        role="status"
+        aria-busy="true"
+        aria-label="Loading playlists"
+      >
+        {#if playlistView === "list"}
+          {#each Array.from({ length: 6 }) as _, i (i)}
+            <Skeleton variant="row" />
+          {/each}
+        {:else}
+          {#each Array.from({ length: 8 }) as _, i (i)}
+            <Skeleton variant="card" />
+          {/each}
         {/if}
       </div>
-
-      {#if showInitialLoading}
-        <div
-          class="playlists-page__loading"
-          class:playlists-page__loading--list={playlistView === "list"}
-          class:playlists-page__loading--grid={playlistView !== "list"}
-          role="status"
-          aria-busy="true"
-          aria-label="Loading playlists"
-        >
-          {#if playlistView === "list"}
-            {#each Array.from({ length: 6 }) as _, i (i)}
-              <Skeleton variant="row" />
-            {/each}
-          {:else}
-            {#each Array.from({ length: 8 }) as _, i (i)}
-              <Skeleton variant="card" />
-            {/each}
-          {/if}
-        </div>
-      {:else if unavailable}
-        <LibraryUnavailable />
-      {:else if activePlaylists.length === 0 && hasSearch}
-        <EmptyState
-          title="No matches"
-          message={`No playlists match "${searchQuery.trim()}".`}
-          icon="search"
-        />
-      {:else if activePlaylists.length === 0}
-        <p class="playlists-section__empty">
-          {playlistKind === "server"
-            ? "No server playlists yet."
-            : "No local playlists yet."}
-        </p>
-      {:else if useVirtual}
-        <VirtualList
-          items={activePlaylists}
-          itemHeight={PLAYLIST_ROW_HEIGHT}
-          scrollMode="document"
-          class="playlists-collection playlists-collection--list"
-        >
-          {#snippet children({ item: pl })}
+    {:else if unavailable}
+      <LibraryUnavailable />
+    {:else if activePlaylists.length === 0 && hasSearch}
+      <EmptyState
+        title="No matches"
+        message={`No playlists match "${searchQuery.trim()}".`}
+        icon="search"
+      />
+    {:else if activePlaylists.length === 0}
+      <p class="playlists-section__empty">
+        {playlistKind === "server"
+          ? "No server playlists yet."
+          : "No local playlists yet."}
+      </p>
+    {:else if useVirtual}
+      <VirtualList
+        items={activePlaylists}
+        itemHeight={PLAYLIST_ROW_HEIGHT}
+        scrollMode="document"
+        class="playlists-collection playlists-collection--list"
+      >
+        {#snippet children({ item: pl })}
+          <PlaylistTile
+            playlist={pl}
+            kind={playlistKind}
+            view="list"
+            onExport={() =>
+              playlistKind === "server"
+                ? void exportServerPlaylist(pl as ServerPlaylist)
+                : void exportLocalPlaylist(pl as MusicPlaylist)}
+            onDelete={() =>
+              playlistKind === "server"
+                ? deleteServerPlaylist(pl.id, pl.name)
+                : deleteLocalPlaylist(pl.id)}
+            onShare={() =>
+              (shareTarget = {
+                id: pl.id,
+                name: pl.name,
+                kind: playlistKind,
+              })}
+          />
+        {/snippet}
+      </VirtualList>
+    {:else}
+      <ul
+        class="playlists-collection"
+        class:playlists-collection--list={playlistView === "list"}
+        class:playlists-collection--grid={playlistView === "grid"}
+        class:playlists-collection--card={playlistView === "card"}
+      >
+        {#each activePlaylists as pl (pl.id)}
+          <li class="playlists-collection__item">
             <PlaylistTile
               playlist={pl}
               kind={playlistKind}
-              view="list"
+              view={playlistView}
               onExport={() =>
                 playlistKind === "server"
                   ? void exportServerPlaylist(pl as ServerPlaylist)
@@ -651,43 +675,12 @@
                   kind: playlistKind,
                 })}
             />
-          {/snippet}
-        </VirtualList>
-      {:else}
-        <ul
-          class="playlists-collection"
-          class:playlists-collection--list={playlistView === "list"}
-          class:playlists-collection--grid={playlistView === "grid"}
-          class:playlists-collection--card={playlistView === "card"}
-        >
-          {#each activePlaylists as pl (pl.id)}
-            <li class="playlists-collection__item">
-              <PlaylistTile
-                playlist={pl}
-                kind={playlistKind}
-                view={playlistView}
-                onExport={() =>
-                  playlistKind === "server"
-                    ? void exportServerPlaylist(pl as ServerPlaylist)
-                    : void exportLocalPlaylist(pl as MusicPlaylist)}
-                onDelete={() =>
-                  playlistKind === "server"
-                    ? deleteServerPlaylist(pl.id, pl.name)
-                    : deleteLocalPlaylist(pl.id)}
-                onShare={() =>
-                  (shareTarget = {
-                    id: pl.id,
-                    name: pl.name,
-                    kind: playlistKind,
-                  })}
-              />
-            </li>
-          {/each}
-        </ul>
-      {/if}
-    </section>
-  </div>
-</AppShell>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+</div>
 
 {#if pageMenu}
   <ContextMenu

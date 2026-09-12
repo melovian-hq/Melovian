@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import { APP_NAME } from "$lib/brand";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
@@ -47,62 +46,60 @@
   }
 </script>
 
-<AppShell>
-  <div class="shared-inbox">
-    <MusicBreadcrumbs
-      items={[{ label: "Home", href: "/music" }, { label: "Shared with you" }]}
+<div class="shared-inbox">
+  <MusicBreadcrumbs
+    items={[{ label: "Home", href: "/music" }, { label: "Shared with you" }]}
+  />
+
+  <header class="shared-inbox__hero">
+    <h1>Shared with you</h1>
+    <p>Playlists and albums other {APP_NAME} users shared to your account.</p>
+  </header>
+
+  {#if !auth.enabled || !auth.authenticated}
+    <EmptyState
+      title="Sign in required"
+      message={`Shared inbox needs a ${APP_NAME} account.`}
+    >
+      {#snippet actions()}
+        <Link href="/account/login" class="shared-inbox__link">Sign in</Link>
+      {/snippet}
+    </EmptyState>
+  {:else if loading}
+    <div class="shared-inbox__loading">
+      <Spinner />
+    </div>
+  {:else if error}
+    <EmptyState title="Could not load inbox" message={error} />
+  {:else if items.length === 0}
+    <EmptyState
+      title="Nothing shared yet"
+      message="When someone shares a playlist with your username, it shows up here."
     />
-
-    <header class="shared-inbox__hero">
-      <h1>Shared with you</h1>
-      <p>Playlists and albums other {APP_NAME} users shared to your account.</p>
-    </header>
-
-    {#if !auth.enabled || !auth.authenticated}
-      <EmptyState
-        title="Sign in required"
-        message={`Shared inbox needs a ${APP_NAME} account.`}
-      >
-        {#snippet actions()}
-          <Link href="/account/login" class="shared-inbox__link">Sign in</Link>
-        {/snippet}
-      </EmptyState>
-    {:else if loading}
-      <div class="shared-inbox__loading">
-        <Spinner />
-      </div>
-    {:else if error}
-      <EmptyState title="Could not load inbox" message={error} />
-    {:else if items.length === 0}
-      <EmptyState
-        title="Nothing shared yet"
-        message="When someone shares a playlist with your username, it shows up here."
-      />
-    {:else}
-      <ul class="shared-inbox__list">
-        {#each items as share (share.id)}
-          <li>
-            <Link href="/share/{share.token}" class="shared-inbox__card">
-              <span class="shared-inbox__icon" aria-hidden="true">
-                <MdiIcon name="share" size={20} />
+  {:else}
+    <ul class="shared-inbox__list">
+      {#each items as share (share.id)}
+        <li>
+          <Link href="/share/{share.token}" class="shared-inbox__card">
+            <span class="shared-inbox__icon" aria-hidden="true">
+              <MdiIcon name="share" size={20} />
+            </span>
+            <span class="shared-inbox__copy">
+              <span class="shared-inbox__title">{label(share)}</span>
+              <span class="shared-inbox__meta">
+                {share.resourceType}
+                {#if share.tracks?.length}
+                  · {share.tracks.length} tracks
+                {/if}
               </span>
-              <span class="shared-inbox__copy">
-                <span class="shared-inbox__title">{label(share)}</span>
-                <span class="shared-inbox__meta">
-                  {share.resourceType}
-                  {#if share.tracks?.length}
-                    · {share.tracks.length} tracks
-                  {/if}
-                </span>
-              </span>
-              <MdiIcon name="chevronRight" size={18} />
-            </Link>
-          </li>
-        {/each}
-      </ul>
-    {/if}
-  </div>
-</AppShell>
+            </span>
+            <MdiIcon name="chevronRight" size={18} />
+          </Link>
+        </li>
+      {/each}
+    </ul>
+  {/if}
+</div>
 
 <style>
   .shared-inbox {

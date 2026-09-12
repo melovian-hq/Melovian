@@ -1,7 +1,6 @@
 <script lang="ts">
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import SourceIcon from "$lib/components/ui/SourceIcon.svelte";
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import MusicBreadcrumbs from "$lib/components/music/MusicBreadcrumbs.svelte";
   import TrackRow from "$lib/components/music/TrackRow.svelte";
   import VirtualList from "$lib/components/ui/VirtualList.svelte";
@@ -212,240 +211,196 @@
   }
 </script>
 
-<AppShell compactTop>
-  <div class="server-playlist-page">
-    <MusicBreadcrumbs items={breadcrumbItems} />
+<div class="server-playlist-page">
+  <MusicBreadcrumbs items={breadcrumbItems} />
 
-    {#if loading}
-      <div class="server-playlist-page__loading"><Spinner /></div>
-    {:else if error}
-      <p class="server-playlist-page__error">{error}</p>
-      <Link href="/music/playlists">Back to playlists</Link>
-    {:else if playlist}
-      <header class="server-playlist-header">
-        <div>
-          <p class="server-playlist-header__eyebrow">
-            <SourceIcon kind="server" size={18} />
-            Server playlist
-          </p>
-          {#if editingName && canEdit}
-            <form
-              class="server-playlist-header__rename"
-              onsubmit={(e) => {
-                e.preventDefault();
-                void saveRename();
+  {#if loading}
+    <div class="server-playlist-page__loading"><Spinner /></div>
+  {:else if error}
+    <p class="server-playlist-page__error">{error}</p>
+    <Link href="/music/playlists">Back to playlists</Link>
+  {:else if playlist}
+    <header class="server-playlist-header">
+      <div>
+        <p class="server-playlist-header__eyebrow">
+          <SourceIcon kind="server" size={18} />
+          Server playlist
+        </p>
+        {#if editingName && canEdit}
+          <form
+            class="server-playlist-header__rename"
+            onsubmit={(e) => {
+              e.preventDefault();
+              void saveRename();
+            }}
+          >
+            <Input bind:value={renameValue} disabled={saving} />
+            <Button type="submit" disabled={saving || !renameValue.trim()}>
+              Save
+            </Button>
+            <Button
+              type="button"
+              variant="ghost"
+              disabled={saving}
+              onclick={() => {
+                editingName = false;
+                renameValue = playlist?.name ?? "";
               }}
             >
-              <Input bind:value={renameValue} disabled={saving} />
-              <Button type="submit" disabled={saving || !renameValue.trim()}>
-                Save
-              </Button>
-              <Button
+              Cancel
+            </Button>
+          </form>
+        {:else}
+          <div class="server-playlist-header__title-row">
+            <h1>{playlist.name}</h1>
+            {#if canEdit}
+              <button
                 type="button"
-                variant="ghost"
-                disabled={saving}
+                class="server-playlist-header__icon-btn"
                 onclick={() => {
-                  editingName = false;
+                  editingName = true;
                   renameValue = playlist?.name ?? "";
                 }}
+                aria-label="Rename playlist"
+                disabled={saving}
               >
-                Cancel
-              </Button>
-            </form>
-          {:else}
-            <div class="server-playlist-header__title-row">
-              <h1>{playlist.name}</h1>
-              {#if canEdit}
-                <button
-                  type="button"
-                  class="server-playlist-header__icon-btn"
-                  onclick={() => {
-                    editingName = true;
-                    renameValue = playlist?.name ?? "";
-                  }}
-                  aria-label="Rename playlist"
-                  disabled={saving}
-                >
-                  <MdiIcon name="pencil" size={18} />
-                </button>
-              {/if}
-            </div>
-          {/if}
-          <div class="server-playlist-header__meta">
-            <span>{songs.length.toLocaleString()} tracks</span>
-            {#if playlistDuration}
-              <span>· {playlistDuration}</span>
-            {/if}
-            {#if playlist.songCount && playlist.songCount !== songs.length}
-              <span>· {playlist.songCount.toLocaleString()} on server</span>
-            {/if}
-            {#if playlist.owner}
-              <span>· Owner {playlist.owner}</span>
-            {/if}
-            {#if playlist.public}
-              <span class="server-playlist-header__badge">Public</span>
-            {:else}
-              <span
-                class="server-playlist-header__badge server-playlist-header__badge--private"
-                >Private</span
-              >
+                <MdiIcon name="pencil" size={18} />
+              </button>
             {/if}
           </div>
-          {#if createdLabel || changedLabel}
-            <p class="server-playlist-header__dates">
-              {#if createdLabel}
-                <span>Created {createdLabel}</span>
-              {/if}
-              {#if changedLabel}
-                <span>{createdLabel ? "· " : ""}Updated {changedLabel}</span>
-              {/if}
-            </p>
+        {/if}
+        <div class="server-playlist-header__meta">
+          <span>{songs.length.toLocaleString()} tracks</span>
+          {#if playlistDuration}
+            <span>· {playlistDuration}</span>
           {/if}
-        </div>
-        <div class="server-playlist-header__actions">
-          {#if filteredSongs.length > 0}
-            <button
-              type="button"
-              class="server-playlist-header__shuffle"
-              onclick={exportPlaylist}
-              disabled={saving}
-            >
-              <MdiIcon name="export" size={16} />
-              Export M3U
-            </button>
-            <button
-              type="button"
-              class="server-playlist-header__play"
-              onclick={playAll}
-              disabled={saving}
-            >
-              <MdiIcon name="play" size={16} />
-              {hasSearch ? "Play matches" : "Play all"}
-            </button>
-            <button
-              type="button"
-              class="server-playlist-header__shuffle"
-              onclick={() => {
-                music.shuffle = true;
-                playAll();
-              }}
-              disabled={saving}
-            >
-              <MdiIcon name="shuffle" size={16} />
-              Shuffle
-            </button>
-            <button
-              type="button"
-              class="server-playlist-header__shuffle"
-              onclick={() => void downloadFiles()}
-              disabled={saving || savingFiles}
-            >
-              <MdiIcon name="download" size={16} />
-              {savingFiles ? "Downloading…" : "Download"}
-            </button>
-            <button
-              type="button"
-              class="server-playlist-header__shuffle"
-              onclick={() => (shareOpen = true)}
-              disabled={saving}
-            >
-              <MdiIcon name="share" size={16} />
-              Share
-            </button>
+          {#if playlist.songCount && playlist.songCount !== songs.length}
+            <span>· {playlist.songCount.toLocaleString()} on server</span>
           {/if}
-          {#if canEdit}
-            <button
-              type="button"
-              class="server-playlist-header__delete"
-              onclick={() => void deletePlaylist()}
-              disabled={saving}
-            >
-              <MdiIcon name="trash2" size={16} />
-              Delete
-            </button>
+          {#if playlist.owner}
+            <span>· Owner {playlist.owner}</span>
           {/if}
-        </div>
-      </header>
-
-      <LocalSearchBox
-        bind:value={searchQuery}
-        placeholder="Search tracks"
-        disabled={songs.length === 0}
-        resultCount={filteredSongs.length}
-        totalCount={songs.length}
-      />
-
-      {#if songs.length === 0}
-        <EmptyState
-          title="Empty playlist"
-          message={canEdit
-            ? "Add tracks from albums or search using the + button."
-            : "This server playlist has no tracks."}
-          icon="listMusic"
-        />
-      {:else if filteredSongs.length === 0}
-        <EmptyState
-          title="No matches"
-          message={`No tracks match "${searchQuery.trim()}".`}
-          icon="search"
-        />
-      {:else}
-        <div class="track-list-island">
-          {#if filteredSongs.length >= 24}
-            <VirtualList
-              items={filteredSongs}
-              itemHeight={58}
-              scrollMode="document"
-            >
-              {#snippet children({ item: track, index })}
-                <div class="track-list__row">
-                  <TrackRow
-                    {track}
-                    {index}
-                    onplay={() => music.playTracks(filteredSongs, index)}
-                  />
-                  {#if canEdit}
-                    <div class="track-list__actions">
-                      <button
-                        type="button"
-                        class="track-list__action"
-                        onclick={() => void moveTrack(track, -1)}
-                        disabled={saving || songIndex(track) <= 0}
-                        aria-label="Move up"
-                      >
-                        <MdiIcon name="chevronUp" size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        class="track-list__action"
-                        onclick={() => void moveTrack(track, 1)}
-                        disabled={saving ||
-                          songIndex(track) >= songs.length - 1}
-                        aria-label="Move down"
-                      >
-                        <MdiIcon name="chevronDown" size={16} />
-                      </button>
-                      <button
-                        type="button"
-                        class="track-list__action track-list__action--danger"
-                        onclick={() => void removeTrack(track)}
-                        disabled={saving}
-                        aria-label="Remove track"
-                      >
-                        <MdiIcon name="trash2" size={16} />
-                      </button>
-                    </div>
-                  {/if}
-                </div>
-              {/snippet}
-            </VirtualList>
+          {#if playlist.public}
+            <span class="server-playlist-header__badge">Public</span>
           {:else}
-            {#each filteredSongs as track, i (stableItemKey(track.id, i, track.title))}
+            <span
+              class="server-playlist-header__badge server-playlist-header__badge--private"
+              >Private</span
+            >
+          {/if}
+        </div>
+        {#if createdLabel || changedLabel}
+          <p class="server-playlist-header__dates">
+            {#if createdLabel}
+              <span>Created {createdLabel}</span>
+            {/if}
+            {#if changedLabel}
+              <span>{createdLabel ? "· " : ""}Updated {changedLabel}</span>
+            {/if}
+          </p>
+        {/if}
+      </div>
+      <div class="server-playlist-header__actions">
+        {#if filteredSongs.length > 0}
+          <button
+            type="button"
+            class="server-playlist-header__shuffle"
+            onclick={exportPlaylist}
+            disabled={saving}
+          >
+            <MdiIcon name="export" size={16} />
+            Export M3U
+          </button>
+          <button
+            type="button"
+            class="server-playlist-header__play"
+            onclick={playAll}
+            disabled={saving}
+          >
+            <MdiIcon name="play" size={16} />
+            {hasSearch ? "Play matches" : "Play all"}
+          </button>
+          <button
+            type="button"
+            class="server-playlist-header__shuffle"
+            onclick={() => {
+              music.shuffle = true;
+              playAll();
+            }}
+            disabled={saving}
+          >
+            <MdiIcon name="shuffle" size={16} />
+            Shuffle
+          </button>
+          <button
+            type="button"
+            class="server-playlist-header__shuffle"
+            onclick={() => void downloadFiles()}
+            disabled={saving || savingFiles}
+          >
+            <MdiIcon name="download" size={16} />
+            {savingFiles ? "Downloading…" : "Download"}
+          </button>
+          <button
+            type="button"
+            class="server-playlist-header__shuffle"
+            onclick={() => (shareOpen = true)}
+            disabled={saving}
+          >
+            <MdiIcon name="share" size={16} />
+            Share
+          </button>
+        {/if}
+        {#if canEdit}
+          <button
+            type="button"
+            class="server-playlist-header__delete"
+            onclick={() => void deletePlaylist()}
+            disabled={saving}
+          >
+            <MdiIcon name="trash2" size={16} />
+            Delete
+          </button>
+        {/if}
+      </div>
+    </header>
+
+    <LocalSearchBox
+      bind:value={searchQuery}
+      placeholder="Search tracks"
+      disabled={songs.length === 0}
+      resultCount={filteredSongs.length}
+      totalCount={songs.length}
+    />
+
+    {#if songs.length === 0}
+      <EmptyState
+        title="Empty playlist"
+        message={canEdit
+          ? "Add tracks from albums or search using the + button."
+          : "This server playlist has no tracks."}
+        icon="listMusic"
+      />
+    {:else if filteredSongs.length === 0}
+      <EmptyState
+        title="No matches"
+        message={`No tracks match "${searchQuery.trim()}".`}
+        icon="search"
+      />
+    {:else}
+      <div class="track-list-island">
+        {#if filteredSongs.length >= 24}
+          <VirtualList
+            items={filteredSongs}
+            itemHeight={58}
+            scrollMode="document"
+          >
+            {#snippet children({ item: track, index })}
               <div class="track-list__row">
                 <TrackRow
                   {track}
-                  index={i}
-                  onplay={() => music.playTracks(filteredSongs, i)}
+                  {index}
+                  onplay={() => music.playTracks(filteredSongs, index)}
                 />
                 {#if canEdit}
                   <div class="track-list__actions">
@@ -479,13 +434,54 @@
                   </div>
                 {/if}
               </div>
-            {/each}
-          {/if}
-        </div>
-      {/if}
+            {/snippet}
+          </VirtualList>
+        {:else}
+          {#each filteredSongs as track, i (stableItemKey(track.id, i, track.title))}
+            <div class="track-list__row">
+              <TrackRow
+                {track}
+                index={i}
+                onplay={() => music.playTracks(filteredSongs, i)}
+              />
+              {#if canEdit}
+                <div class="track-list__actions">
+                  <button
+                    type="button"
+                    class="track-list__action"
+                    onclick={() => void moveTrack(track, -1)}
+                    disabled={saving || songIndex(track) <= 0}
+                    aria-label="Move up"
+                  >
+                    <MdiIcon name="chevronUp" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    class="track-list__action"
+                    onclick={() => void moveTrack(track, 1)}
+                    disabled={saving || songIndex(track) >= songs.length - 1}
+                    aria-label="Move down"
+                  >
+                    <MdiIcon name="chevronDown" size={16} />
+                  </button>
+                  <button
+                    type="button"
+                    class="track-list__action track-list__action--danger"
+                    onclick={() => void removeTrack(track)}
+                    disabled={saving}
+                    aria-label="Remove track"
+                  >
+                    <MdiIcon name="trash2" size={16} />
+                  </button>
+                </div>
+              {/if}
+            </div>
+          {/each}
+        {/if}
+      </div>
     {/if}
-  </div>
-</AppShell>
+  {/if}
+</div>
 
 <SharePlaylistDialog
   open={shareOpen}

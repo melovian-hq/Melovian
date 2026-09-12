@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Input from "$lib/components/ui/Input.svelte";
@@ -151,106 +150,100 @@
   });
 </script>
 
-<AppShell compactTop>
-  <div class="share-page">
-    {#if loading}
-      <div class="share-page__state"><Spinner /></div>
-    {:else if error}
-      <EmptyState title="Share unavailable" message={error} icon="share">
-        {#snippet actions()}
-          <Link href="/music">Back to music</Link>
-        {/snippet}
-      </EmptyState>
-    {:else if share?.requiresPassword}
-      <section class="share-page__gate">
-        <h1>Password required</h1>
-        <p>This shared playlist is protected by a password.</p>
-        <form class="share-page__password" onsubmit={unlock}>
-          <Input
-            type="password"
-            bind:value={password}
-            placeholder="Password"
-            autocomplete="current-password"
-          />
-          <Button type="submit" disabled={unlocking}>
-            {unlocking ? "Unlocking…" : "Unlock"}
-          </Button>
-        </form>
-      </section>
-    {:else if share?.requiresLogin}
-      <EmptyState
-        title="Sign in required"
-        message="This shared playlist is only available to signed-in accounts."
-        icon="lock"
-      >
-        {#snippet actions()}
-          <Link href="/account/login">Sign in</Link>
-        {/snippet}
-      </EmptyState>
-    {:else if unlocked}
-      <header class="share-page__header">
-        <p class="share-page__eyebrow">Shared playlist</p>
-        <h1>{title}</h1>
-        <p class="share-page__meta">
-          {tracks.length.toLocaleString()}
-          {tracks.length === 1 ? "track" : "tracks"}
-        </p>
-        <div class="share-page__actions">
-          <Button
-            type="button"
-            disabled={tracks.length === 0}
-            onclick={playAll}
-          >
-            <MdiIcon name="play" size={18} />
-            Play all
-          </Button>
-        </div>
-      </header>
-
-      {#if tracks.length === 0}
-        <EmptyState
-          title="No tracks"
-          message="This share has no playable tracks."
-          icon="listMusic"
+<div class="share-page">
+  {#if loading}
+    <div class="share-page__state"><Spinner /></div>
+  {:else if error}
+    <EmptyState title="Share unavailable" message={error} icon="share">
+      {#snippet actions()}
+        <Link href="/music">Back to music</Link>
+      {/snippet}
+    </EmptyState>
+  {:else if share?.requiresPassword}
+    <section class="share-page__gate">
+      <h1>Password required</h1>
+      <p>This shared playlist is protected by a password.</p>
+      <form class="share-page__password" onsubmit={unlock}>
+        <Input
+          type="password"
+          bind:value={password}
+          placeholder="Password"
+          autocomplete="current-password"
         />
-      {:else}
-        <ul class="share-page__tracks">
-          {#each tracks as track, index (track.id)}
-            <li class="share-page__track">
-              <button
-                type="button"
-                class="share-page__track-main"
-                onclick={() => playTrack(index)}
-              >
-                <span class="share-page__track-index">{index + 1}</span>
-                <span class="share-page__track-info">
-                  <span class="share-page__track-title">{track.title}</span>
-                  <span class="share-page__track-artist"
-                    >{track.artist || "Unknown artist"}</span
-                  >
-                </span>
-                <span class="share-page__track-duration"
-                  >{formatDurationMs(track.durationMs)}</span
+        <Button type="submit" disabled={unlocking}>
+          {unlocking ? "Unlocking…" : "Unlock"}
+        </Button>
+      </form>
+    </section>
+  {:else if share?.requiresLogin}
+    <EmptyState
+      title="Sign in required"
+      message="This shared playlist is only available to signed-in accounts."
+      icon="lock"
+    >
+      {#snippet actions()}
+        <Link href="/account/login">Sign in</Link>
+      {/snippet}
+    </EmptyState>
+  {:else if unlocked}
+    <header class="share-page__header">
+      <p class="share-page__eyebrow">Shared playlist</p>
+      <h1>{title}</h1>
+      <p class="share-page__meta">
+        {tracks.length.toLocaleString()}
+        {tracks.length === 1 ? "track" : "tracks"}
+      </p>
+      <div class="share-page__actions">
+        <Button type="button" disabled={tracks.length === 0} onclick={playAll}>
+          <MdiIcon name="play" size={18} />
+          Play all
+        </Button>
+      </div>
+    </header>
+
+    {#if tracks.length === 0}
+      <EmptyState
+        title="No tracks"
+        message="This share has no playable tracks."
+        icon="listMusic"
+      />
+    {:else}
+      <ul class="share-page__tracks">
+        {#each tracks as track, index (track.id)}
+          <li class="share-page__track">
+            <button
+              type="button"
+              class="share-page__track-main"
+              onclick={() => playTrack(index)}
+            >
+              <span class="share-page__track-index">{index + 1}</span>
+              <span class="share-page__track-info">
+                <span class="share-page__track-title">{track.title}</span>
+                <span class="share-page__track-artist"
+                  >{track.artist || "Unknown artist"}</span
                 >
-              </button>
-              <Button
-                type="button"
-                variant="ghost"
-                size="sm"
-                disabled={downloadBusyId === track.id}
-                aria-label="Save {track.title} to device"
-                onclick={() => void saveTrack(track)}
+              </span>
+              <span class="share-page__track-duration"
+                >{formatDurationMs(track.durationMs)}</span
               >
-                <MdiIcon name="download" size={16} />
-                Save
-              </Button>
-            </li>
-          {/each}
-        </ul>
-      {/if}
+            </button>
+            <Button
+              type="button"
+              variant="ghost"
+              size="sm"
+              disabled={downloadBusyId === track.id}
+              aria-label="Save {track.title} to device"
+              onclick={() => void saveTrack(track)}
+            >
+              <MdiIcon name="download" size={16} />
+              Save
+            </Button>
+          </li>
+        {/each}
+      </ul>
     {/if}
-  </div>
-</AppShell>
+  {/if}
+</div>
 
 <style>
   .share-page {

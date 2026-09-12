@@ -1,5 +1,4 @@
 <script lang="ts">
-  import AppShell from "$lib/components/layout/AppShell.svelte";
   import PageHeader from "$lib/components/ui/PageHeader.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
@@ -167,106 +166,104 @@
   ]);
 </script>
 
-<AppShell compactTop>
-  <div class="genre-page" role="group" oncontextmenu={onPageContextMenu}>
-    <PageHeader
-      title={name}
-      subtitle={loading && songs.length === 0
-        ? "Loading..."
-        : hasSearch
-          ? `${filteredSongs.length} of ${visibleSongs.length} tracks`
-          : `${visibleSongs.length} tracks`}
-    >
-      {#snippet actions()}
-        <button
-          type="button"
-          class="genre-action"
-          disabled={filteredSongs.length === 0}
-          onclick={() => music.playTracks(filteredSongs, 0)}
-        >
-          <MdiIcon name="play" size={18} /> Play
-        </button>
-        <button
-          type="button"
-          class="genre-action genre-action--ghost"
-          disabled={filteredSongs.length === 0}
-          onclick={() => void playVisibleNext()}
-        >
-          <MdiIcon name="playNext" size={16} /> Play next
-        </button>
-        <button
-          type="button"
-          class="genre-action genre-action--ghost"
-          disabled={filteredSongs.length === 0}
-          onclick={addVisibleToQueue}
-        >
-          <MdiIcon name="queueAdd" size={16} /> Add to queue
-        </button>
-        <button
-          type="button"
-          class="genre-action genre-action--ghost"
-          disabled={filteredSongs.length === 0}
-          onclick={() => {
-            music.shuffle = true;
-            music.playTracks(filteredSongs, 0);
-          }}
-        >
-          <MdiIcon name="shuffle" size={16} /> Shuffle
-        </button>
-      {/snippet}
-    </PageHeader>
+<div class="genre-page" role="group" oncontextmenu={onPageContextMenu}>
+  <PageHeader
+    title={name}
+    subtitle={loading && songs.length === 0
+      ? "Loading..."
+      : hasSearch
+        ? `${filteredSongs.length} of ${visibleSongs.length} tracks`
+        : `${visibleSongs.length} tracks`}
+  >
+    {#snippet actions()}
+      <button
+        type="button"
+        class="genre-action"
+        disabled={filteredSongs.length === 0}
+        onclick={() => music.playTracks(filteredSongs, 0)}
+      >
+        <MdiIcon name="play" size={18} /> Play
+      </button>
+      <button
+        type="button"
+        class="genre-action genre-action--ghost"
+        disabled={filteredSongs.length === 0}
+        onclick={() => void playVisibleNext()}
+      >
+        <MdiIcon name="playNext" size={16} /> Play next
+      </button>
+      <button
+        type="button"
+        class="genre-action genre-action--ghost"
+        disabled={filteredSongs.length === 0}
+        onclick={addVisibleToQueue}
+      >
+        <MdiIcon name="queueAdd" size={16} /> Add to queue
+      </button>
+      <button
+        type="button"
+        class="genre-action genre-action--ghost"
+        disabled={filteredSongs.length === 0}
+        onclick={() => {
+          music.shuffle = true;
+          music.playTracks(filteredSongs, 0);
+        }}
+      >
+        <MdiIcon name="shuffle" size={16} /> Shuffle
+      </button>
+    {/snippet}
+  </PageHeader>
 
-    <LocalSearchBox
-      bind:value={searchQuery}
-      placeholder="Search tracks in this genre"
-      disabled={loading && songs.length === 0}
-      resultCount={filteredSongs.length}
-      totalCount={visibleSongs.length}
+  <LocalSearchBox
+    bind:value={searchQuery}
+    placeholder="Search tracks in this genre"
+    disabled={loading && songs.length === 0}
+    resultCount={filteredSongs.length}
+    totalCount={visibleSongs.length}
+  />
+
+  {#if showInitialLoading}
+    <div class="track-list-island">
+      {#each Array.from({ length: 8 }) as _, i (i)}
+        <Skeleton class="track-skeleton" />
+      {/each}
+    </div>
+  {:else if error && songs.length === 0}
+    <EmptyState
+      title="Could not load genre"
+      message={error}
+      icon="alertCircle"
     />
-
-    {#if showInitialLoading}
-      <div class="track-list-island">
-        {#each Array.from({ length: 8 }) as _, i (i)}
-          <Skeleton class="track-skeleton" />
-        {/each}
-      </div>
-    {:else if error && songs.length === 0}
-      <EmptyState
-        title="Could not load genre"
-        message={error}
-        icon="alertCircle"
+  {:else if visibleSongs.length === 0}
+    <EmptyState
+      title="No tracks"
+      message={`No songs found for ${name}.`}
+      icon="tag"
+    />
+  {:else if filteredSongs.length === 0}
+    <EmptyState
+      title="No matches"
+      message={`No tracks match "${searchQuery.trim()}".`}
+      icon="search"
+    />
+  {:else}
+    <TrackSelectionBar allTracks={filteredSongs} />
+    <div class="track-list-island">
+      <TrackVirtualList
+        tracks={filteredSongs}
+        onplay={(i) => music.playTracks(filteredSongs, i)}
+        selectable={trackSelection.active}
+        onNearEnd={hasSearch ? undefined : loadMore}
+        lazyThreshold={12}
       />
-    {:else if visibleSongs.length === 0}
-      <EmptyState
-        title="No tracks"
-        message={`No songs found for ${name}.`}
-        icon="tag"
-      />
-    {:else if filteredSongs.length === 0}
-      <EmptyState
-        title="No matches"
-        message={`No tracks match "${searchQuery.trim()}".`}
-        icon="search"
-      />
-    {:else}
-      <TrackSelectionBar allTracks={filteredSongs} />
-      <div class="track-list-island">
-        <TrackVirtualList
-          tracks={filteredSongs}
-          onplay={(i) => music.playTracks(filteredSongs, i)}
-          selectable={trackSelection.active}
-          onNearEnd={hasSearch ? undefined : loadMore}
-          lazyThreshold={12}
-        />
-      </div>
-      {#if !hasSearch && hasMore && !loadingMore}
-        <p class="load-more-hint">Scroll down to load more tracks</p>
-      {:else if loadingMore}
-        <p class="load-more-hint">Loading more...</p>
-      {/if}
+    </div>
+    {#if !hasSearch && hasMore && !loadingMore}
+      <p class="load-more-hint">Scroll down to load more tracks</p>
+    {:else if loadingMore}
+      <p class="load-more-hint">Loading more...</p>
     {/if}
-  </div>
-</AppShell>
+  {/if}
+</div>
 
 {#if pageMenu}
   <ContextMenu
