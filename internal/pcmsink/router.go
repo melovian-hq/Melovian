@@ -237,7 +237,7 @@ func mixS16(chunks [][]byte) []byte {
 	for i := 0; i+1 < shortest; i += 2 {
 		sum := int32(0)
 		for _, c := range chunks {
-			sum += int32(int16(binary.LittleEndian.Uint16(c[i:])))
+			sum += int32(int16(binary.LittleEndian.Uint16(c[i:]))) //#nosec G115 -- PCM16 samples are unsigned wire bytes reinterpreted as signed
 		}
 		sum = min(max(sum, math.MinInt16), math.MaxInt16)
 		binary.LittleEndian.PutUint16(out[i:], uint16(int16(sum)))

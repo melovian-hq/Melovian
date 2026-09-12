@@ -176,7 +176,7 @@ func fetchNewBinary(ctx context.Context, client *http.Client, rel *ghRelease, ta
 	}
 	report(opts.OnProgress, Progress{Stage: StageDownload, Message: "Downloading " + name})
 	archivePath := filepath.Join(staging, name)
-	f, err := os.Create(archivePath)
+	f, err := os.Create(archivePath) //#nosec G304 -- staging dir and release asset name are internally derived
 	if err != nil {
 		return "", "", 0, err
 	}
@@ -190,12 +190,12 @@ func fetchNewBinary(ctx context.Context, client *http.Client, rel *ghRelease, ta
 	}
 
 	report(opts.OnProgress, Progress{Stage: StageVerify, Message: "Verifying checksum"})
-	vf, err := os.Open(archivePath)
+	vf, err := os.Open(archivePath) //#nosec G304 -- staging dir and release asset name are internally derived
 	if err != nil {
 		return "", "", n, err
 	}
 	verr := VerifyChecksum(vf, sums, name)
-	vf.Close()
+	_ = vf.Close()
 	if verr != nil {
 		return "", "", n, verr
 	}
@@ -232,7 +232,7 @@ func tryDelta(ctx context.Context, client *http.Client, rel *ghRelease, tag, cur
 		return "", 0, fmt.Errorf("no delta patch published for %s", suffix)
 	}
 
-	oldData, err := os.ReadFile(target)
+	oldData, err := os.ReadFile(target) //#nosec G304 -- self-update reads the binary being replaced
 	if err != nil {
 		return "", 0, err
 	}
@@ -255,7 +255,7 @@ func tryDelta(ctx context.Context, client *http.Client, rel *ghRelease, tag, cur
 		return "", n, err
 	}
 	out := filepath.Join(staging, binaryBaseName())
-	if err := os.WriteFile(out, newData, 0o755); err != nil {
+	if err := os.WriteFile(out, newData, 0o755); err != nil { //#nosec G306 G703 -- staged update binary must be executable; path is under the internal staging dir
 		return "", n, err
 	}
 	return out, n, nil
@@ -273,7 +273,7 @@ func runRestart(ctx context.Context, command string) error {
 	if len(fields) == 0 {
 		return nil
 	}
-	cmd := exec.CommandContext(ctx, fields[0], fields[1:]...)
+	cmd := exec.CommandContext(ctx, fields[0], fields[1:]...) //#nosec G204 -- restart command is admin-configured via MELOVIAN_UPDATE_RESTART_CMD
 	cmd.Stdout = os.Stdout
 	cmd.Stderr = os.Stderr
 	return cmd.Run()

@@ -90,7 +90,7 @@ func patchStep(oldData, newData []byte, oldPos, newPos, newSize int64, ctrlR, di
 	if _, err := io.ReadFull(diffR, newData[newPos:newPos+addLen]); err != nil {
 		return 0, 0, fmt.Errorf("read diff data: %w", err)
 	}
-	for i := int64(0); i < addLen; i++ {
+	for i := range addLen {
 		if op := oldPos + i; op >= 0 && op < int64(len(oldData)) {
 			newData[newPos+i] += oldData[op]
 		}
@@ -136,8 +136,8 @@ func offtout(x int64, buf []byte) {
 	if neg {
 		x = -x
 	}
-	for i := 0; i < 8; i++ {
-		buf[i] = byte(x % 256)
+	for i := range 8 {
+		buf[i] = byte(x % 256) //#nosec G115 -- mod 256 is always in byte range
 		x /= 256
 	}
 	if neg {

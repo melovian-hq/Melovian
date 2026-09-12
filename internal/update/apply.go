@@ -48,7 +48,7 @@ func stagedName(destDir, slug string) string {
 }
 
 func extractTarGz(path, destDir, slug string) (string, error) {
-	f, err := os.Open(path)
+	f, err := os.Open(path) //#nosec G304 -- archive path comes from the update staging dir
 	if err != nil {
 		return "", err
 	}
@@ -96,7 +96,7 @@ func extractZip(path, destDir, slug string) (string, error) {
 			return "", err
 		}
 		out, werr := writeExtracted(rc, stagedName(destDir, slug), f.Mode())
-		rc.Close()
+		_ = rc.Close()
 		if werr != nil {
 			return "", werr
 		}
@@ -109,16 +109,16 @@ func writeExtracted(r io.Reader, out string, mode os.FileMode) (string, error) {
 	if mode == 0 {
 		mode = 0o755
 	}
-	w, err := os.OpenFile(out, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode.Perm()|0o700)
+	w, err := os.OpenFile(out, os.O_CREATE|os.O_TRUNC|os.O_WRONLY, mode.Perm()|0o700) //#nosec G304 -- out is stagedName, a fixed slug-based path under destDir
 	if err != nil {
 		return "", err
 	}
 	if _, err := io.Copy(w, r); err != nil {
-		w.Close()
+		_ = w.Close()
 		return "", err
 	}
 	if err := w.Sync(); err != nil {
-		w.Close()
+		_ = w.Close()
 		return "", err
 	}
 	if err := w.Close(); err != nil {

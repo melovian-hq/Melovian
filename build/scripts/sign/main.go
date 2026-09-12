@@ -47,13 +47,13 @@ func main() {
 	}
 	priv := ed25519.PrivateKey(raw)
 	for _, path := range flag.Args() {
-		data, err := os.ReadFile(path)
+		data, err := os.ReadFile(path) //#nosec G304 -- CLI tool signs the files given as arguments
 		if err != nil {
 			fatal(err)
 		}
 		sig := ed25519.Sign(priv, data)
 		out := path + ".sig"
-		if err := os.WriteFile(out, []byte(base64.StdEncoding.EncodeToString(sig)+"\n"), 0o644); err != nil {
+		if err := os.WriteFile(out, []byte(base64.StdEncoding.EncodeToString(sig)+"\n"), 0o644); err != nil { //#nosec G306 G703 -- writes <file>.sig next to the input it just read
 			fatal(err)
 		}
 		fmt.Println("signed", path, "->", out)
