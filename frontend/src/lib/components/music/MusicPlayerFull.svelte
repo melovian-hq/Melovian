@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Slider } from "bits-ui";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import EnhancedCoverArt from "$lib/components/ui/EnhancedCoverArt.svelte";
   import { music } from "$lib/config/music.svelte";
@@ -314,18 +315,24 @@
         </button>
         <div class="player__volume">
           <MdiIcon name="volume2" size={16} />
-          <input
-            type="range"
-            min="0"
-            max="1"
-            step="0.01"
+          <Slider.Root
+            type="single"
+            min={0}
+            max={1}
+            step={0.01}
             value={music.volume}
-            oninput={(e) =>
-              music.setVolume(
-                Number((e.currentTarget as HTMLInputElement).value),
-              )}
-            aria-label="Volume"
-          />
+            onValueChange={(value) => music.setVolume(value)}
+            class="player__volume-slider"
+          >
+            <span class="player__volume-track">
+              <Slider.Range class="player__volume-range" />
+            </span>
+            <Slider.Thumb
+              index={0}
+              class="player__volume-thumb"
+              aria-label="Volume"
+            />
+          </Slider.Root>
         </div>
         <button
           type="button"
@@ -611,9 +618,39 @@
     color: var(--jb-text-muted);
   }
 
-  .player__volume input[type="range"] {
+  :global(.player__volume-slider) {
+    position: relative;
+    display: flex;
+    align-items: center;
     width: 5rem;
-    accent-color: var(--jb-accent);
+    height: 1rem;
+  }
+
+  .player__volume-track {
+    position: relative;
+    width: 100%;
+    height: 0.25rem;
+    border-radius: var(--jb-radius-full);
+    background: var(--jb-bg-muted);
+    overflow: hidden;
+  }
+
+  :global(.player__volume-range) {
+    height: 100%;
+    background: var(--jb-accent);
+  }
+
+  :global(.player__volume-thumb) {
+    width: 0.75rem;
+    height: 0.75rem;
+    border-radius: var(--jb-radius-full);
+    background: var(--jb-accent);
+    cursor: pointer;
+  }
+
+  :global(.player__volume-thumb:focus-visible) {
+    outline: 2px solid var(--jb-accent);
+    outline-offset: 2px;
   }
 
   .player-fab {

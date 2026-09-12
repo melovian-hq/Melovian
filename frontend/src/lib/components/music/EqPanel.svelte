@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Slider } from "bits-ui";
   import { music } from "$lib/config/music.svelte";
   import {
     combinedGainDbAt,
@@ -377,29 +378,42 @@
 
   <div class="eq-panel__faders">
     {#each music.eq.bands as band, i (i)}
-      <label
+      <div
         class="eq-panel__fader"
         class:eq-panel__fader--selected={selectedBand === i}
+        role="group"
+        onfocusin={() => {
+          if (music.eq.enabled) selectBand(i);
+        }}
+        onpointerdown={() => {
+          if (music.eq.enabled) selectBand(i);
+        }}
       >
-        <input
-          type="range"
+        <Slider.Root
+          type="single"
+          orientation="vertical"
           min={EQ_GAIN_MIN}
           max={EQ_GAIN_MAX}
           step={EQ_GAIN_STEP}
           value={band.gain}
           disabled={!music.eq.enabled}
-          onfocus={() => selectBand(i)}
-          oninput={(e) =>
-            onBandGainInput(
-              i,
-              Number((e.currentTarget as HTMLInputElement).value),
-            )}
-        />
+          onValueChange={(value) => onBandGainInput(i, value)}
+          class="eq-panel__fader-slider"
+        >
+          <span class="eq-panel__fader-track">
+            <Slider.Range class="eq-panel__fader-range" />
+          </span>
+          <Slider.Thumb
+            index={0}
+            class="eq-panel__fader-thumb"
+            aria-label="Band {i + 1} gain"
+          />
+        </Slider.Root>
         <span class="eq-panel__fader-label"
           >{formatFrequency(band.frequency)}</span
         >
         <span class="eq-panel__fader-value">{formatGain(band.gain)}</span>
-      </label>
+      </div>
     {/each}
   </div>
 </div>
@@ -804,12 +818,53 @@
     color: var(--jb-music-accent);
   }
 
-  .eq-panel__fader input[type="range"] {
-    writing-mode: vertical-lr;
-    direction: rtl;
+  :global(.eq-panel__fader-slider) {
+    position: relative;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
     height: 5rem;
     width: 1.25rem;
-    accent-color: var(--jb-music-accent);
+  }
+
+  .eq-panel__fader-track {
+    position: relative;
+    height: 100%;
+    width: 0.25rem;
+    border-radius: var(--jb-radius-full);
+    background: var(--jb-bg-muted);
+    overflow: hidden;
+  }
+
+  :global(.eq-panel__fader-range) {
+    width: 100%;
+    background: var(--jb-music-accent);
+  }
+
+  :global(.eq-panel__fader-thumb) {
+    width: 0.875rem;
+    height: 0.875rem;
+    border-radius: var(--jb-radius-full);
+    background: var(--jb-music-accent);
+    box-shadow: var(--jb-shadow-sm);
+    cursor: grab;
+  }
+
+  :global(.eq-panel__fader-thumb:active) {
+    cursor: grabbing;
+  }
+
+  :global(.eq-panel__fader-thumb:focus-visible) {
+    outline: 2px solid var(--jb-music-accent);
+    outline-offset: 2px;
+  }
+
+  :global(.eq-panel__fader-slider[data-disabled]) {
+    opacity: 0.55;
+  }
+
+  :global(.eq-panel__fader-slider[data-disabled] .eq-panel__fader-thumb) {
+    cursor: not-allowed;
   }
 
   .eq-panel__fader-label,
