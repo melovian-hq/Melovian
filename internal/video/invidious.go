@@ -6,6 +6,7 @@ package video
 import (
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"net/http"
@@ -45,15 +46,12 @@ func NormalizeInstanceURL(raw string) (string, error) {
 	if raw == "" {
 		return "", fmt.Errorf("instance url is required")
 	}
-	parsed, err := url.Parse(raw)
+	parsed, err := httputil.ParseHTTPURL(raw)
 	if err != nil {
+		if errors.Is(err, httputil.ErrURLScheme) {
+			return "", fmt.Errorf("instance url must be http or https")
+		}
 		return "", fmt.Errorf("invalid instance url")
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "", fmt.Errorf("instance url must be http or https")
-	}
-	if parsed.Host == "" {
-		return "", fmt.Errorf("instance url host is required")
 	}
 	parsed.Path = strings.TrimRight(parsed.Path, "/")
 	parsed.RawQuery = ""

@@ -122,12 +122,8 @@ func FetchArtwork(ctx context.Context, artworkURL string) ([]byte, string, error
 	if artworkURL == "" {
 		return nil, "", fmt.Errorf("empty artwork url")
 	}
-	u, err := url.Parse(artworkURL)
-	if err != nil {
+	if _, err := httputil.ParseHTTPURL(artworkURL); err != nil {
 		return nil, "", fmt.Errorf("invalid artwork url")
-	}
-	if u.Scheme != "https" && u.Scheme != "http" {
-		return nil, "", fmt.Errorf("invalid artwork url scheme")
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, artworkURL, nil)
 	if err != nil {

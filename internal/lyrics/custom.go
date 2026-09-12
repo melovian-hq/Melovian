@@ -11,6 +11,8 @@ import (
 	"net/http"
 	"net/url"
 	"strings"
+
+	"melovian/internal/httputil"
 )
 
 func (p CustomProvider) Fetch(ctx context.Context, client *http.Client, in FetchInput) (*Document, error) {
@@ -22,6 +24,11 @@ func (p CustomProvider) Fetch(ctx context.Context, client *http.Client, in Fetch
 	endpoint, err := expandURLTemplate(template, in)
 	if err != nil {
 		return nil, err
+	}
+	// The expanded template is fetched server side, so it must stay a
+	// plain web URL.
+	if _, err := httputil.ParseHTTPURL(endpoint); err != nil {
+		return nil, fmt.Errorf("custom provider %q: %v", p.ID(), err)
 	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, endpoint, nil)
 	if err != nil {

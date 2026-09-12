@@ -7,14 +7,16 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"io"
 	"mime/multipart"
 	"net/http"
 	"net/textproto"
-	"net/url"
 	"strings"
 	"time"
+
+	"melovian/internal/httputil"
 )
 
 // WhisperSourceID is the Document.Source value for whisper-generated lyrics.
@@ -114,12 +116,11 @@ func WhisperServerURL(raw string) (string, error) {
 	if raw == "" {
 		return "", fmt.Errorf("whisper server URL is not configured")
 	}
-	parsed, err := url.Parse(raw)
-	if err != nil || parsed.Host == "" {
+	if _, err := httputil.ParseHTTPURL(raw); err != nil {
+		if errors.Is(err, httputil.ErrURLScheme) {
+			return "", fmt.Errorf("whisper server URL must be http or https")
+		}
 		return "", fmt.Errorf("whisper server URL is invalid")
-	}
-	if parsed.Scheme != "http" && parsed.Scheme != "https" {
-		return "", fmt.Errorf("whisper server URL must be http or https")
 	}
 	return strings.TrimRight(raw, "/"), nil
 }
