@@ -1,0 +1,20 @@
+{
+  "$schema": "https://unpkg.com/knip@5/schema.json",
+  "entry": [
+    "index.html",
+    "lighthouserc.cjs",
+    "e2e/helpers/run-demo-server.mjs",
+    "scripts/gen-icon-data.cjs"
+  ],
+  "project": ["src/**/*.{ts,svelte}", "e2e/**/*.{ts,mjs}", "scripts/**/*.cjs"],
+  "ignore": ["bindings/**", "public/**", "dist/**"],
+  "ignoreDependencies": [
+    "@iconify/json",
+    "tslib",
+    "tailwindcss",
+    "@stryker-mutator/api"
+  ],
+  "rules": {
+    "duplicates": "warn"
+  }
+}
