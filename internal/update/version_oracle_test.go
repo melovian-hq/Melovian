@@ -128,15 +128,15 @@ func TestParseSemverMatchesRegexOracle(t *testing.T) {
 	r := rand.New(rand.NewSource(20260909))
 	for i := 0; i < 1000; i++ {
 		s := randomVersion(r)
-		if referenceSemverRE.MatchString(s) {
-			// The production parser must also accept it.
-			if _, err := ParseSemver(s); err != nil {
-				t.Fatalf("regex says valid but ParseSemver rejected %q: %v", s, err)
-			}
-		} else {
+		if !referenceSemverRE.MatchString(s) {
 			// A strict regex oracle does not recognize every invalid string,
 			// so only check that the production parser does not accept strings
 			// which are clearly non-semver.
+			continue
+		}
+		// The production parser must also accept it.
+		if _, err := ParseSemver(s); err != nil {
+			t.Fatalf("regex says valid but ParseSemver rejected %q: %v", s, err)
 		}
 	}
 

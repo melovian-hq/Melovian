@@ -129,4 +129,3 @@ func FuzzVerifySignatureFormat(f *testing.F) {
 		}
 	})
 }
-

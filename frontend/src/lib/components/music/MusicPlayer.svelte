@@ -9,9 +9,6 @@
   import { isInternetRadioTrack } from "$lib/subsonic";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
 
-  const QueuePanel = import("./MusicQueuePanel.svelte");
-  const LyricsPanel = import("./LyricsPanel.svelte");
-
   const showLyricsSidebar = $derived(
     extensionFeatures.lyrics &&
       music.lyricsOpen &&
@@ -39,11 +36,13 @@
   <EqFloatingPanel />
 {/if}
 {#if music.queueOpen && !tvOverlay}
+  {@const QueuePanel = import("./MusicQueuePanel.svelte")}
   {#await QueuePanel then { default: MusicQueuePanel }}
     <MusicQueuePanel />
   {/await}
 {/if}
 {#if showLyricsSidebar && !tvOverlay}
+  {@const LyricsPanel = import("./LyricsPanel.svelte")}
   {#await LyricsPanel then { default: LyricsPanel }}
     <LyricsPanel />
   {/await}

@@ -19,7 +19,7 @@ describe("compat mutation tests", () => {
     { a: "1.0.0+build.1", b: "1.0.0", want: 0 }, // compat ignores build
   ];
 
-  function mutantAlwaysEqual(a: string, b: string): number {
+  function mutantAlwaysEqual(_a: string, _b: string): number {
     return 0;
   }
 
