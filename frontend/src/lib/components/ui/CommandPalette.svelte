@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Command, Dialog } from "bits-ui";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import { commandPalette } from "$lib/ui/command-palette.svelte";
   import {
@@ -8,20 +9,15 @@
 
   let query = $state("");
   let commands = $state<PaletteCommand[]>([]);
-  let activeIndex = $state(0);
+  let selected = $state("");
   let loading = $state(false);
-  let inputEl = $state<HTMLInputElement | null>(null);
   let searchToken = 0;
 
   $effect(() => {
-    if (!commandPalette.open) {
-      query = "";
-      commands = [];
-      activeIndex = 0;
-      return;
-    }
-
-    queueMicrotask(() => inputEl?.focus());
+    if (commandPalette.open) return;
+    query = "";
+    commands = [];
+    selected = "";
   });
 
   $effect(() => {
@@ -34,7 +30,6 @@
       void searchPaletteWithMusic(currentQuery).then((results) => {
         if (token !== searchToken) return;
         commands = results;
-        activeIndex = 0;
         loading = false;
       });
     }, 120);
@@ -51,34 +46,6 @@
     await command.run();
   }
 
-  function onKeydown(event: KeyboardEvent) {
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      if (commands.length === 0) return;
-      activeIndex = (activeIndex + 1) % commands.length;
-      return;
-    }
-
-    if (event.key === "ArrowUp") {
-      event.preventDefault();
-      if (commands.length === 0) return;
-      activeIndex = (activeIndex - 1 + commands.length) % commands.length;
-      return;
-    }
-
-    if (event.key === "Enter") {
-      event.preventDefault();
-      const command = commands[activeIndex];
-      if (command) void runCommand(command);
-      return;
-    }
-
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
-  }
-
   const grouped = $derived.by(() => {
     const map = new Map<string, PaletteCommand[]>();
     for (const command of commands) {
@@ -90,82 +57,114 @@
   });
 </script>
 
-{#if commandPalette.open}
-  <button
-    type="button"
-    class="command-palette__backdrop"
-    aria-label="Close command palette"
-    onclick={close}
-  ></button>
-  <div
-    class="command-palette"
-    role="dialog"
-    aria-label="Command palette"
-    tabindex="-1"
-    onkeydown={onKeydown}
-  >
-    <div class="command-palette__input-wrap">
-      <MdiIcon name="search" size={18} />
-      <input
-        bind:this={inputEl}
-        class="command-palette__input"
-        type="search"
-        placeholder="Search pages, actions, music..."
-        bind:value={query}
-        aria-controls="command-palette-results"
-        aria-activedescendant={commands[activeIndex]
-          ? `palette-${commands[activeIndex].id}`
-          : undefined}
-        autocomplete="off"
-        spellcheck="false"
-      />
-      <kbd class="command-palette__hint">Esc</kbd>
-    </div>
+<Dialog.Root bind:open={commandPalette.open}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="command-palette__backdrop">
+      {#snippet child({ props })}
+        <button
+          {...props}
+          type="button"
+          aria-label="Close command palette"
+          onclick={close}
+        ></button>
+      {/snippet}
+    </Dialog.Overlay>
+    <Dialog.Content class="command-palette" aria-label="Command palette">
+      {#snippet child({ props })}
+        <div {...props}>
+          <Command.Root
+            shouldFilter={false}
+            loop
+            vimBindings={false}
+            bind:value={selected}
+            label="Command palette"
+          >
+            <div class="command-palette__input-wrap">
+              <MdiIcon name="search" size={18} />
+              <Command.Input
+                class="command-palette__input"
+                type="search"
+                placeholder="Search pages, actions, music..."
+                bind:value={query}
+                autofocus
+                autocomplete="off"
+                spellcheck="false"
+              />
+              <kbd class="command-palette__hint">Esc</kbd>
+            </div>
 
-    <div
-      id="command-palette-results"
-      class="command-palette__results"
-      role="listbox"
-      aria-label="Commands"
-    >
-      {#if loading && commands.length === 0}
-        <p class="command-palette__empty">Searching...</p>
-      {:else if commands.length === 0}
-        <p class="command-palette__empty">No matching commands.</p>
-      {:else}
-        {#each grouped as [group, items] (group)}
-          <section class="command-palette__group">
-            <h3 class="command-palette__group-title">{group}</h3>
-            <ul class="command-palette__list">
-              {#each items as command (command.id)}
-                {@const index = commands.indexOf(command)}
-                <li>
-                  <button
-                    id="palette-{command.id}"
-                    type="button"
-                    class="command-palette__item"
-                    class:command-palette__item--active={index === activeIndex}
-                    role="option"
-                    aria-selected={index === activeIndex}
-                    onclick={() => void runCommand(command)}
-                    onmouseenter={() => {
-                      activeIndex = index;
-                    }}
-                  >
-                    {#if command.icon}
-                      <MdiIcon name={command.icon} size={18} />
-                    {/if}
-                    <span class="command-palette__label">{command.label}</span>
-                  </button>
-                </li>
-              {/each}
-            </ul>
-          </section>
-        {/each}
-      {/if}
-    </div>
-  </div>
-{/if}
+            <Command.List
+              id="command-palette-results"
+              class="command-palette__results"
+              aria-label="Commands"
+            >
+              <Command.Viewport>
+                {#if loading && commands.length === 0}
+                  <p class="command-palette__empty">Searching...</p>
+                {:else}
+                  <Command.Empty class="command-palette__empty">
+                    {#snippet child({ props })}
+                      <p {...props}>No matching commands.</p>
+                    {/snippet}
+                  </Command.Empty>
+                {/if}
+                {#each grouped as [group, items] (group)}
+                  <Command.Group value={group} class="command-palette__group">
+                    {#snippet child({ props: groupProps })}
+                      <section {...groupProps}>
+                        <Command.GroupHeading
+                          class="command-palette__group-title"
+                        >
+                          {#snippet child({ props: headingProps })}
+                            <h3 {...headingProps}>{group}</h3>
+                          {/snippet}
+                        </Command.GroupHeading>
+                        <Command.GroupItems class="command-palette__list">
+                          {#snippet child({ props: listProps })}
+                            <ul {...listProps}>
+                              {#each items as command (command.id)}
+                                <li>
+                                  <Command.Item
+                                    value={command.id}
+                                    onSelect={() => void runCommand(command)}
+                                  >
+                                    {#snippet child({ props: itemProps })}
+                                      <button
+                                        {...itemProps}
+                                        type="button"
+                                        class="command-palette__item"
+                                        class:command-palette__item--active={selected ===
+                                          command.id}
+                                      >
+                                        {#if command.icon}
+                                          <MdiIcon
+                                            name={command.icon}
+                                            size={18}
+                                          />
+                                        {/if}
+                                        <span class="command-palette__label"
+                                          >{command.label}</span
+                                        >
+                                      </button>
+                                    {/snippet}
+                                  </Command.Item>
+                                </li>
+                              {/each}
+                            </ul>
+                          {/snippet}
+                        </Command.GroupItems>
+                      </section>
+                    {/snippet}
+                  </Command.Group>
+                {/each}
+              </Command.Viewport>
+            </Command.List>
+          </Command.Root>
+        </div>
+      {/snippet}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
   .command-palette__backdrop {

@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Popover } from "bits-ui";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import { notifications } from "$lib/notifications/notifications.svelte";
@@ -38,95 +39,129 @@
     }
     void notifications.openNotification(item);
   }
+
+  // The bell trigger lives in TopBar and toggles the store itself. If its click
+  // also counted as an outside interaction the popover would close on pointerup
+  // and immediately reopen on click, so it is excluded here.
+  function onInteractOutside(event: PointerEvent) {
+    const target = event.target as HTMLElement | null;
+    if (target?.closest(".topbar__bell")) event.preventDefault();
+  }
+
+  function preventAutoFocus(event: Event) {
+    event.preventDefault();
+  }
 </script>
 
-{#if notifications.panelOpen}
-  <div class="notif-root">
-    <button
-      type="button"
-      class="notif-backdrop"
-      aria-label="Close notifications"
-      onclick={() => notifications.closePanel()}
-    ></button>
-    <div class="notif-panel" role="dialog" aria-label="Notifications">
-      <header class="notif-panel__head">
-        <div class="notif-panel__title">
-          <MdiIcon name="bell" size={16} />
-          <h3>Notifications</h3>
-          {#if notifications.unread > 0}
-            <span class="notif-panel__badge">{notifications.unread}</span>
-          {/if}
-        </div>
-        <div class="notif-panel__actions">
-          {#if notifications.unread > 0}
-            <button
-              type="button"
-              class="notif-panel__text-btn"
-              onclick={() => void notifications.markAllRead()}
-            >
-              Mark all read
-            </button>
-          {/if}
-          <button
-            type="button"
-            class="notif-panel__icon-btn"
-            aria-label="Close"
-            onclick={() => notifications.closePanel()}
-          >
-            <MdiIcon name="x" size={16} />
-          </button>
-        </div>
-      </header>
-
-      <div class="notif-panel__body">
-        {#if notifications.loading && notifications.items.length === 0}
-          <div class="notif-panel__empty">
-            <Spinner />
-          </div>
-        {:else if notifications.items.length === 0}
-          <div class="notif-panel__empty">
-            <p>No notifications yet</p>
-          </div>
-        {:else}
-          <ul class="notif-list">
-            {#each notifications.items as item (item.id)}
-              <li>
-                <div class="notif-item" class:notif-item--unread={!item.read}>
-                  <button
-                    type="button"
-                    class="notif-item__main"
-                    onclick={() => onItemClick(item)}
-                  >
-                    <span class="notif-item__icon" aria-hidden="true">
-                      <MdiIcon name={kindIcon(item.kind)} size={16} />
-                    </span>
-                    <span class="notif-item__copy">
-                      <span class="notif-item__title">{item.title}</span>
-                      {#if item.body}
-                        <span class="notif-item__body">{item.body}</span>
-                      {/if}
-                    </span>
-                    <span class="notif-item__when"
-                      >{formatWhen(item.createdAt)}</span
+<Popover.Root bind:open={notifications.panelOpen}>
+  {#if notifications.panelOpen}
+    <Popover.Portal>
+      <div class="notif-root">
+        <button
+          type="button"
+          class="notif-backdrop"
+          aria-label="Close notifications"
+          onclick={() => notifications.closePanel()}
+        ></button>
+        <Popover.ContentStatic
+          class="notif-panel"
+          aria-label="Notifications"
+          trapFocus={false}
+          {onInteractOutside}
+          onOpenAutoFocus={preventAutoFocus}
+          onCloseAutoFocus={preventAutoFocus}
+        >
+          {#snippet child({ props })}
+            <div {...props}>
+              <header class="notif-panel__head">
+                <div class="notif-panel__title">
+                  <MdiIcon name="bell" size={16} />
+                  <h3>Notifications</h3>
+                  {#if notifications.unread > 0}
+                    <span class="notif-panel__badge"
+                      >{notifications.unread}</span
                     >
-                  </button>
+                  {/if}
+                </div>
+                <div class="notif-panel__actions">
+                  {#if notifications.unread > 0}
+                    <button
+                      type="button"
+                      class="notif-panel__text-btn"
+                      onclick={() => void notifications.markAllRead()}
+                    >
+                      Mark all read
+                    </button>
+                  {/if}
                   <button
                     type="button"
-                    class="notif-item__delete"
-                    aria-label="Dismiss"
-                    onclick={() => void notifications.remove(item.id)}
+                    class="notif-panel__icon-btn"
+                    aria-label="Close"
+                    onclick={() => notifications.closePanel()}
                   >
-                    <MdiIcon name="x" size={12} />
+                    <MdiIcon name="x" size={16} />
                   </button>
                 </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
+              </header>
+
+              <div class="notif-panel__body">
+                {#if notifications.loading && notifications.items.length === 0}
+                  <div class="notif-panel__empty">
+                    <Spinner />
+                  </div>
+                {:else if notifications.items.length === 0}
+                  <div class="notif-panel__empty">
+                    <p>No notifications yet</p>
+                  </div>
+                {:else}
+                  <ul class="notif-list">
+                    {#each notifications.items as item (item.id)}
+                      <li>
+                        <div
+                          class="notif-item"
+                          class:notif-item--unread={!item.read}
+                        >
+                          <button
+                            type="button"
+                            class="notif-item__main"
+                            onclick={() => onItemClick(item)}
+                          >
+                            <span class="notif-item__icon" aria-hidden="true">
+                              <MdiIcon name={kindIcon(item.kind)} size={16} />
+                            </span>
+                            <span class="notif-item__copy">
+                              <span class="notif-item__title">{item.title}</span
+                              >
+                              {#if item.body}
+                                <span class="notif-item__body">{item.body}</span
+                                >
+                              {/if}
+                            </span>
+                            <span class="notif-item__when"
+                              >{formatWhen(item.createdAt)}</span
+                            >
+                          </button>
+                          <button
+                            type="button"
+                            class="notif-item__delete"
+                            aria-label="Dismiss"
+                            onclick={() => void notifications.remove(item.id)}
+                          >
+                            <MdiIcon name="x" size={12} />
+                          </button>
+                        </div>
+                      </li>
+                    {/each}
+                  </ul>
+                {/if}
+              </div>
+            </div>
+          {/snippet}
+        </Popover.ContentStatic>
       </div>
-    </div>
-  </div>
-{/if}
+    </Popover.Portal>
+  {/if}
+</Popover.Root>
 
 <style>
   .notif-root {
