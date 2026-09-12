@@ -1,8 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
-const DEVICE_ID_KEY = "mel-device-id";
-const DEVICE_NAME_KEY = "mel-device-name";
+import { StorageKeys } from "$lib/brand";
+
+const DEVICE_ID_KEY = StorageKeys.deviceId;
+const DEVICE_NAME_KEY = StorageKeys.deviceName;
 
 function randomId(): string {
   if (typeof crypto !== "undefined" && crypto.randomUUID) {

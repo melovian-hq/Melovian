@@ -3,6 +3,7 @@
 
 import { nativeDesktopAvailable } from "$lib/config/runtime";
 import {
+  DESKTOP_INTEGRATION_CHANGED_EVENT,
   loadDesktopIntegrationSettings,
   saveDesktopIntegrationSettings,
   type DesktopIntegrationSettings,
@@ -37,7 +38,7 @@ export function setNativeTitleBarEnabled(enabled: boolean): void {
   void syncNativeTitleBar(enabled);
   applyWindowChromeDocumentState({ ...settings, nativeTitleBar: enabled });
   if (typeof window !== "undefined") {
-    window.dispatchEvent(new Event("mel-desktop-integration-changed"));
+    window.dispatchEvent(new Event(DESKTOP_INTEGRATION_CHANGED_EVENT));
   }
 }
 

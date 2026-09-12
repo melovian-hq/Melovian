@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
-const STORAGE_KEY = "mel-hide-unknown-metadata";
+import { StorageKeys } from "$lib/brand";
+
+const STORAGE_KEY = StorageKeys.hideUnknownMetadata;
 
 export function loadHideUnknownMetadata(): boolean {
   if (typeof localStorage === "undefined") return false;

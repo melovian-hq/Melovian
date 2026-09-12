@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
+
 export type LanguageBiasMode = "off" | "prefer" | "strict";
 export type GenreSelectionMode = "personal" | "library" | "blend";
 
@@ -70,7 +72,7 @@ export const GENRE_SELECTION_LABELS: Record<GenreSelectionMode, string> = {
   blend: "Blend both",
 };
 
-const STORAGE_KEY = "mel-mix-settings";
+const STORAGE_KEY = StorageKeys.mixSettings;
 
 export interface MixSettings {
   maxTracksPerMix: number;

@@ -1,13 +1,15 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
+
 export interface PlaybackSettings {
   crossfadeEnabled: boolean;
   crossfadeDurationSec: number;
   continuePlaybackOnLaunch: boolean;
 }
 
-const STORAGE_KEY = "mel-playback-settings";
+const STORAGE_KEY = StorageKeys.playbackSettings;
 
 export const CROSSFADE_DURATION_OPTIONS = [
   { value: 2, label: "2 seconds" },

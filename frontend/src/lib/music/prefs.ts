@@ -1,18 +1,19 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
 import { getActiveInstanceId } from "$lib/features/instances/context";
 
-const VOLUME_KEY = "mel-music-volume";
-const PLAYBACK_KEY = "mel-music-playback";
+const VOLUME_KEY = StorageKeys.musicVolume;
+const PLAYBACK_KEY = StorageKeys.musicPlayback;
 const LEGACY_PLAYBACK_KEY = PLAYBACK_KEY;
-const NATIVE_PLAYBACK_KEY = "mel-native-playback";
-const NATIVE_BACKEND_KEY = "mel-native-backend";
+const NATIVE_PLAYBACK_KEY = StorageKeys.nativePlayback;
+const NATIVE_BACKEND_KEY = StorageKeys.nativeBackend;
 
 export type NativeBackendPref = "auto" | "mpv" | "vlc";
-const QUEUE_PANEL_POSITION_KEY = "mel-queue-panel-position";
-const LYRICS_PANEL_POSITION_KEY = "mel-lyrics-panel-position";
-const LYRICS_PANEL_SIZE_KEY = "mel-lyrics-panel-size";
+const QUEUE_PANEL_POSITION_KEY = StorageKeys.queuePanelPosition;
+const LYRICS_PANEL_POSITION_KEY = StorageKeys.lyricsPanelPosition;
+const LYRICS_PANEL_SIZE_KEY = StorageKeys.lyricsPanelSize;
 
 export interface QueuePanelPosition {
   x: number;

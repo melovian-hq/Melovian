@@ -1,7 +1,12 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
-const STORAGE_KEY = "mel-desktop-integration";
+import { StorageKeys } from "$lib/brand";
+
+const STORAGE_KEY = StorageKeys.desktopIntegration;
+
+/** Window event fired when desktop integration settings change. */
+export const DESKTOP_INTEGRATION_CHANGED_EVENT = `${STORAGE_KEY}-changed`;
 
 export type CloseBehavior = "ask" | "quit" | "background";
 

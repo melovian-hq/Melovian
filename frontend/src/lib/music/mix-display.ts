@@ -1,9 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
+
 export type MixDisplayStyle = "cards" | "discs";
 
-export const MIX_DISPLAY_KEY = "mel-mix-display";
+export const MIX_DISPLAY_KEY = StorageKeys.mixDisplay;
 
 export function loadMixDisplay(): MixDisplayStyle {
   try {
@@ -19,9 +21,7 @@ export function saveMixDisplay(style: MixDisplayStyle): void {
   try {
     localStorage.setItem(MIX_DISPLAY_KEY, style);
     if (typeof window !== "undefined") {
-      window.dispatchEvent(
-        new CustomEvent("mel-mix-display", { detail: style }),
-      );
+      window.dispatchEvent(new CustomEvent(MIX_DISPLAY_KEY, { detail: style }));
     }
   } catch {
     // ignore
@@ -43,10 +43,10 @@ export function subscribeMixDisplay(
   const storageHandler = (event: StorageEvent) => {
     if (event.key === MIX_DISPLAY_KEY) onChange(loadMixDisplay());
   };
-  window.addEventListener("mel-mix-display", handler);
+  window.addEventListener(MIX_DISPLAY_KEY, handler);
   window.addEventListener("storage", storageHandler);
   return () => {
-    window.removeEventListener("mel-mix-display", handler);
+    window.removeEventListener(MIX_DISPLAY_KEY, handler);
     window.removeEventListener("storage", storageHandler);
   };
 }

@@ -2,9 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { applyConnectionDefaults } from "./connection-defaults";
+import { StorageKeys } from "$lib/brand";
 
-const SETTINGS_KEY = "mel-connection-settings";
-const HISTORY_KEY = "mel-connection-history";
+const SETTINGS_KEY = StorageKeys.connectionSettings;
+const HISTORY_KEY = StorageKeys.connectionHistory;
 
 export interface ConnectionEvent {
   disconnectedAt: number;

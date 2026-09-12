@@ -4,8 +4,9 @@
   import { layout } from "$lib/components/layout/layout.svelte";
   import { keyboardHelp } from "$lib/ui/keyboard-help.svelte";
   import { commandPalette } from "$lib/ui/command-palette.svelte";
+  import { StorageKeys } from "$lib/brand";
 
-  const STORAGE_KEY = "mel-home-tips-dismissed";
+  const STORAGE_KEY = StorageKeys.homeTipsDismissed;
 
   // Keep the "1" storage format so existing dismissals still apply
   const dismissed = new PersistedState<boolean>(STORAGE_KEY, false, {

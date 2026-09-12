@@ -53,6 +53,39 @@ export const StorageKeys = {
   remoteServerUrl: `${APP_SLUG}.remoteServerUrl`,
   playlistKind: `${APP_SLUG}.playlists.kind`,
   playlistView: `${APP_SLUG}.playlists.view.v2`,
+  /**
+   * Legacy "mel-" keys kept for compatibility. These predate STORAGE_PREFIX
+   * and must stay literal so existing installs keep their saved settings.
+   */
+  musicVolume: "mel-music-volume",
+  musicPlayback: "mel-music-playback",
+  nativePlayback: "mel-native-playback",
+  nativeBackend: "mel-native-backend",
+  queuePanelPosition: "mel-queue-panel-position",
+  lyricsPanelPosition: "mel-lyrics-panel-position",
+  lyricsPanelSize: "mel-lyrics-panel-size",
+  homeHidden: "mel-home-hidden",
+  musicMixes: "mel-music-mixes",
+  playbackSettings: "mel-playback-settings",
+  queueSettings: "mel-queue-settings",
+  mixSettings: "mel-mix-settings",
+  mixDisplay: "mel-mix-display",
+  connectionSettings: "mel-connection-settings",
+  connectionHistory: "mel-connection-history",
+  transcodingSettings: "mel-transcoding-settings",
+  immersiveAudioSettings: "mel-immersive-audio-settings",
+  metadataEnhancementSettings: "mel-metadata-enhancement-settings",
+  hideUnknownMetadata: "mel-hide-unknown-metadata",
+  searchHistory: "mel-search-history",
+  deviceId: "mel-device-id",
+  deviceName: "mel-device-name",
+  desktopIntegration: "mel-desktop-integration",
+  homeTipsDismissed: "mel-home-tips-dismissed",
+  /** Legacy "mel-" key prefixes used for per-item cache entries. */
+  metaArtPrefix: "mel-meta-art:",
+  artistInfoPrefix: "mel-artist-info:",
+  compatMismatchPrefix: "mel-compat-mismatch-dismissed:",
+  spaReloadPrefix: "mel-spa-reload:",
 } as const;
 
 /**

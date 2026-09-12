@@ -3,9 +3,9 @@
 <script lang="ts">
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import { getCompatState, CLIENT_VERSION } from "$lib/compat";
-  import { APP_NAME } from "$lib/brand";
+  import { APP_NAME, StorageKeys } from "$lib/brand";
 
-  const STORAGE_PREFIX = "mel-compat-mismatch-dismissed:";
+  const STORAGE_PREFIX = StorageKeys.compatMismatchPrefix;
 
   const compat = $derived(getCompatState());
 

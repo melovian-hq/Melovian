@@ -1,11 +1,13 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
+
 export interface QueueSettings {
   maxQueueSize: number;
 }
 
-const STORAGE_KEY = "mel-queue-settings";
+const STORAGE_KEY = StorageKeys.queueSettings;
 
 export const QUEUE_SIZE_OPTIONS = [
   { value: 0, label: "Unlimited" },

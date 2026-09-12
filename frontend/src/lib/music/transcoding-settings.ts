@@ -1,6 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
 import type { StreamOptions } from "$lib/subsonic/urls";
 import {
   shouldPreserveImmersiveStream,
@@ -37,7 +38,7 @@ export interface BuildStreamOptionsContext {
   preserveImmersiveStreams?: boolean;
 }
 
-const STORAGE_KEY = "mel-transcoding-settings";
+const STORAGE_KEY = StorageKeys.transcodingSettings;
 
 const VALID_FORMATS = new Set<TranscodeFormat>(
   Object.keys(TRANSCODE_FORMAT_LABELS) as TranscodeFormat[],

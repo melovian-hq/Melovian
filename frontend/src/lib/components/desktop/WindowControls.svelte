@@ -2,7 +2,9 @@
   import Icon from "@iconify/svelte";
   import { iconData } from "$lib/components/ui/icon-data";
   import { nativeDesktopAvailable } from "$lib/config/runtime";
+  import { StorageKeys } from "$lib/brand";
   import {
+    DESKTOP_INTEGRATION_CHANGED_EVENT,
     loadDesktopIntegrationSettings,
     type DesktopIntegrationSettings,
   } from "$lib/desktop/desktop-integration-settings";
@@ -22,14 +24,14 @@
       settings = loadDesktopIntegrationSettings();
     };
     const onStorage = (event: StorageEvent) => {
-      if (event.key !== "mel-desktop-integration") return;
+      if (event.key !== StorageKeys.desktopIntegration) return;
       refresh();
     };
     window.addEventListener("storage", onStorage);
-    window.addEventListener("mel-desktop-integration-changed", refresh);
+    window.addEventListener(DESKTOP_INTEGRATION_CHANGED_EVENT, refresh);
     return () => {
       window.removeEventListener("storage", onStorage);
-      window.removeEventListener("mel-desktop-integration-changed", refresh);
+      window.removeEventListener(DESKTOP_INTEGRATION_CHANGED_EVENT, refresh);
     };
   });
 

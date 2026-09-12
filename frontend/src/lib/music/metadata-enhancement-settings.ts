@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
+
 export interface MetadataEnhancementSettings {
   enabled: boolean;
   artists: boolean;
@@ -10,7 +12,7 @@ export interface MetadataEnhancementSettings {
   preferServerArtistArt: boolean;
 }
 
-const STORAGE_KEY = "mel-metadata-enhancement-settings";
+const STORAGE_KEY = StorageKeys.metadataEnhancementSettings;
 
 export function defaultMetadataEnhancementSettings(): MetadataEnhancementSettings {
   return {

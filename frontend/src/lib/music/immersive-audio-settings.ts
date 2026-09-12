@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
+
 /**
  * Immersive audio output modes.
  *
@@ -31,7 +33,7 @@ export interface ImmersiveAudioSettings {
   remoteOutputs: string;
 }
 
-const STORAGE_KEY = "mel-immersive-audio-settings";
+const STORAGE_KEY = StorageKeys.immersiveAudioSettings;
 
 export const IMMERSIVE_AUDIO_MODE_LABELS: Record<ImmersiveAudioMode, string> = {
   auto: "Auto",

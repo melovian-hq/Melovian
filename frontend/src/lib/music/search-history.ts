@@ -1,7 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
-const STORAGE_KEY = "mel-search-history";
+import { StorageKeys } from "$lib/brand";
+
+const STORAGE_KEY = StorageKeys.searchHistory;
 const MAX_ITEMS = 6;
 
 export function loadSearchHistory(): string[] {
