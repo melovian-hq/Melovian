@@ -3,6 +3,7 @@
   import { APP_NAME } from "$lib/brand";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import { nativeDesktopAvailable } from "$lib/config/runtime";
   import {
     loadDesktopIntegrationSettings,
@@ -16,6 +17,19 @@
   import "$lib/settings/settings-page.css";
 
   let desktopIntegration = $state(loadDesktopIntegrationSettings());
+
+  const closeBehaviorOptions = $derived<
+    { value: CloseBehavior; label: string }[]
+  >([
+    { value: "ask", label: "Ask every time" },
+    { value: "quit", label: "Quit application" },
+    {
+      value: "background",
+      label: desktopIntegration.taskbarEnabled
+        ? "Keep running in background"
+        : "Minimize to taskbar",
+    },
+  ]);
 </script>
 
 {#if nativeDesktopAvailable()}
@@ -58,27 +72,17 @@
         ? "Choose what happens when you click the window close button."
         : `With tray integration off, background mode minimizes ${APP_NAME} to the taskbar.`}
     >
-      <select
-        class="settings-input"
+      <Select
         value={desktopIntegration.closeBehavior}
-        onchange={(e) => {
-          const closeBehavior = (e.currentTarget as HTMLSelectElement)
-            .value as CloseBehavior;
+        options={closeBehaviorOptions}
+        onchange={(closeBehavior) => {
           desktopIntegration = {
             ...desktopIntegration,
             closeBehavior,
           };
           setCloseBehavior(closeBehavior);
         }}
-      >
-        <option value="ask">Ask every time</option>
-        <option value="quit">Quit application</option>
-        <option value="background">
-          {desktopIntegration.taskbarEnabled
-            ? "Keep running in background"
-            : "Minimize to taskbar"}
-        </option>
-      </select>
+      />
     </Field>
   </SettingsCard>
 {/if}

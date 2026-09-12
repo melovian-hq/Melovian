@@ -3,6 +3,7 @@
   import { APP_NAME } from "$lib/brand";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import ThemeToggle from "$lib/components/ui/ThemeToggle.svelte";
   import ThemeCustomization from "$lib/components/settings/ThemeCustomization.svelte";
@@ -30,6 +31,11 @@
   let dataDir = $state("");
   let loading = $state(true);
   let mixDisplayStyle = $state<MixDisplayStyle>(loadMixDisplay());
+
+  const mixDisplayOptions: { value: MixDisplayStyle; label: string }[] = [
+    { value: "cards", label: "Cards" },
+    { value: "discs", label: "Discs" },
+  ];
   let metadataEnhancementSettings = $derived(
     mergeMetadataEnhancementSettings(music.metadataEnhancementSettings),
   );
@@ -89,19 +95,14 @@
     label="Made for you layout"
     hint="Cards show play and shuffle. Discs show circular covers with play on hover."
   >
-    <select
-      class="settings-input"
+    <Select
       value={mixDisplayStyle}
-      onchange={(e) => {
-        const value = (e.currentTarget as HTMLSelectElement)
-          .value as MixDisplayStyle;
+      options={mixDisplayOptions}
+      onchange={(value) => {
         mixDisplayStyle = value;
         saveMixDisplay(value);
       }}
-    >
-      <option value="cards">Cards</option>
-      <option value="discs">Discs</option>
-    </select>
+    />
   </Field>
 </SettingsCard>
 

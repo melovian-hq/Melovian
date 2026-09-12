@@ -3,6 +3,7 @@
   import { APP_NAME } from "$lib/brand";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { nativeDesktopAvailable } from "$lib/config/runtime";
   import {
@@ -21,6 +22,10 @@
   let graphicsEnv = $state<GraphicsEnvironment | null>(null);
   let graphicsSettings = $state<GraphicsSettings>(mergeGraphicsSettings(null));
   let graphicsSaving = $state(false);
+
+  const nvSyncOptions = (["auto", "on", "off"] as NvExplicitSyncMode[]).map(
+    (mode) => ({ value: mode, label: nvExplicitSyncLabel(mode) }),
+  );
 
   $effect(() => {
     if (!nativeDesktopAvailable()) return;
@@ -95,21 +100,16 @@
         label="NVIDIA explicit sync workaround"
         hint="Sets __NV_DISABLE_EXPLICIT_SYNC for Wayland + NVIDIA stability issues."
       >
-        <select
-          class="settings-input"
+        <Select
           value={graphicsSettings.nvDisableExplicitSync}
-          onchange={(e) => {
+          options={nvSyncOptions}
+          onchange={(nvDisableExplicitSync) => {
             graphicsSettings = {
               ...graphicsSettings,
-              nvDisableExplicitSync: (e.currentTarget as HTMLSelectElement)
-                .value as NvExplicitSyncMode,
+              nvDisableExplicitSync,
             };
           }}
-        >
-          <option value="auto">{nvExplicitSyncLabel("auto")}</option>
-          <option value="on">{nvExplicitSyncLabel("on")}</option>
-          <option value="off">{nvExplicitSyncLabel("off")}</option>
-        </select>
+        />
       </Field>
     {/if}
     <div class="settings-page__actions">

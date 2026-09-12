@@ -2,6 +2,7 @@
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import { getVideoSettings, saveVideoSettings } from "$lib/video/api";
@@ -9,6 +10,7 @@
   import {
     defaultVideoSettings,
     mergeVideoSettings,
+    type VideoSearchProvider,
     type VideoSettings,
   } from "$lib/video/ids";
   import { toast } from "$lib/ui/toast.svelte";
@@ -17,6 +19,14 @@
   let settings = $state<VideoSettings>(defaultVideoSettings());
   let loading = $state(true);
   let saving = $state(false);
+
+  const searchProviderOptions: {
+    value: VideoSearchProvider;
+    label: string;
+  }[] = [
+    { value: "invidious", label: "Invidious (primary)" },
+    { value: "youtube", label: "YouTube Data API" },
+  ];
 
   $effect(() => {
     let cancelled = false;
@@ -84,14 +94,11 @@
     />
 
     <Field label="Search provider">
-      <select
-        class="settings-input"
+      <Select
         bind:value={settings.searchProvider}
+        options={searchProviderOptions}
         disabled={!settings.enabled}
-      >
-        <option value="invidious">Invidious (primary)</option>
-        <option value="youtube">YouTube Data API</option>
-      </select>
+      />
     </Field>
 
     <Field

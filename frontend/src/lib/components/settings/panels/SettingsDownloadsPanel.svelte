@@ -2,6 +2,7 @@
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import { apiHeaders } from "$lib/core/http/client";
@@ -31,10 +32,9 @@
   let cacheRevealing = $state(false);
   let downloadDir = $state<string | null>(null);
 
-  const cacheStrategies = Object.entries(CACHE_STRATEGY_LABELS) as [
-    CacheStrategy,
-    string,
-  ][];
+  const cacheStrategyOptions = (
+    Object.entries(CACHE_STRATEGY_LABELS) as [CacheStrategy, string][]
+  ).map(([value, label]) => ({ value, label }));
 
   $effect(() => {
     cacheSettings = mergeCacheSettings(music.cacheSettings);
@@ -149,15 +149,11 @@
     label="Caching strategy"
     hint="Controls which tracks are downloaded in the background."
   >
-    <select
-      class="settings-input"
+    <Select
       value={cacheSettings.strategy}
-      onchange={(e) => setCacheStrategy(e.currentTarget.value)}
-    >
-      {#each cacheStrategies as [value, label] (value)}
-        <option {value}>{label}</option>
-      {/each}
-    </select>
+      options={cacheStrategyOptions}
+      onchange={(value) => setCacheStrategy(value)}
+    />
   </Field>
 
   <Field

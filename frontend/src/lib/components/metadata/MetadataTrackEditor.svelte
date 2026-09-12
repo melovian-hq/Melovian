@@ -1,6 +1,7 @@
 <script lang="ts">
   import Field from "$lib/components/ui/Field.svelte";
   import Input from "$lib/components/ui/Input.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
@@ -9,6 +10,7 @@
   import {
     metadataLookupSources,
     metadataLookupSourceLabel,
+    type MetadataLookupSource,
   } from "$lib/features/metadata-editor/api";
   import {
     buildLookupQuery,
@@ -72,7 +74,12 @@
     genre: "",
   });
   let lookupQuery = $state("");
-  let lookupSource = $state("itunes");
+  let lookupSource = $state<MetadataLookupSource>("itunes");
+
+  const lookupSourceOptions = metadataLookupSources.map((provider) => ({
+    value: provider.id,
+    label: provider.label,
+  }));
 
   $effect(() => {
     form = trackToFormState(track);
@@ -216,11 +223,7 @@
   </Field>
 
   <Field label="Lookup provider">
-    <select class="settings-input" bind:value={lookupSource}>
-      {#each metadataLookupSources as provider (provider.id)}
-        <option value={provider.id}>{provider.label}</option>
-      {/each}
-    </select>
+    <Select bind:value={lookupSource} options={lookupSourceOptions} />
   </Field>
 
   <div class="editor__actions">

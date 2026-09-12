@@ -3,6 +3,7 @@
   import { APP_NAME } from "$lib/brand";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { music } from "$lib/config/music.svelte";
   import {
@@ -121,11 +122,10 @@
     label="Language bias"
     hint="Prefer or restrict mixes toward your main languages."
   >
-    <select class="settings-input" bind:value={mixSettings.languageBias}>
-      {#each languageBiasOptions as [value, label] (value)}
-        <option {value}>{label}</option>
-      {/each}
-    </select>
+    <Select
+      bind:value={mixSettings.languageBias}
+      options={languageBiasOptions.map(([value, label]) => ({ value, label }))}
+    />
   </Field>
 
   <Field
@@ -144,11 +144,13 @@
     label="Genre mix selection"
     hint="Personal uses albums from your top artists. Library uses server genre size."
   >
-    <select class="settings-input" bind:value={mixSettings.genreSelection}>
-      {#each genreSelectionOptions as [value, label] (value)}
-        <option {value}>{label}</option>
-      {/each}
-    </select>
+    <Select
+      bind:value={mixSettings.genreSelection}
+      options={genreSelectionOptions.map(([value, label]) => ({
+        value,
+        label,
+      }))}
+    />
   </Field>
 
   <Field

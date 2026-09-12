@@ -2,6 +2,7 @@
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
+  import Select from "$lib/components/ui/Select.svelte";
   import { music } from "$lib/config/music.svelte";
   import { APP_NAME } from "$lib/brand";
   import { isWailsMobile, nativeDesktopAvailable } from "$lib/config/runtime";
@@ -53,15 +54,47 @@
     mergePlaybackSettings(music.playbackSettings),
   );
 
-  const transcodeFormats = Object.entries(TRANSCODE_FORMAT_LABELS) as [
-    TranscodeFormat,
-    string,
-  ][];
+  const transcodeFormatOptions = (
+    Object.entries(TRANSCODE_FORMAT_LABELS) as [TranscodeFormat, string][]
+  ).map(([value, label]) => ({ value, label }));
 
-  const immersiveModes = Object.entries(IMMERSIVE_AUDIO_MODE_LABELS) as [
-    ImmersiveAudioMode,
-    string,
-  ][];
+  const immersiveModeOptions = (
+    Object.entries(IMMERSIVE_AUDIO_MODE_LABELS) as [
+      ImmersiveAudioMode,
+      string,
+    ][]
+  ).map(([value, label]) => ({ value, label }));
+
+  const queueSizeOptions = QUEUE_SIZE_OPTIONS.map((option) => ({
+    value: String(option.value),
+    label: option.label,
+  }));
+
+  const crossfadeDurationOptions = CROSSFADE_DURATION_OPTIONS.map((option) => ({
+    value: String(option.value),
+    label: option.label,
+  }));
+
+  const transcodeBitrateOptions = TRANSCODE_BITRATE_OPTIONS.map((option) => ({
+    value: String(option.value),
+    label: option.label,
+  }));
+
+  const nativeBackendOptions = $derived<
+    { value: NativeBackendPref; label: string; disabled?: boolean }[]
+  >([
+    { value: "auto", label: "Auto (prefer mpv)" },
+    {
+      value: "mpv",
+      label: `mpv${music.mpvAvailable ? "" : " (libmpv not found)"}`,
+      disabled: !music.mpvAvailable,
+    },
+    {
+      value: "vlc",
+      label: `VLC${music.vlcAvailable ? "" : " (libvlc not found)"}`,
+      disabled: !music.vlcAvailable,
+    },
+  ]);
 
   $effect(() => {
     transcodingSettings = mergeTranscodingSettings(music.transcodingSettings);
@@ -202,23 +235,12 @@
         label="Native backend"
         hint="Choose mpv, VLC, or Auto. Auto tries mpv first when both libraries are installed."
       >
-        <select
-          class="settings-input"
+        <Select
           value={nativeBackendPref}
+          options={nativeBackendOptions}
           disabled={nativePlaybackSaving}
-          onchange={(e) =>
-            void applyNativeBackend(
-              (e.currentTarget as HTMLSelectElement).value as NativeBackendPref,
-            )}
-        >
-          <option value="auto">Auto (prefer mpv)</option>
-          <option value="mpv" disabled={!music.mpvAvailable}>
-            mpv{music.mpvAvailable ? "" : " (libmpv not found)"}
-          </option>
-          <option value="vlc" disabled={!music.vlcAvailable}>
-            VLC{music.vlcAvailable ? "" : " (libvlc not found)"}
-          </option>
-        </select>
+          onchange={(backend) => void applyNativeBackend(backend)}
+        />
       </Field>
       {#if music.nativeAvailable && music.nativeBackend}
         <p class="settings-page__meta">
@@ -255,19 +277,11 @@
     label="Output mode"
     hint={IMMERSIVE_AUDIO_MODE_HINTS[immersiveAudioSettings.mode]}
   >
-    <select
-      class="settings-input"
+    <Select
       value={immersiveAudioSettings.mode}
-      onchange={(e) =>
-        saveImmersive({
-          mode: (e.currentTarget as HTMLSelectElement)
-            .value as ImmersiveAudioMode,
-        })}
-    >
-      {#each immersiveModes as [value, label] (value)}
-        <option {value}>{label}</option>
-      {/each}
-    </select>
+      options={immersiveModeOptions}
+      onchange={(mode) => saveImmersive({ mode })}
+    />
   </Field>
 
   <SettingsToggleRow
@@ -350,16 +364,11 @@
     label="Maximum queue size"
     hint="Unlimited allows the queue to grow without a cap."
   >
-    <select
-      class="settings-input"
+    <Select
       value={String(queueSettings.maxQueueSize)}
-      onchange={(e) =>
-        saveQueueSize(Number((e.currentTarget as HTMLSelectElement).value))}
-    >
-      {#each QUEUE_SIZE_OPTIONS as option (option.value)}
-        <option value={String(option.value)}>{option.label}</option>
-      {/each}
-    </select>
+      options={queueSizeOptions}
+      onchange={(value) => saveQueueSize(Number(value))}
+    />
   </Field>
 </SettingsCard>
 
@@ -385,24 +394,18 @@
     label="Crossfade duration"
     hint="How long tracks overlap before the next song takes over."
   >
-    <select
-      class="settings-input"
+    <Select
       value={String(playbackSettings.crossfadeDurationSec)}
+      options={crossfadeDurationOptions}
       disabled={!playbackSettings.crossfadeEnabled || music.nativePlayback}
-      onchange={(e) => {
+      onchange={(value) => {
         playbackSettings = {
           ...playbackSettings,
-          crossfadeDurationSec: Number(
-            (e.currentTarget as HTMLSelectElement).value,
-          ),
+          crossfadeDurationSec: Number(value),
         };
         savePlaybackSettings();
       }}
-    >
-      {#each CROSSFADE_DURATION_OPTIONS as option (option.value)}
-        <option value={String(option.value)}>{option.label}</option>
-      {/each}
-    </select>
+    />
   </Field>
 </SettingsCard>
 
@@ -421,35 +424,21 @@
     label="Max bitrate"
     hint="Limits transcoded stream quality. Off uses 320 kbps only when always transcoding or after a decode failure."
   >
-    <select
-      class="settings-input"
+    <Select
       value={String(transcodingSettings.maxBitRate)}
-      onchange={(e) =>
-        saveTranscoding({
-          maxBitRate: Number(e.currentTarget.value),
-        })}
-    >
-      {#each TRANSCODE_BITRATE_OPTIONS as option (option.value)}
-        <option value={option.value}>{option.label}</option>
-      {/each}
-    </select>
+      options={transcodeBitrateOptions}
+      onchange={(value) => saveTranscoding({ maxBitRate: Number(value) })}
+    />
   </Field>
 
   <Field
     label="Preferred format"
     hint="Sent to the server as the stream format when transcoding."
   >
-    <select
-      class="settings-input"
+    <Select
       value={transcodingSettings.format}
-      onchange={(e) =>
-        saveTranscoding({
-          format: e.currentTarget.value as TranscodeFormat,
-        })}
-    >
-      {#each transcodeFormats as [value, label] (value)}
-        <option {value}>{label}</option>
-      {/each}
-    </select>
+      options={transcodeFormatOptions}
+      onchange={(format) => saveTranscoding({ format })}
+    />
   </Field>
 </SettingsCard>
