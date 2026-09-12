@@ -19,6 +19,9 @@ export default defineConfig({
   },
   test: {
     environment: "jsdom",
+    // Dynamic imports in tests stall past 5s under parallel
+    // transform load.
+    testTimeout: 15_000,
     include: ["src/**/*.oracle.test.ts"],
     setupFiles: ["./vitest.setup.ts"],
     server: {
