@@ -89,3 +89,20 @@ func setDefaultEnv(applied map[string]string, key, value string) {
 	_ = os.Setenv(key, value)
 	applied[key] = value
 }
+
+// DisableWebKitSandboxIfLandlocked turns off WebKit's bubblewrap sandbox when
+// landlock is active. Landlock's hooks deny the mount namespace setup bwrap
+// performs ("Failed to make / slave") no matter how broad the ruleset is, so
+// WebKit's sandbox can never launch under it. Disabling explicitly avoids a
+// failed bwrap spawn on every web process start. When landlock is off the
+// sandbox is left alone so it can run.
+func DisableWebKitSandboxIfLandlocked(landlockEnabled bool) {
+	if !landlockEnabled {
+		return
+	}
+	if os.Getenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS") != "" {
+		return
+	}
+	_ = os.Setenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "1")
+	slog.Info("webkit sandbox disabled", "reason", "bubblewrap cannot nest under landlock")
+}

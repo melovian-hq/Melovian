@@ -16,3 +16,5 @@ func AppliedWebKitEnv() map[string]string {
 func GraphicsEnvironmentInfo(_ string) GraphicsEnvironment {
 	return GraphicsEnvironment{Supported: false}
 }
+
+func DisableWebKitSandboxIfLandlocked(_ bool) {}

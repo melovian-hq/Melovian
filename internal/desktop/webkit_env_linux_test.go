@@ -30,6 +30,29 @@ func TestIsWaylandSessionDetection(t *testing.T) {
 	}
 }
 
+func TestDisableWebKitSandboxIfLandlocked(t *testing.T) {
+	t.Setenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "")
+	_ = os.Unsetenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS")
+
+	DisableWebKitSandboxIfLandlocked(false)
+	if os.Getenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS") != "" {
+		t.Fatal("sandbox must stay enabled when landlock is off")
+	}
+
+	DisableWebKitSandboxIfLandlocked(true)
+	if os.Getenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS") != "1" {
+		t.Fatal("expected sandbox disabled when landlock is active")
+	}
+}
+
+func TestDisableWebKitSandboxIfLandlockedKeepsUserValue(t *testing.T) {
+	t.Setenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS", "0")
+	DisableWebKitSandboxIfLandlocked(true)
+	if os.Getenv("WEBKIT_DISABLE_SANDBOX_THIS_IS_DANGEROUS") != "0" {
+		t.Fatal("expected user-set env value to be preserved")
+	}
+}
+
 func TestSetDefaultEnvSkipsAlreadySetValues(t *testing.T) {
 	t.Setenv("WEBKIT_DISABLE_DMABUF_RENDERER", "0")
 	applied := make(map[string]string)

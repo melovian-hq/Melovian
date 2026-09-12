@@ -70,6 +70,7 @@ func main() {
 
 	landlockStatus := sandbox.Apply(cfg, sandbox.ModeDesktop)
 	sandbox.LogStatus(landlockStatus)
+	desktop.DisableWebKitSandboxIfLandlocked(landlockStatus.Enabled)
 
 	mediaSvc := services.NewMediaService(nil)
 	mediaSvc.SetDataDir(cfg.DataDir)
