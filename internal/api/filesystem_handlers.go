@@ -4,6 +4,8 @@
 package api
 
 import (
+	"errors"
+	"io"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -30,6 +32,10 @@ func (s *Server) handleListDirectories(w http.ResponseWriter, r *http.Request) {
 	raw := strings.TrimSpace(r.URL.Query().Get("path"))
 	path, err := s.resolveBrowsePath(raw)
 	if err != nil {
+		if os.IsNotExist(err) {
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "directory not found")
+			return
+		}
 		httputil.WriteError(w, http.StatusBadRequest, "invalid_path", err.Error())
 		return
 	}
@@ -66,7 +72,7 @@ func (s *Server) handleListDirectories(w http.ResponseWriter, r *http.Request) {
 func (s *Server) resolveBrowsePath(raw string) (string, error) {
 	path := strings.TrimSpace(raw)
 	if path == "" {
-		for _, candidate := range browseStartCandidates(s.cfg.DataDir) {
+		for _, candidate := range s.browseStartCandidates() {
 			info, err := os.Stat(candidate)
 			if err != nil || !info.IsDir() {
 				continue
@@ -81,24 +87,30 @@ func (s *Server) resolveBrowsePath(raw string) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", errAbsolutePathRequired
 	}
-	path = filepath.Clean(path)
-	if !s.pathAllowedForBrowse(path) {
+	// Resolve before the allowlist check so a symlink inside an allowed root
+	// cannot point the listing somewhere else.
+	resolved, err := filepath.EvalSymlinks(filepath.Clean(path))
+	if err != nil {
+		return "", err
+	}
+	if !s.pathAllowedForBrowse(resolved) {
 		return "", errBrowseOutsideRoots
 	}
-	info, err := os.Stat(path)
+	info, err := os.Stat(resolved) //#nosec G703 -- resolved passed the browse allowlist after symlink resolution
 	if err != nil {
 		return "", err
 	}
 	if !info.IsDir() {
 		return "", errNotDirectory
 	}
-	return path, nil
+	return resolved, nil
 }
 
 // pathAllowedForBrowse reports whether path is under a configured browse root.
+// Callers must pass a symlink-resolved path.
 func (s *Server) pathAllowedForBrowse(path string) bool {
 	path = filepath.Clean(path)
-	for _, root := range browseStartCandidates(s.cfg.DataDir) {
+	for _, root := range s.browseStartCandidates() {
 		root = strings.TrimSpace(root)
 		if root == "" {
 			continue
@@ -110,15 +122,16 @@ func (s *Server) pathAllowedForBrowse(path string) bool {
 	return false
 }
 
-func browseStartCandidates(dataDir string) []string {
+func (s *Server) browseStartCandidates() []string {
 	var out []string
 	if home, err := os.UserHomeDir(); err == nil && home != "" {
 		out = append(out, home)
 	}
 	out = append(out, "/run/media", "/media", "/mnt")
-	if strings.TrimSpace(dataDir) != "" {
-		out = append(out, dataDir)
+	if strings.TrimSpace(s.cfg.DataDir) != "" {
+		out = append(out, s.cfg.DataDir)
 	}
+	out = append(out, s.localLibraryConfig().Roots...)
 	return out
 }
 
@@ -145,7 +158,7 @@ func listSubdirectories(path string) ([]directoryEntry, error) {
 	defer func() { _ = dir.Close() }()
 
 	names, err := dir.Readdirnames(maxDirectoryListing + 1)
-	if err != nil {
+	if err != nil && !errors.Is(err, io.EOF) {
 		return nil, err
 	}
 	sort.Strings(names)

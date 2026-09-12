@@ -117,15 +117,26 @@ func (s *Server) resolveLibraryPath(inputPath string) (string, error) {
 	if !filepath.IsAbs(path) {
 		return "", errors.New("path must be absolute")
 	}
-	path = filepath.Clean(path)
-	info, err := os.Stat(path)
+	// Resolve before validation so a symlink cannot hide the real location.
+	resolved, err := filepath.EvalSymlinks(filepath.Clean(path))
+	if err != nil {
+		return "", err
+	}
+	// On a multi-user server, a user supplied path must stay under the same
+	// roots the folder browser offers. Otherwise any account could point a
+	// library at arbitrary directories and stream whatever the process can
+	// read. Single user installs are trusted with any path.
+	if s.cfg.ServerMode && s.cfg.AuthEnabled() && !s.pathAllowedForBrowse(resolved) {
+		return "", errors.New("path must be under an allowed root (home, /media, /mnt, /run/media, or MELOVIAN_LOCAL_LIBRARY_ROOTS)")
+	}
+	info, err := os.Stat(resolved)
 	if err != nil {
 		return "", err
 	}
 	if !info.IsDir() {
 		return "", errors.New("path is not a directory")
 	}
-	return path, nil
+	return resolved, nil
 }
 
 func (s *Server) handleListLocalLibraries(w http.ResponseWriter, r *http.Request) {

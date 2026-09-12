@@ -38,6 +38,9 @@ type LocalLibraryConfig struct {
 	Enabled         bool
 	DefaultPath     string
 	AllowCustomPath bool
+	// Roots are extra allowed roots for browsed or user-supplied library
+	// paths, from MELOVIAN_LOCAL_LIBRARY_ROOTS.
+	Roots []string
 }
 
 type Config struct {
@@ -379,9 +382,19 @@ func loadLocalLibraryConfig(multiUser bool) LocalLibraryConfig {
 		allowCustom = false
 	}
 
+	var roots []string
+	for _, root := range filepath.SplitList(os.Getenv("MELOVIAN_LOCAL_LIBRARY_ROOTS")) {
+		root = strings.TrimSpace(root)
+		if root == "" {
+			continue
+		}
+		roots = append(roots, filepath.Clean(root))
+	}
+
 	return LocalLibraryConfig{
 		Enabled:         enabled,
 		DefaultPath:     defaultPath,
 		AllowCustomPath: allowCustom,
+		Roots:           roots,
 	}
 }
