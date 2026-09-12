@@ -4,6 +4,13 @@
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { requireOk } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import {
+  appNotificationSchema,
+  notificationsReadAllResponseSchema,
+  notificationsResponseSchema,
+  unreadCountResponseSchema,
+} from "./schemas";
 
 export type NotificationKind =
   | "share_received"
@@ -37,10 +44,11 @@ export async function listNotifications(
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load notifications");
-  const payload = (await response.json()) as {
-    items?: AppNotification[];
-    unread?: number;
-  };
+  const payload = await parseJson(
+    notificationsResponseSchema,
+    response,
+    "notifications",
+  );
   return {
     items: payload.items ?? [],
     unread: payload.unread ?? 0,
@@ -52,7 +60,11 @@ export async function getUnreadCount(): Promise<number> {
     headers: apiHeaders(),
   });
   if (!response.ok) return 0;
-  const payload = (await response.json()) as { unread?: number };
+  const payload = await parseJson(
+    unreadCountResponseSchema,
+    response,
+    "unread count",
+  );
   return payload.unread ?? 0;
 }
 
@@ -64,7 +76,7 @@ export async function markNotificationRead(
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to mark notification read");
-  return (await response.json()) as AppNotification;
+  return parseJson(appNotificationSchema, response, "notification");
 }
 
 export async function markAllNotificationsRead(): Promise<number> {
@@ -73,7 +85,11 @@ export async function markAllNotificationsRead(): Promise<number> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to mark notifications read");
-  const payload = (await response.json()) as { updated?: number };
+  const payload = await parseJson(
+    notificationsReadAllResponseSchema,
+    response,
+    "mark all read",
+  );
   return payload.updated ?? 0;
 }
 

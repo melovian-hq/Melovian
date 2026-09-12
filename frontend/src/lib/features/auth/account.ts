@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fetchWithRetry } from "$lib/core/http/client";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { readAPIError } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import { authSessionsResponseSchema, authUserSchema } from "./schemas";
 import type { AuthUser } from "./api";
 
 export interface AuthSession {
@@ -12,21 +15,22 @@ export interface AuthSession {
 }
 
 export async function listSessions(): Promise<AuthSession[]> {
-  const response = await fetchWithRetry("/api/auth/sessions");
+  const response = await fetchWithRetry(ApiPaths.authSessions);
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  const payload = (await response.json()) as { sessions: AuthSession[] };
+  const payload = await parseJson(
+    authSessionsResponseSchema,
+    response,
+    "auth sessions",
+  );
   return payload.sessions ?? [];
 }
 
 export async function revokeSession(id: string): Promise<void> {
-  const response = await fetchWithRetry(
-    `/api/auth/sessions/${encodeURIComponent(id)}`,
-    {
-      method: "DELETE",
-    },
-  );
+  const response = await fetchWithRetry(ApiPaths.authSessionById(id), {
+    method: "DELETE",
+  });
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
@@ -36,7 +40,7 @@ export async function changePassword(
   currentPassword: string,
   newPassword: string,
 ): Promise<void> {
-  const response = await fetchWithRetry("/api/auth/change-password", {
+  const response = await fetchWithRetry(ApiPaths.authChangePassword, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ currentPassword, newPassword }),
@@ -47,7 +51,7 @@ export async function changePassword(
 }
 
 export async function changeUsername(username: string): Promise<AuthUser> {
-  const response = await fetchWithRetry("/api/auth/username", {
+  const response = await fetchWithRetry(ApiPaths.authUsername, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ username }),
@@ -55,11 +59,11 @@ export async function changeUsername(username: string): Promise<AuthUser> {
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return (await response.json()) as AuthUser;
+  return parseJson(authUserSchema, response, "auth user");
 }
 
 export async function deleteAccount(password: string): Promise<void> {
-  const response = await fetchWithRetry("/api/auth/delete-account", {
+  const response = await fetchWithRetry(ApiPaths.authDeleteAccount, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({ password }),

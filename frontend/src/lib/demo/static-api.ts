@@ -7,6 +7,10 @@
  * /demo/catalog.json (exported from democatalog).
  */
 
+import { ApiPaths } from "$lib/core/http/api-paths";
+import { parseJson } from "$lib/core/http/parse";
+import { demoCatalogSchema } from "./schemas";
+
 type DemoArtist = {
   ID: string;
   Name: string;
@@ -191,7 +195,7 @@ async function loadCatalog(): Promise<DemoCatalog> {
   if (!res.ok) {
     throw new Error(`Failed to load demo catalog: ${res.status}`);
   }
-  catalog = (await res.json()) as DemoCatalog;
+  catalog = await parseJson(demoCatalogSchema, res, "demo catalog");
   return catalog;
 }
 
@@ -472,7 +476,7 @@ async function handleApi(
   const c = await loadCatalog();
   const write = method !== "GET" && method !== "HEAD" && method !== "OPTIONS";
 
-  if (path.startsWith("/api/subsonic")) {
+  if (path.startsWith(ApiPaths.subsonicPrefix)) {
     if (write && !path.includes("stream") && !path.includes("download")) {
       // Subsonic mutations still return OK in server demo, match that.
     }
@@ -506,7 +510,7 @@ async function handleApi(
           "eq",
         ],
       });
-    case "/api/config":
+    case ApiPaths.config:
       return jsonResponse({
         dataDir: "",
         listenAddr: "",
@@ -543,7 +547,7 @@ async function handleApi(
           allowCustomPath: false,
         },
       });
-    case "/api/auth/status":
+    case ApiPaths.authStatus:
       return jsonResponse({
         enabled: false,
         authenticated: false,
@@ -552,11 +556,11 @@ async function handleApi(
         demoMode: true,
         fakeCatalog: true,
       });
-    case "/api/instances":
+    case ApiPaths.instances:
       return jsonResponse({ instances: [DEMO_INSTANCE] });
-    case "/api/instances/active":
+    case ApiPaths.instancesActive:
       return jsonResponse({ instance: DEMO_INSTANCE });
-    case "/api/sources/status":
+    case ApiPaths.sourcesStatus:
       return jsonResponse({
         mode: "subsonic",
         activeInstanceId: DEMO_INSTANCE.id,
@@ -564,13 +568,13 @@ async function handleApi(
         multiLocalLibrary: false,
         unifiedAvailable: false,
       });
-    case "/api/local-libraries":
+    case ApiPaths.localLibraries:
       return jsonResponse({ libraries: [] });
-    case "/api/local-libraries/active":
+    case ApiPaths.localLibrariesActive:
       return jsonResponse({ library: null });
-    case "/api/extensions":
-      return jsonResponse({ extensions: [] });
-    case "/api/music/status":
+    case ApiPaths.extensions:
+      return jsonResponse({ items: [], manifests: [], dir: "" });
+    case ApiPaths.musicStatus:
       return jsonResponse({
         enabled: true,
         connected: true,
@@ -578,43 +582,43 @@ async function handleApi(
         version: "1.16.1",
         source: "subsonic",
       });
-    case "/api/music/library-stats":
+    case ApiPaths.musicLibraryStats:
       return jsonResponse({
         artists: c.artists.length,
         albums: c.albums.length,
         songs: c.songs.length,
         playlists: c.playlists.length,
       });
-    case "/api/music/history":
+    case ApiPaths.musicHistory:
       return jsonResponse({ entries: [] });
-    case "/api/music/listen-events":
+    case ApiPaths.musicListenEvents:
       return jsonResponse({ events: [] });
-    case "/api/music/listen-events/years":
+    case ApiPaths.musicListenEventYears:
       return jsonResponse({ years: [] });
-    case "/api/music/resume":
+    case ApiPaths.musicResume:
       return jsonResponse({ track: null });
-    case "/api/music/stats":
+    case ApiPaths.musicStats:
       return jsonResponse({ plays: 0, minutes: 0 });
-    case "/api/music/batch":
+    case ApiPaths.musicBatch:
       return jsonResponse({
         favorites: c.songs.filter((s) => s.Starred).map((s) => ({ id: s.ID })),
         playlists: playlistApiPayload(c),
         history: [],
       });
-    case "/api/music/playlists":
+    case ApiPaths.musicPlaylists:
       return jsonResponse({ playlists: playlistApiPayload(c) });
-    case "/api/music/favorites":
+    case ApiPaths.musicFavorites:
       return jsonResponse({
         tracks: c.songs.filter((s) => s.Starred).map((s) => songMap(s)),
       });
-    case "/api/devices":
+    case ApiPaths.devices:
       return jsonResponse({ devices: [] });
-    case "/api/settings/sentry":
+    case ApiPaths.settingsSentry:
       return jsonResponse({ clientReporting: false });
-    case "/api/ws":
+    case ApiPaths.ws:
       return jsonResponse({ error: "websocket_unavailable" }, 400);
     default: {
-      if (path.startsWith("/api/music/playlists/")) {
+      if (path.startsWith(`${ApiPaths.musicPlaylists}/`)) {
         const id = decodeURIComponent(path.split("/").pop() || "");
         const p = findPlaylist(c, id);
         if (!p) return jsonResponse({ error: "not_found" }, 404);
@@ -627,10 +631,10 @@ async function handleApi(
           },
         });
       }
-      if (path.startsWith("/api/music/items/")) {
+      if (path.startsWith(ApiPaths.musicItemsPrefix)) {
         return jsonResponse({ item: null });
       }
-      if (path.startsWith("/api/instances/") && path.endsWith("/ping")) {
+      if (path.startsWith(`${ApiPaths.instances}/`) && path.endsWith("/ping")) {
         return jsonResponse({
           ok: true,
           serverName: DEMO_INSTANCE.serverName,
@@ -682,7 +686,9 @@ function pathFromInput(input: RequestInfo | URL): {
 
 function shouldIntercept(path: string): boolean {
   return (
-    path === "/health" || path.startsWith("/api/") || path.startsWith("/rest/")
+    path === "/health" ||
+    path.startsWith(ApiPaths.apiPrefix) ||
+    path.startsWith("/rest/")
   );
 }
 

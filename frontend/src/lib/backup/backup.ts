@@ -2,6 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+import { ApiPaths } from "$lib/core/http/api-paths";
+import { parseJson, parsePayload } from "$lib/core/http/parse";
+import {
+  cacheSettingsResponseSchema,
+  connectionSettingsPatchSchema,
+  eqSettingsSchema,
+} from "$lib/music/schemas";
+import { backupFileSchema, settingsSnapshotSchema } from "./schemas";
 import {
   APP_NAME,
   STORAGE_BACKUP_PREFIXES,
@@ -110,18 +118,32 @@ export function restoreLocalStorageBackup(data: Record<string, string>): void {
 
 async function fetchServerSettings(): Promise<Record<string, unknown>> {
   const [eq, connection, cache, lyrics, sentry] = await Promise.all([
-    fetchWithRetry("/api/music/settings/eq", { headers: apiHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
+    fetchWithRetry(ApiPaths.musicSettingsEq, { headers: apiHeaders() })
+      .then((r) =>
+        r.ok ? parseJson(eqSettingsSchema, r, "eq settings") : null,
+      )
       .catch(() => null),
-    fetchWithRetry("/api/music/settings/connection", { headers: apiHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
+    fetchWithRetry(ApiPaths.musicSettingsConnection, {
+      headers: apiHeaders(),
+    })
+      .then((r) =>
+        r.ok
+          ? parseJson(connectionSettingsPatchSchema, r, "connection settings")
+          : null,
+      )
       .catch(() => null),
-    fetchWithRetry("/api/music/settings/cache", { headers: apiHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
+    fetchWithRetry(ApiPaths.musicSettingsCache, { headers: apiHeaders() })
+      .then((r) =>
+        r.ok
+          ? parseJson(cacheSettingsResponseSchema, r, "cache settings")
+          : null,
+      )
       .catch(() => null),
     musicApi.getLyricsSettings().catch(() => null),
-    fetchWithRetry("/api/settings/sentry", { headers: apiHeaders() })
-      .then((r) => (r.ok ? r.json() : null))
+    fetchWithRetry(ApiPaths.settingsSentry, { headers: apiHeaders() })
+      .then((r) =>
+        r.ok ? parseJson(settingsSnapshotSchema, r, "sentry settings") : null,
+      )
       .catch(() => null),
   ]);
   return { eq, connection, cache, lyrics, sentry };
@@ -195,16 +217,9 @@ export function exportBackupFile(backup: MelovianBackup): void {
 }
 
 export function parseBackupFile(raw: string): MelovianBackup {
-  const parsed = JSON.parse(raw) as MelovianBackup;
-  if (
-    !parsed ||
-    typeof parsed !== "object" ||
-    parsed.version !== BACKUP_VERSION
-  ) {
+  const parsed = parsePayload(backupFileSchema, JSON.parse(raw), "backup file");
+  if (parsed.version !== BACKUP_VERSION) {
     throw new Error("Unsupported or invalid backup file");
-  }
-  if (!parsed.sections || typeof parsed.sections !== "object") {
-    throw new Error("Backup file is missing section data");
   }
   return parsed;
 }
@@ -215,7 +230,7 @@ async function restoreServerSettings(
   const tasks: Promise<unknown>[] = [];
   if (data.eq) {
     tasks.push(
-      fetchWithRetry("/api/music/settings/eq", {
+      fetchWithRetry(ApiPaths.musicSettingsEq, {
         method: "PUT",
         headers: apiHeaders("application/json"),
         body: JSON.stringify(data.eq),
@@ -224,7 +239,7 @@ async function restoreServerSettings(
   }
   if (data.connection) {
     tasks.push(
-      fetchWithRetry("/api/music/settings/connection", {
+      fetchWithRetry(ApiPaths.musicSettingsConnection, {
         method: "PUT",
         headers: apiHeaders("application/json"),
         body: JSON.stringify(data.connection),
@@ -233,7 +248,7 @@ async function restoreServerSettings(
   }
   if (data.cache) {
     tasks.push(
-      fetchWithRetry("/api/music/settings/cache", {
+      fetchWithRetry(ApiPaths.musicSettingsCache, {
         method: "PUT",
         headers: apiHeaders("application/json"),
         body: JSON.stringify(data.cache),
@@ -247,7 +262,7 @@ async function restoreServerSettings(
     const sentryData = data.sentry as { stored?: Record<string, unknown> };
     if (sentryData.stored) {
       tasks.push(
-        fetchWithRetry("/api/settings/sentry", {
+        fetchWithRetry(ApiPaths.settingsSentry, {
           method: "PUT",
           headers: apiHeaders("application/json"),
           body: JSON.stringify(sentryData.stored),
@@ -272,7 +287,7 @@ async function restorePlaylists(playlists: MusicPlaylist[]): Promise<number> {
       continue;
     }
     const response = await fetchWithRetry(
-      `/api/music/playlists/${created.id}/tracks`,
+      ApiPaths.musicPlaylistTracks(created.id),
       {
         method: "PUT",
         headers: apiHeaders("application/json"),

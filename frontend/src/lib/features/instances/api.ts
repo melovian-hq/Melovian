@@ -4,6 +4,14 @@
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { readAPIError, requireOk } from "$lib/core/http/errors";
+import { parseJson, parsePayload } from "$lib/core/http/parse";
+import {
+  activeInstanceProbeSchema,
+  instancePingSchema,
+  instanceTestResponseSchema,
+  instancesResponseSchema,
+  subsonicInstanceSchema,
+} from "./schemas";
 import type { InstanceInput, SubsonicInstance } from "./types";
 
 export async function listInstances(): Promise<SubsonicInstance[]> {
@@ -11,7 +19,11 @@ export async function listInstances(): Promise<SubsonicInstance[]> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load instances");
-  const payload = (await response.json()) as { instances: SubsonicInstance[] };
+  const payload = await parseJson(
+    instancesResponseSchema,
+    response,
+    "instances",
+  );
   return payload.instances ?? [];
 }
 
@@ -20,8 +32,11 @@ export async function getActiveInstance(): Promise<SubsonicInstance | null> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load active instance");
-  const payload = (await response.json()) as Partial<SubsonicInstance>;
-  return payload.id ? (payload as SubsonicInstance) : null;
+  const raw: unknown = await response.json();
+  // The endpoint returns an empty object when no instance is active.
+  const probe = parsePayload(activeInstanceProbeSchema, raw, "active instance");
+  if (!probe.id) return null;
+  return parsePayload(subsonicInstanceSchema, raw, "active instance");
 }
 
 export async function createInstance(
@@ -33,7 +48,7 @@ export async function createInstance(
     body: JSON.stringify(input),
   });
   await requireOk(response, "Failed to create instance");
-  return (await response.json()) as SubsonicInstance;
+  return parseJson(subsonicInstanceSchema, response, "instance");
 }
 
 export async function testInstance(input: InstanceInput): Promise<string> {
@@ -43,7 +58,11 @@ export async function testInstance(input: InstanceInput): Promise<string> {
     body: JSON.stringify(input),
   });
   await requireOk(response, "Connection test failed");
-  const payload = (await response.json()) as { serverName?: string };
+  const payload = await parseJson(
+    instanceTestResponseSchema,
+    response,
+    "instance test",
+  );
   return payload.serverName ?? "Connected";
 }
 
@@ -57,7 +76,7 @@ export async function updateInstance(
     body: JSON.stringify(input),
   });
   await requireOk(response, "Failed to update instance");
-  return (await response.json()) as SubsonicInstance;
+  return parseJson(subsonicInstanceSchema, response, "instance");
 }
 
 export interface InstancePing {
@@ -74,7 +93,7 @@ export async function pingInstance(id: string): Promise<InstancePing> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to ping instance");
-  return (await response.json()) as InstancePing;
+  return parseJson(instancePingSchema, response, "instance ping");
 }
 
 export async function activateInstance(id: string): Promise<void> {

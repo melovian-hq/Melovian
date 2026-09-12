@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { normalizePublicBaseUrl } from "./runtime-url";
+import { parseJson } from "$lib/core/http/parse";
+import { runtimeConfigSchema } from "./schemas";
 import { APP_NAME, StorageKeys } from "$lib/brand";
 
 const STORAGE_KEY = StorageKeys.remoteServerUrl;
@@ -141,11 +143,11 @@ export async function probeRemoteServer(raw: string): Promise<{
   if (!response.ok) {
     throw new Error(`Could not reach ${APP_NAME} (${response.status})`);
   }
-  const cfg = (await response.json()) as {
-    authEnabled?: boolean;
-    serverMode?: boolean;
-    demoMode?: boolean;
-  };
+  const cfg = await parseJson(
+    runtimeConfigSchema,
+    response,
+    "remote server config",
+  );
   return {
     url,
     authEnabled: cfg.authEnabled === true,

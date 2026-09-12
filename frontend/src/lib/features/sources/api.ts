@@ -4,6 +4,8 @@
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { readAPIError } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import { sourceStatusSchema } from "./schemas";
 
 export type SourceViewMode = "subsonic" | "local" | "unified";
 
@@ -22,7 +24,7 @@ export async function fetchSourceStatus(): Promise<SourceStatus> {
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<SourceStatus>;
+  return parseJson(sourceStatusSchema, response, "source status");
 }
 
 export async function setMultiLocalLibrary(
@@ -36,7 +38,7 @@ export async function setMultiLocalLibrary(
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<SourceStatus>;
+  return parseJson(sourceStatusSchema, response, "source status");
 }
 
 export async function setSourceViewMode(
@@ -50,5 +52,5 @@ export async function setSourceViewMode(
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<SourceStatus>;
+  return parseJson(sourceStatusSchema, response, "source status");
 }

@@ -2,6 +2,8 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { createDefaultSubsonicConfig, normalizeSubsonicUrl } from "./auth";
+import { parsePayload } from "$lib/core/http/parse";
+import { subsonicEnvelopeSchema } from "./schemas";
 import type { SubsonicConfig } from "./types";
 
 const SUBSONIC_REQUEST_TIMEOUT_MS = 12_000;
@@ -17,13 +19,6 @@ export class SubsonicApiError extends Error {
     this.body = body;
   }
 }
-
-type SubsonicResponse<T> = {
-  "subsonic-response": {
-    status: string;
-    error?: { code: number; message: string };
-  } & T;
-};
 
 export class SubsonicClient {
   constructor(private config: SubsonicConfig = createDefaultSubsonicConfig()) {}
@@ -79,15 +74,18 @@ export class SubsonicClient {
     const text = await response.text();
     if (!text) return undefined as T;
 
-    const payload = JSON.parse(text) as SubsonicResponse<T>;
-    if (payload["subsonic-response"]?.status !== "ok") {
-      const msg =
-        payload["subsonic-response"]?.error?.message ??
-        "Subsonic request failed";
+    const payload = parsePayload(
+      subsonicEnvelopeSchema,
+      JSON.parse(text),
+      "subsonic response",
+    );
+    const inner = payload["subsonic-response"];
+    if (inner?.status !== "ok") {
+      const msg = inner?.error?.message ?? "Subsonic request failed";
       throw new SubsonicApiError(msg, response.status, text);
     }
 
-    return payload["subsonic-response"] as T;
+    return inner as T;
   }
 
   async request<T>(

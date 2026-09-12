@@ -4,7 +4,17 @@
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { requireOk } from "$lib/core/http/errors";
 import { ApiPaths } from "$lib/core/http/api-paths";
+import { parseJson, parsePayload } from "$lib/core/http/parse";
 import { localStreamUrl } from "$lib/local-music/api";
+import * as v from "valibot";
+import {
+  localVideoSchema,
+  localVideosResponseSchema,
+  trackVideoLinkSchema,
+  videoResolveResultSchema,
+  videoSearchResponseSchema,
+  videoSettingsSchema,
+} from "./schemas";
 import type {
   LocalVideo,
   TrackVideoLink,
@@ -15,17 +25,21 @@ import type {
   VideoSource,
 } from "./ids";
 
-async function videoGet<T>(path: string): Promise<T> {
+async function videoGet<TSchema extends v.GenericSchema>(
+  schema: TSchema,
+  path: string,
+): Promise<v.InferOutput<TSchema>> {
   const response = await fetchWithRetry(path, { headers: apiHeaders() });
   await requireOk(response, `Video request failed: ${response.status}`);
-  return (await response.json()) as T;
+  return parseJson(schema, response, path);
 }
 
-async function videoSend<T>(
+async function videoSend<TSchema extends v.GenericSchema>(
+  schema: TSchema,
   path: string,
   method: string,
   body?: unknown,
-): Promise<T | null> {
+): Promise<v.InferOutput<TSchema> | null> {
   const response = await fetchWithRetry(path, {
     method,
     headers: {
@@ -44,18 +58,19 @@ async function videoSend<T>(
   }
   const text = await response.text();
   if (!text) return null;
-  return JSON.parse(text) as T;
+  return parsePayload(schema, JSON.parse(text), path);
 }
 
 export async function listLocalVideos(): Promise<LocalVideo[]> {
-  const payload = await videoGet<{ videos: LocalVideo[] }>(
+  const payload = await videoGet(
+    localVideosResponseSchema,
     ApiPaths.localMusicVideos,
   );
   return payload.videos ?? [];
 }
 
 export async function getLocalVideo(id: string): Promise<LocalVideo> {
-  return videoGet<LocalVideo>(ApiPaths.localMusicVideo(id));
+  return videoGet(localVideoSchema, ApiPaths.localMusicVideo(id));
 }
 
 export function localVideoStreamUrl(id: string): string {
@@ -63,13 +78,14 @@ export function localVideoStreamUrl(id: string): string {
 }
 
 export async function getVideoSettings(): Promise<VideoSettings> {
-  return videoGet<VideoSettings>(ApiPaths.videoSettings);
+  return videoGet(videoSettingsSchema, ApiPaths.videoSettings);
 }
 
 export async function saveVideoSettings(
   settings: VideoSettings,
 ): Promise<VideoSettings> {
-  const result = await videoSend<VideoSettings>(
+  const result = await videoSend(
+    videoSettingsSchema,
     ApiPaths.videoSettings,
     "PUT",
     settings,
@@ -83,10 +99,10 @@ export async function searchVideos(
 ): Promise<{ results: VideoSearchHit[]; provider: VideoSearchProvider }> {
   const params = new URLSearchParams({ q: query });
   if (provider) params.set("provider", provider);
-  const payload = await videoGet<{
-    results: VideoSearchHit[];
-    provider?: VideoSearchProvider;
-  }>(`${ApiPaths.videoSearch}?${params.toString()}`);
+  const payload = await videoGet(
+    videoSearchResponseSchema,
+    `${ApiPaths.videoSearch}?${params.toString()}`,
+  );
   return {
     results: payload.results ?? [],
     provider: payload.provider === "youtube" ? "youtube" : "invidious",
@@ -103,7 +119,8 @@ export async function resolveVideo(input: {
     id: input.id,
   });
   if (input.title) params.set("title", input.title);
-  return videoGet<VideoResolveResult>(
+  return videoGet(
+    videoResolveResultSchema,
     `${ApiPaths.videoResolve}?${params.toString()}`,
   );
 }
@@ -119,14 +136,15 @@ export async function getTrackVideoLink(
   );
   if (response.status === 404) return null;
   await requireOk(response, `Video link request failed: ${response.status}`);
-  return (await response.json()) as TrackVideoLink;
+  return parseJson(trackVideoLinkSchema, response, "video link");
 }
 
 export async function saveTrackVideoLink(
   trackId: string,
   input: { source: VideoSource; videoId: string; title?: string },
 ): Promise<TrackVideoLink> {
-  const result = await videoSend<TrackVideoLink>(
+  const result = await videoSend(
+    trackVideoLinkSchema,
     ApiPaths.videoLink(trackId),
     "PUT",
     input,
@@ -138,5 +156,5 @@ export async function saveTrackVideoLink(
 }
 
 export async function deleteTrackVideoLink(trackId: string): Promise<void> {
-  await videoSend(ApiPaths.videoLink(trackId), "DELETE");
+  await videoSend(v.unknown(), ApiPaths.videoLink(trackId), "DELETE");
 }

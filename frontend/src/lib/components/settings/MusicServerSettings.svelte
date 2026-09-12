@@ -12,6 +12,10 @@
     normalizePublicBaseUrl,
   } from "$lib/config/runtime";
   import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+  import { ApiPaths } from "$lib/core/http/api-paths";
+  import { parseJson } from "$lib/core/http/parse";
+  import { runtimeConfigSchema } from "$lib/config/schemas";
+  import { subsonicKeyResponseSchema } from "$lib/features/auth/schemas";
 
   let subsonicEnabled = $state(false);
   let transcodingAvailable = $state(false);
@@ -39,17 +43,15 @@
     void (async () => {
       await loadRuntimeConfig();
       try {
-        const response = await fetchWithRetry("/api/config", {
+        const response = await fetchWithRetry(ApiPaths.config, {
           headers: apiHeaders(),
         });
         if (!response.ok) return;
-        const cfg = (await response.json()) as {
-          subsonicServer?: { enabled?: boolean };
-          transcoding?: { available?: boolean };
-          extensions?: { dir?: string };
-          dlna?: { enabled?: boolean; port?: number };
-          jukebox?: { enabled?: boolean };
-        };
+        const cfg = await parseJson(
+          runtimeConfigSchema,
+          response,
+          "runtime config",
+        );
         subsonicEnabled = cfg.subsonicServer?.enabled === true;
         transcodingAvailable = cfg.transcoding?.available === true;
         extensionsDir = cfg.extensions?.dir ?? "";
@@ -67,11 +69,15 @@
 
   async function loadSubsonicKey() {
     try {
-      const res = await fetchWithRetry("/api/auth/subsonic-key", {
+      const res = await fetchWithRetry(ApiPaths.authSubsonicKey, {
         headers: apiHeaders(),
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { apiKey?: string };
+      const data = await parseJson(
+        subsonicKeyResponseSchema,
+        res,
+        "subsonic key",
+      );
       apiKey = data.apiKey ?? "";
     } catch {
       // ignore
@@ -81,13 +87,17 @@
   async function rotateSubsonicKey() {
     apiKeyBusy = true;
     try {
-      const res = await fetchWithRetry("/api/auth/subsonic-key/rotate", {
+      const res = await fetchWithRetry(ApiPaths.authSubsonicKeyRotate, {
         method: "POST",
         headers: apiHeaders("application/json"),
         body: "{}",
       });
       if (!res.ok) return;
-      const data = (await res.json()) as { apiKey?: string };
+      const data = await parseJson(
+        subsonicKeyResponseSchema,
+        res,
+        "subsonic key",
+      );
       apiKey = data.apiKey ?? "";
       apiKeyVisible = true;
     } finally {

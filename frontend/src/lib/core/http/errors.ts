@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { parsePayload } from "./parse";
+import { apiErrorBodySchema } from "./schemas";
+
 export interface APIErrorBody {
   error: string;
   code: string;
@@ -14,7 +17,11 @@ export async function readAPIError(
   const contentType = response.headers.get("Content-Type") ?? "";
   if (contentType.includes("application/json") || text.startsWith("{")) {
     try {
-      const payload = JSON.parse(text) as Partial<APIErrorBody>;
+      const payload = parsePayload(
+        apiErrorBodySchema,
+        JSON.parse(text),
+        "error response",
+      );
       if (payload.error) return payload.error;
     } catch {
       // fall through to plain text

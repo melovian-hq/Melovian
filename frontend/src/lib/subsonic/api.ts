@@ -2,6 +2,27 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { SubsonicClient } from "./client";
+import { parsePayload } from "$lib/core/http/parse";
+import {
+  subsonicAlbumListResponseSchema,
+  subsonicAlbumResponseSchema,
+  subsonicArtistInfoResponseSchema,
+  subsonicArtistResponseSchema,
+  subsonicArtistsResponseSchema,
+  subsonicCreatePlaylistResponseSchema,
+  subsonicGenresResponseSchema,
+  subsonicInternetRadioStationsResponseSchema,
+  subsonicLyricsBySongIdResponseSchema,
+  subsonicLyricsResponseSchema,
+  subsonicPlaylistResponseSchema,
+  subsonicPlaylistsResponseSchema,
+  subsonicRandomSongsResponseSchema,
+  subsonicSearchResponseSchema,
+  subsonicSimilarSongsResponseSchema,
+  subsonicSongResponseSchema,
+  subsonicSongsByGenreResponseSchema,
+  subsonicStarredResponseSchema,
+} from "./schemas";
 import { dedupeBy } from "$lib/core/collection";
 import {
   lyricsMatchText,
@@ -144,13 +165,14 @@ export async function getAlbumList2(
   size = 18,
   offset = 0,
 ): Promise<SubsonicAlbum[]> {
-  const resp = await client.request<{ albumList2?: { album?: unknown } }>(
-    "getAlbumList2.view",
-    {
+  const resp = parsePayload(
+    subsonicAlbumListResponseSchema,
+    await client.request<unknown>("getAlbumList2.view", {
       type,
       size,
       offset,
-    },
+    }),
+    "getAlbumList2",
   );
   return unwrapList(resp.albumList2, "album", mapAlbum);
 }
@@ -159,9 +181,11 @@ export async function getAlbum(
   client: SubsonicClient,
   id: string,
 ): Promise<{ album: SubsonicAlbum; songs: SubsonicSong[] }> {
-  const resp = await client.request<{
-    album?: Record<string, unknown> & { song?: unknown };
-  }>("getAlbum.view", { id });
+  const resp = parsePayload(
+    subsonicAlbumResponseSchema,
+    await client.request<unknown>("getAlbum.view", { id }),
+    "getAlbum",
+  );
   const raw = resp.album ?? {};
   const album = mapAlbum(raw);
   const songs = unwrapList(raw, "song", mapSong);
@@ -172,9 +196,11 @@ export async function getArtist(
   client: SubsonicClient,
   id: string,
 ): Promise<{ artist: SubsonicArtist; albums: SubsonicAlbum[] }> {
-  const resp = await client.request<{
-    artist?: Record<string, unknown> & { album?: unknown };
-  }>("getArtist.view", { id });
+  const resp = parsePayload(
+    subsonicArtistResponseSchema,
+    await client.request<unknown>("getArtist.view", { id }),
+    "getArtist",
+  );
   const raw = resp.artist ?? {};
   const artist = mapArtist(raw);
   const albums = unwrapList(raw, "album", mapAlbum);
@@ -197,9 +223,11 @@ export async function getArtistInfo(
   client: SubsonicClient,
   id: string,
 ): Promise<SubsonicArtistInfo> {
-  const resp = await client.request<{
-    artistInfo?: Record<string, unknown> & { similarArtist?: unknown };
-  }>("getArtistInfo.view", { id });
+  const resp = parsePayload(
+    subsonicArtistInfoResponseSchema,
+    await client.request<unknown>("getArtistInfo.view", { id }),
+    "getArtistInfo",
+  );
   const raw = resp.artistInfo ?? {};
   return {
     biography: raw.biography as string | undefined,
@@ -273,9 +301,12 @@ export async function getLyricsForSong(
   song: { id: string; artist?: string; title: string },
 ): Promise<ParsedLyrics | null> {
   try {
-    const byId = await client.request<Record<string, unknown>>(
-      "getLyricsBySongId.view",
-      { id: song.id },
+    const byId = parsePayload(
+      subsonicLyricsBySongIdResponseSchema,
+      await client.request<unknown>("getLyricsBySongId.view", {
+        id: song.id,
+      }),
+      "getLyricsBySongId",
     );
     const parsed = parseLyricsBySongIdResponse(byId, song);
     if (parsed) return parsed;
@@ -285,12 +316,14 @@ export async function getLyricsForSong(
 
   if (!song.artist) return null;
 
-  const resp = await client.request<{
-    lyrics?: { value?: string; artist?: string; title?: string };
-  }>("getLyrics.view", {
-    artist: song.artist,
-    title: song.title,
-  });
+  const resp = parsePayload(
+    subsonicLyricsResponseSchema,
+    await client.request<unknown>("getLyrics.view", {
+      artist: song.artist,
+      title: song.title,
+    }),
+    "getLyrics",
+  );
 
   if (!resp.lyrics?.value) return null;
   return parseLyricsText(resp.lyrics.value, {
@@ -362,8 +395,10 @@ export async function searchLyricsByText(
 export async function getArtists(
   client: SubsonicClient,
 ): Promise<SubsonicArtist[]> {
-  const resp = await client.request<{ artists?: { index?: unknown } }>(
-    "getArtists.view",
+  const resp = parsePayload(
+    subsonicArtistsResponseSchema,
+    await client.request<unknown>("getArtists.view"),
+    "getArtists",
   );
   const indexes = unwrapList(resp.artists, "index", (raw) => raw);
   const artists: SubsonicArtist[] = [];
@@ -377,9 +412,10 @@ export async function getRandomSongs(
   client: SubsonicClient,
   size = 12,
 ): Promise<SubsonicSong[]> {
-  const resp = await client.request<{ randomSongs?: { song?: unknown } }>(
-    "getRandomSongs.view",
-    { size },
+  const resp = parsePayload(
+    subsonicRandomSongsResponseSchema,
+    await client.request<unknown>("getRandomSongs.view", { size }),
+    "getRandomSongs",
   );
   return unwrapList(resp.randomSongs, "song", mapSong);
 }
@@ -389,14 +425,16 @@ export async function search3(
   query: string,
   limit = 20,
 ): Promise<SubsonicSearchResult> {
-  const resp = await client.request<{
-    searchResult3?: Record<string, unknown>;
-  }>("search3.view", {
-    query,
-    artistCount: limit,
-    albumCount: limit,
-    songCount: limit,
-  });
+  const resp = parsePayload(
+    subsonicSearchResponseSchema,
+    await client.request<unknown>("search3.view", {
+      query,
+      artistCount: limit,
+      albumCount: limit,
+      songCount: limit,
+    }),
+    "search3",
+  );
   const result = resp.searchResult3 ?? {};
   return {
     artists: unwrapList(result, "artist", mapArtist),
@@ -409,9 +447,10 @@ export async function getSong(
   client: SubsonicClient,
   id: string,
 ): Promise<SubsonicSong | null> {
-  const resp = await client.request<{ song?: Record<string, unknown> }>(
-    "getSong.view",
-    { id },
+  const resp = parsePayload(
+    subsonicSongResponseSchema,
+    await client.request<unknown>("getSong.view", { id }),
+    "getSong",
   );
   if (!resp.song) return null;
   return mapSong(resp.song);
@@ -429,8 +468,10 @@ function mapGenre(raw: Record<string, unknown>): SubsonicGenre {
 export async function getGenres(
   client: SubsonicClient,
 ): Promise<SubsonicGenre[]> {
-  const resp = await client.request<{ genres?: { genre?: unknown } }>(
-    "getGenres.view",
+  const resp = parsePayload(
+    subsonicGenresResponseSchema,
+    await client.request<unknown>("getGenres.view"),
+    "getGenres",
   );
   return unwrapList(resp.genres, "genre", mapGenre)
     .filter((genre) => genre.name !== "")
@@ -443,9 +484,14 @@ export async function getSongsByGenre(
   count = 100,
   offset = 0,
 ): Promise<SubsonicSong[]> {
-  const resp = await client.request<{ songsByGenre?: { song?: unknown } }>(
-    "getSongsByGenre.view",
-    { genre, count, offset },
+  const resp = parsePayload(
+    subsonicSongsByGenreResponseSchema,
+    await client.request<unknown>("getSongsByGenre.view", {
+      genre,
+      count,
+      offset,
+    }),
+    "getSongsByGenre",
   );
   return unwrapList(resp.songsByGenre, "song", mapSong);
 }
@@ -467,9 +513,10 @@ export async function getSimilarSongs(
   id: string,
   count = 25,
 ): Promise<SubsonicSong[]> {
-  const resp = await client.request<{ similarSongs2?: { song?: unknown } }>(
-    "getSimilarSongs2.view",
-    { id, count },
+  const resp = parsePayload(
+    subsonicSimilarSongsResponseSchema,
+    await client.request<unknown>("getSimilarSongs2.view", { id, count }),
+    "getSimilarSongs2",
   );
   return unwrapList(resp.similarSongs2, "song", mapSong);
 }
@@ -502,8 +549,10 @@ function mapServerPlaylist(raw: Record<string, unknown>): ServerPlaylist {
 export async function getServerPlaylists(
   client: SubsonicClient,
 ): Promise<ServerPlaylist[]> {
-  const resp = await client.request<{ playlists?: { playlist?: unknown } }>(
-    "getPlaylists.view",
+  const resp = parsePayload(
+    subsonicPlaylistsResponseSchema,
+    await client.request<unknown>("getPlaylists.view"),
+    "getPlaylists",
   );
   return unwrapList(resp.playlists, "playlist", mapServerPlaylist).filter(
     (pl) => pl.id && pl.name,
@@ -514,9 +563,11 @@ export async function getServerPlaylist(
   client: SubsonicClient,
   id: string,
 ): Promise<{ playlist: ServerPlaylist; songs: SubsonicSong[] }> {
-  const resp = await client.request<{
-    playlist?: Record<string, unknown> & { entry?: unknown; child?: unknown };
-  }>("getPlaylist.view", { id });
+  const resp = parsePayload(
+    subsonicPlaylistResponseSchema,
+    await client.request<unknown>("getPlaylist.view", { id }),
+    "getPlaylist",
+  );
   const raw = resp.playlist ?? {};
   const playlist = mapServerPlaylist(raw);
   const songs = [
@@ -552,12 +603,14 @@ export async function createServerPlaylist(
   name: string,
   songIds: string[] = [],
 ): Promise<ServerPlaylist> {
-  const resp = await client.requestPost<{
-    playlist?: Record<string, unknown>;
-  }>("createPlaylist.view", {
-    name,
-    songId: songIds,
-  });
+  const resp = parsePayload(
+    subsonicCreatePlaylistResponseSchema,
+    await client.requestPost<unknown>("createPlaylist.view", {
+      name,
+      songId: songIds,
+    }),
+    "createPlaylist",
+  );
   const raw = resp.playlist;
   if (!raw || typeof raw !== "object") {
     throw new Error("Server did not return the created playlist");
@@ -639,8 +692,10 @@ export async function setServerPlaylistSongOrder(
 export async function getStarred2(
   client: SubsonicClient,
 ): Promise<StarredContent> {
-  const resp = await client.request<{ starred2?: Record<string, unknown> }>(
-    "getStarred2.view",
+  const resp = parsePayload(
+    subsonicStarredResponseSchema,
+    await client.request<unknown>("getStarred2.view"),
+    "getStarred2",
   );
   const starred = resp.starred2 ?? {};
   return {
@@ -676,9 +731,11 @@ function mapInternetRadioStation(
 export async function getInternetRadioStations(
   client: SubsonicClient,
 ): Promise<InternetRadioStation[]> {
-  const resp = await client.request<{
-    internetRadioStations?: { internetRadioStation?: unknown };
-  }>("getInternetRadioStations.view");
+  const resp = parsePayload(
+    subsonicInternetRadioStationsResponseSchema,
+    await client.request<unknown>("getInternetRadioStations.view"),
+    "getInternetRadioStations",
+  );
   return unwrapList(
     resp.internetRadioStations,
     "internetRadioStation",

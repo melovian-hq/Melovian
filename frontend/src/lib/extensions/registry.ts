@@ -2,8 +2,11 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { isLocalMusicId } from "$lib/music/library-adapter";
+import { ApiPaths } from "$lib/core/http/api-paths";
+import { parseJson } from "$lib/core/http/parse";
 import { isRemoteClient, resolveApiUrl } from "$lib/config/remote-server";
 import { extensionFeatures } from "./features.svelte";
+import { extensionsPayloadSchema } from "./schemas";
 import { syncExtensionStyles } from "./styles";
 import type {
   DecorateTrackContext,
@@ -12,7 +15,6 @@ import type {
   TrackDecoration,
   TrackRule,
 } from "./types";
-import type { ExtensionListItem } from "./api";
 
 type ScriptHook = (api: ExtensionAPI, ctx: DecorateTrackContext) => void;
 
@@ -115,7 +117,7 @@ function createExtensionAPI(): ExtensionAPI {
 async function loadScriptExtension(manifest: ExtensionManifest) {
   if (!manifest.script) return;
   const response = await fetch(
-    resolveApiUrl(`/api/extensions/${manifest.id}/script`),
+    resolveApiUrl(ApiPaths.extensionScript(manifest.id)),
     {
       credentials: isRemoteClient() ? "include" : "same-origin",
     },
@@ -144,16 +146,17 @@ async function loadScriptExtension(manifest: ExtensionManifest) {
 }
 
 export async function loadExtensions() {
-  const response = await fetch(resolveApiUrl("/api/extensions"), {
+  const response = await fetch(resolveApiUrl(ApiPaths.extensions), {
     credentials: isRemoteClient() ? "include" : "same-origin",
   });
   if (!response.ok) {
     return;
   }
-  const payload = (await response.json()) as {
-    items?: ExtensionListItem[];
-    manifests?: ExtensionManifest[];
-  };
+  const payload = await parseJson(
+    extensionsPayloadSchema,
+    response,
+    "extensions",
+  );
   extensionFeatures.applyFromItems(payload.items ?? []);
   declarativeRules.length = 0;
   scriptDecorators.length = 0;

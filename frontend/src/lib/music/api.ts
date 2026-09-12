@@ -4,6 +4,38 @@
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { requireOk } from "$lib/core/http/errors";
+import { parseJson, parsePayload } from "$lib/core/http/parse";
+import {
+  cacheSettingsResponseSchema,
+  connectionSettingsPatchSchema,
+  createdSmartPlaylistBodySchema,
+  downloadDirResponseSchema,
+  downloadsResponseSchema,
+  eqSettingsSchema,
+  favoriteItemsResponseSchema,
+  lastFMSettingsSchema,
+  listenBrainzSettingsSchema,
+  listenEventsPageSchema,
+  listenEventYearsSchema,
+  listenItemsResponseSchema,
+  listenProgressBatchSchema,
+  lyricsSettingsResponseSchema,
+  musicShareSchema,
+  playlistsResponseSchema,
+  publicShareResponseSchema,
+  rockskySettingsSchema,
+  shareDeniedResponseSchema,
+  shareItemsResponseSchema,
+  smartPlaylistSupportSchema,
+  tokenTestResultSchema,
+} from "$lib/music/schemas";
+import {
+  libraryStatsSchema,
+  listenEntrySchema,
+  listenStatsSchema,
+  musicPlaylistSchema,
+  musicStatusSchema,
+} from "$lib/subsonic/schemas";
 import { resolveMediaUrl } from "$lib/config/runtime";
 import { isRemoteClient, resolveApiUrl } from "$lib/config/remote-server";
 import { getActiveInstanceId } from "$lib/features/instances/context";
@@ -37,7 +69,9 @@ export async function getMusicStatus(): Promise<MusicStatus> {
       error: "Music service unavailable",
     };
   }
-  return (await response.json()) as MusicStatus;
+  const status = await parseJson(musicStatusSchema, response, "music status");
+  // The server also reports "unified", which the MusicStatus union predates.
+  return { ...status, source: status.source as MusicStatus["source"] };
 }
 
 export async function getLibraryStats(options?: {
@@ -52,7 +86,7 @@ export async function getLibraryStats(options?: {
       },
     );
     if (!response.ok) return null;
-    return (await response.json()) as LibraryStats;
+    return await parseJson(libraryStatsSchema, response, "library stats");
   } catch {
     // Background library watch treats stats as best-effort.
     return null;
@@ -75,7 +109,11 @@ export async function getListenHistory(limit = 50): Promise<ListenEntry[]> {
     },
   );
   await requireOk(response, "Failed to load listen history");
-  const payload = (await response.json()) as { items: ListenEntry[] };
+  const payload = await parseJson(
+    listenItemsResponseSchema,
+    response,
+    "listen history",
+  );
   return payload.items ?? [];
 }
 
@@ -108,7 +146,11 @@ export async function getListenEvents(
     { headers: apiHeaders() },
   );
   await requireOk(response, "Failed to load listen history");
-  const payload = (await response.json()) as ListenEventsPage;
+  const payload = await parseJson(
+    listenEventsPageSchema,
+    response,
+    "listen events",
+  );
   return {
     items: payload.items ?? [],
     hasMore: payload.hasMore ?? false,
@@ -120,7 +162,11 @@ export async function getListenEventYears(): Promise<number[]> {
     headers: apiHeaders(),
   });
   if (!response.ok) return [];
-  const payload = (await response.json()) as { years?: number[] };
+  const payload = await parseJson(
+    listenEventYearsSchema,
+    response,
+    "listen event years",
+  );
   return payload.years ?? [];
 }
 
@@ -140,7 +186,11 @@ export async function getResumeTracks(limit = 18): Promise<ListenEntry[]> {
     },
   );
   await requireOk(response, "Failed to load resume tracks");
-  const payload = (await response.json()) as { items: ListenEntry[] };
+  const payload = await parseJson(
+    listenItemsResponseSchema,
+    response,
+    "resume tracks",
+  );
   return payload.items ?? [];
 }
 
@@ -152,7 +202,7 @@ export async function getListenStats(limit = 8): Promise<ListenStats> {
     },
   );
   await requireOk(response, "Failed to load listen stats");
-  return (await response.json()) as ListenStats;
+  return parseJson(listenStatsSchema, response, "listen stats");
 }
 
 export async function getListenProgressBatch(
@@ -166,7 +216,11 @@ export async function getListenProgressBatch(
     { headers: apiHeaders() },
   );
   await requireOk(response, "Failed to load listen progress batch");
-  const payload = (await response.json()) as Record<string, ListenEntry>;
+  const payload = await parseJson(
+    listenProgressBatchSchema,
+    response,
+    "listen progress batch",
+  );
   return new Map(Object.entries(payload));
 }
 
@@ -193,7 +247,7 @@ export async function saveListenProgress(
     body: JSON.stringify(body),
   });
   await requireOk(response, "Failed to save listen progress");
-  return (await response.json()) as ListenEntry;
+  return parseJson(listenEntrySchema, response, "listen progress");
 }
 
 export async function markTrackPlayed(trackId: string): Promise<void> {
@@ -222,7 +276,7 @@ export async function getRockskySettings(): Promise<RockskySettings | null> {
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  return (await response.json()) as RockskySettings;
+  return parseJson(rockskySettingsSchema, response, "rocksky settings");
 }
 
 export async function saveRockskySettings(
@@ -234,7 +288,7 @@ export async function saveRockskySettings(
     body: JSON.stringify(settings),
   });
   if (!response.ok) return null;
-  return (await response.json()) as RockskySettings;
+  return parseJson(rockskySettingsSchema, response, "rocksky settings");
 }
 
 export async function testRockskyToken(
@@ -246,7 +300,7 @@ export async function testRockskyToken(
     body: JSON.stringify({ token }),
   });
   if (!response.ok) return null;
-  return (await response.json()) as { ok: boolean; userName?: string };
+  return parseJson(tokenTestResultSchema, response, "rocksky token test");
 }
 
 export async function rockskyNowPlaying(track: RockskyTrack): Promise<void> {
@@ -277,7 +331,11 @@ export async function getListenBrainzSettings(): Promise<ListenBrainzSettings | 
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  return (await response.json()) as ListenBrainzSettings;
+  return parseJson(
+    listenBrainzSettingsSchema,
+    response,
+    "listenbrainz settings",
+  );
 }
 
 export async function saveListenBrainzSettings(
@@ -289,7 +347,11 @@ export async function saveListenBrainzSettings(
     body: JSON.stringify(settings),
   });
   if (!response.ok) return null;
-  return (await response.json()) as ListenBrainzSettings;
+  return parseJson(
+    listenBrainzSettingsSchema,
+    response,
+    "listenbrainz settings",
+  );
 }
 
 export async function testListenBrainzToken(
@@ -302,7 +364,7 @@ export async function testListenBrainzToken(
     body: JSON.stringify({ token, endpoint }),
   });
   if (!response.ok) return null;
-  return (await response.json()) as { ok: boolean; userName?: string };
+  return parseJson(tokenTestResultSchema, response, "listenbrainz token test");
 }
 
 export async function listenbrainzNowPlaying(
@@ -337,7 +399,7 @@ export async function getLastFMSettings(): Promise<LastFMSettings | null> {
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  return (await response.json()) as LastFMSettings;
+  return parseJson(lastFMSettingsSchema, response, "lastfm settings");
 }
 
 export async function saveLastFMSettings(
@@ -352,7 +414,7 @@ export async function saveLastFMSettings(
     body: JSON.stringify(settings),
   });
   if (!response.ok) return null;
-  return (await response.json()) as LastFMSettings;
+  return parseJson(lastFMSettingsSchema, response, "lastfm settings");
 }
 
 export async function testLastFMToken(
@@ -367,7 +429,7 @@ export async function testLastFMToken(
     body: JSON.stringify({ apiKey, apiSecret, sessionKey, endpoint }),
   });
   if (!response.ok) return null;
-  return (await response.json()) as { ok: boolean; userName?: string };
+  return parseJson(tokenTestResultSchema, response, "lastfm token test");
 }
 
 export async function lastfmNowPlaying(track: RockskyTrack): Promise<void> {
@@ -391,7 +453,11 @@ export async function listPlaylists(): Promise<MusicPlaylist[]> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load playlists");
-  const payload = (await response.json()) as { playlists: MusicPlaylist[] };
+  const payload = await parseJson(
+    playlistsResponseSchema,
+    response,
+    "playlists",
+  );
   return payload.playlists ?? [];
 }
 
@@ -400,7 +466,7 @@ export async function getPlaylist(id: string): Promise<MusicPlaylist> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load playlist");
-  return (await response.json()) as MusicPlaylist;
+  return parseJson(musicPlaylistSchema, response, "playlist");
 }
 
 export async function createPlaylist(
@@ -417,7 +483,7 @@ export async function createPlaylist(
     }),
   });
   await requireOk(response, "Failed to create playlist");
-  return (await response.json()) as MusicPlaylist;
+  return parseJson(musicPlaylistSchema, response, "playlist");
 }
 
 export async function setPlaylistTracks(
@@ -433,7 +499,7 @@ export async function setPlaylistTracks(
     },
   );
   await requireOk(response, "Failed to update playlist tracks");
-  return (await response.json()) as MusicPlaylist;
+  return parseJson(musicPlaylistSchema, response, "playlist");
 }
 
 export async function renamePlaylist(
@@ -446,7 +512,7 @@ export async function renamePlaylist(
     body: JSON.stringify({ name }),
   });
   await requireOk(response, "Failed to rename playlist");
-  return (await response.json()) as MusicPlaylist;
+  return parseJson(musicPlaylistSchema, response, "playlist");
 }
 
 export async function deletePlaylist(id: string): Promise<void> {
@@ -469,7 +535,7 @@ export async function addTrackToPlaylist(
     },
   );
   await requireOk(response, "Failed to add track");
-  return (await response.json()) as MusicPlaylist;
+  return parseJson(musicPlaylistSchema, response, "playlist");
 }
 
 export async function removeTrackFromPlaylist(
@@ -484,7 +550,7 @@ export async function removeTrackFromPlaylist(
     },
   );
   await requireOk(response, "Failed to remove track");
-  return (await response.json()) as MusicPlaylist;
+  return parseJson(musicPlaylistSchema, response, "playlist");
 }
 
 export async function listFavorites(limit = 200): Promise<FavoriteTrack[]> {
@@ -495,7 +561,11 @@ export async function listFavorites(limit = 200): Promise<FavoriteTrack[]> {
     },
   );
   await requireOk(response, "Failed to load favorites");
-  const payload = (await response.json()) as { items: FavoriteTrack[] };
+  const payload = await parseJson(
+    favoriteItemsResponseSchema,
+    response,
+    "favorites",
+  );
   return payload.items ?? [];
 }
 
@@ -543,7 +613,7 @@ export async function getCacheSettings(): Promise<CacheSettingsResponse | null> 
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  return (await response.json()) as CacheSettingsResponse;
+  return parseJson(cacheSettingsResponseSchema, response, "cache settings");
 }
 
 export async function saveCacheSettingsRemote(
@@ -555,7 +625,7 @@ export async function saveCacheSettingsRemote(
     body: JSON.stringify(settings),
   });
   await requireOk(response, "Failed to save cache settings");
-  return (await response.json()) as CacheSettingsResponse;
+  return parseJson(cacheSettingsResponseSchema, response, "cache settings");
 }
 
 export async function clearDownloadCache(): Promise<void> {
@@ -571,7 +641,11 @@ export async function getDownloadDir(): Promise<string | null> {
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  const payload = (await response.json()) as { path?: string };
+  const payload = await parseJson(
+    downloadDirResponseSchema,
+    response,
+    "download dir",
+  );
   return payload.path?.trim() || null;
 }
 
@@ -588,9 +662,11 @@ export async function listDownloads(): Promise<DownloadedTrackInfo[]> {
     headers: apiHeaders(),
   });
   if (!response.ok) return [];
-  const payload = (await response.json()) as {
-    downloads: DownloadedTrackInfo[];
-  };
+  const payload = await parseJson(
+    downloadsResponseSchema,
+    response,
+    "downloads",
+  );
   return payload.downloads ?? [];
 }
 
@@ -684,7 +760,7 @@ export async function listShares(): Promise<MusicShare[]> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to list shares");
-  const payload = (await response.json()) as { items?: MusicShare[] };
+  const payload = await parseJson(shareItemsResponseSchema, response, "shares");
   return payload.items ?? [];
 }
 
@@ -693,7 +769,11 @@ export async function listShareInbox(): Promise<MusicShare[]> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load shared playlists");
-  const payload = (await response.json()) as { items?: MusicShare[] };
+  const payload = await parseJson(
+    shareItemsResponseSchema,
+    response,
+    "share inbox",
+  );
   return payload.items ?? [];
 }
 
@@ -706,7 +786,7 @@ export async function createShare(
     body: JSON.stringify(input),
   });
   await requireOk(response, "Failed to create share");
-  return (await response.json()) as MusicShare;
+  return parseJson(musicShareSchema, response, "share");
 }
 
 export async function deleteShare(id: string): Promise<void> {
@@ -724,14 +804,16 @@ export async function getPublicShare(token: string): Promise<MusicShare> {
       credentials: isRemoteClient() ? "include" : "same-origin",
     },
   );
-  const payload = (await response.json()) as MusicShare & { error?: string };
+  const raw: unknown = await response.json();
   if (!response.ok) {
-    if (payload.requiresPassword || payload.requiresLogin) {
-      return payload;
+    const denied = parsePayload(shareDeniedResponseSchema, raw, "public share");
+    if (denied.requiresPassword || denied.requiresLogin) {
+      // Gated responses only carry the access flags and an error message.
+      return raw as MusicShare;
     }
-    throw new Error(payload.error ?? `Share unavailable (${response.status})`);
+    throw new Error(denied.error ?? `Share unavailable (${response.status})`);
   }
-  return payload;
+  return parsePayload(publicShareResponseSchema, raw, "public share");
 }
 
 export async function unlockPublicShare(
@@ -794,8 +876,8 @@ export async function getEqSettings(): Promise<EqSettings | null> {
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  const payload = (await response.json()) as EqSettings;
-  if (!payload || !Array.isArray(payload.bands)) return null;
+  const payload = await parseJson(eqSettingsSchema, response, "eq settings");
+  if (!Array.isArray(payload.bands)) return null;
   return normalizeEqSettings(payload);
 }
 
@@ -813,8 +895,12 @@ export async function getConnectionSettings(): Promise<ConnectionSettings | null
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  const payload = (await response.json()) as Partial<ConnectionSettings>;
-  if (!payload || Object.keys(payload).length === 0) return null;
+  const payload = await parseJson(
+    connectionSettingsPatchSchema,
+    response,
+    "connection settings",
+  );
+  if (Object.keys(payload).length === 0) return null;
   return { ...defaultConnectionSettings(), ...payload };
 }
 
@@ -935,7 +1021,7 @@ export async function getLyricsSettings(): Promise<LyricsSettingsResponse | null
     headers: apiHeaders(),
   });
   if (!response.ok) return null;
-  return (await response.json()) as LyricsSettingsResponse;
+  return parseJson(lyricsSettingsResponseSchema, response, "lyrics settings");
 }
 
 export async function saveLyricsSettingsRemote(
@@ -952,7 +1038,7 @@ export async function saveLyricsSettingsRemote(
     }),
   });
   await requireOk(response, "Failed to save lyrics settings");
-  return (await response.json()) as LyricsSettingsResponse;
+  return parseJson(lyricsSettingsResponseSchema, response, "lyrics settings");
 }
 
 export async function clearLyricsCache(): Promise<void> {
@@ -979,7 +1065,11 @@ export async function getSmartPlaylistSupport(): Promise<SmartPlaylistSupport> {
       reason: "Could not check smart playlist support",
     };
   }
-  return (await response.json()) as SmartPlaylistSupport;
+  return parseJson(
+    smartPlaylistSupportSchema,
+    response,
+    "smart playlist support",
+  );
 }
 
 export interface CreatedSmartPlaylist {
@@ -995,11 +1085,11 @@ export async function createSmartPlaylist(
     headers: apiHeaders("application/json"),
     body: JSON.stringify(payload),
   });
-  const body = (await response.json().catch(() => ({}))) as {
-    error?: string;
-    id?: string;
-    name?: string;
-  };
+  const body = parsePayload(
+    createdSmartPlaylistBodySchema,
+    await response.json().catch(() => ({})),
+    "smart playlist",
+  );
   if (!response.ok) {
     throw new Error(body.error ?? "Failed to create smart playlist");
   }

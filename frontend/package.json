@@ -36,6 +36,7 @@
     "@wailsio/runtime": "3.0.0-beta.8",
     "bits-ui": "^2.19.2",
     "runed": "0.37.1",
+    "valibot": "^1.5.0",
     "xxhashjs": "^0.2.2"
   },
   "devDependencies": {

@@ -1,26 +1,25 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import {
   applyRuntimeSentryConfig,
   disableClientSentry,
-  type SentryRuntimeConfig,
 } from "$lib/core/sentry";
-import {
-  setConnectionDefaults,
-  type ConnectionDefaults,
-} from "$lib/music/connection-defaults";
+import { setConnectionDefaults } from "$lib/music/connection-defaults";
 import {
   applyCompatFromConfig,
   blockForClientTooOld,
   CLIENT_VERSION,
   versionsEqual,
   versionScheme,
-  type CompatConfigPayload,
 } from "$lib/compat";
 import { getRemoteServerUrl, isRemoteClient } from "$lib/config/remote-server";
 import { normalizePublicBaseUrl } from "$lib/config/runtime-url";
+import { parseJson, parsePayload } from "$lib/core/http/parse";
+import { runtimeConfigSchema, upgradeRequiredSchema } from "./schemas";
 
 export { normalizePublicBaseUrl } from "$lib/config/runtime-url";
 
@@ -35,7 +34,7 @@ function maybeReloadStaleEmbeddedClient(serverVersion: string): boolean {
     return false;
   }
 
-  const key = `mel-spa-reload:${CLIENT_VERSION}->${serverVersion}`;
+  const key = `${StorageKeys.spaReloadPrefix}${CLIENT_VERSION}->${serverVersion}`;
   try {
     if (sessionStorage.getItem(key) === "1") return false;
     sessionStorage.setItem(key, "1");
@@ -296,13 +295,17 @@ export async function loadRuntimeConfig(): Promise<void> {
     return;
   }
   try {
-    const response = await fetchWithRetry("/api/config", {
+    const response = await fetchWithRetry(ApiPaths.config, {
       headers: apiHeaders(),
     });
     if (response.status === 426) {
       let message = "";
       try {
-        const body = (await response.json()) as { message?: string };
+        const body = parsePayload(
+          upgradeRequiredSchema,
+          await response.json(),
+          "upgrade required response",
+        );
         message = body.message ?? "";
       } catch {
         /* ignore */
@@ -311,16 +314,11 @@ export async function loadRuntimeConfig(): Promise<void> {
       return;
     }
     if (!response.ok) return;
-    const cfg = (await response.json()) as {
-      listenAddr?: string;
-      publicUrl?: string;
-      authEnabled?: boolean;
-      serverMode?: boolean;
-      demoMode?: boolean;
-      fakeCatalog?: boolean;
-      connectionDefaults?: ConnectionDefaults;
-      sentry?: SentryRuntimeConfig;
-    } & CompatConfigPayload;
+    const cfg = await parseJson(
+      runtimeConfigSchema,
+      response,
+      "runtime config",
+    );
     applyCompatFromConfig(cfg);
     if (
       typeof cfg.version === "string" &&

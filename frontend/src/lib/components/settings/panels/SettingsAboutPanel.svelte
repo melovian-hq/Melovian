@@ -6,6 +6,9 @@
   import { API_VERSION, CLIENT_VERSION, getCompatState } from "$lib/compat";
   import { isWailsDesktop } from "$lib/config/runtime";
   import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+  import { ApiPaths } from "$lib/core/http/api-paths";
+  import { parseJson } from "$lib/core/http/parse";
+  import { updateStatusSchema } from "$lib/settings/schemas";
   import Button from "$lib/components/ui/Button.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import { toast } from "$lib/ui/toast.svelte";
@@ -66,7 +69,7 @@
 
   onMount(() => {
     loading = true;
-    fetchWithRetry("/api/config", { headers: apiHeaders() })
+    fetchWithRetry(ApiPaths.config, { headers: apiHeaders() })
       .then((r) => (r.ok ? r.json() : null))
       .then((cfg) => {
         buildDate =
@@ -86,10 +89,10 @@
 
   async function refreshUpdateStatus(): Promise<void> {
     try {
-      const r = await fetchWithRetry("/api/update/status", {
+      const r = await fetchWithRetry(ApiPaths.updateStatus, {
         headers: apiHeaders(),
       });
-      if (r.ok) upd = (await r.json()) as UpdateStatus;
+      if (r.ok) upd = await parseJson(updateStatusSchema, r, "update status");
     } catch {
       // The endpoint is absent on older servers; leave the card quiet.
     }
@@ -103,12 +106,12 @@
   async function checkForUpdates(): Promise<void> {
     updBusy = true;
     try {
-      const r = await fetchWithRetry("/api/update/check", {
+      const r = await fetchWithRetry(ApiPaths.updateCheck, {
         method: "POST",
         headers: apiHeaders(),
       });
       if (r.ok || r.status === 202) {
-        upd = (await r.json()) as UpdateStatus;
+        upd = await parseJson(updateStatusSchema, r, "update status");
         if (upd.upToDate) toast.success("You are up to date");
       } else {
         toast.error("Update check failed");
@@ -123,13 +126,13 @@
   async function applyUpdate(): Promise<void> {
     updBusy = true;
     try {
-      const r = await fetchWithRetry("/api/update/apply", {
+      const r = await fetchWithRetry(ApiPaths.updateApply, {
         method: "POST",
         headers: apiHeaders(),
         body: "{}",
       });
       if (r.ok || r.status === 202) {
-        const data = (await r.json()) as UpdateStatus;
+        const data = await parseJson(updateStatusSchema, r, "update status");
         upd = { ...upd, ...data, applying: data.applying ?? true };
         toast.success("Update started");
       } else {
@@ -145,7 +148,7 @@
 
   async function restartToApply(): Promise<void> {
     try {
-      const r = await fetchWithRetry("/api/update/restart", {
+      const r = await fetchWithRetry(ApiPaths.updateRestart, {
         method: "POST",
         headers: apiHeaders(),
       });
@@ -158,7 +161,7 @@
   async function setAutoUpdate(checked: boolean): Promise<void> {
     const channel = upd?.channel === "prerelease" ? "prerelease" : "stable";
     try {
-      const r = await fetchWithRetry("/api/update/settings", {
+      const r = await fetchWithRetry(ApiPaths.updateSettings, {
         method: "PUT",
         headers: apiHeaders(),
         body: JSON.stringify({ autoUpdate: checked, channel }),
@@ -179,7 +182,7 @@
   async function setChannel(prerelease: boolean): Promise<void> {
     const channel = prerelease ? "prerelease" : "stable";
     try {
-      const r = await fetchWithRetry("/api/update/settings", {
+      const r = await fetchWithRetry(ApiPaths.updateSettings, {
         method: "PUT",
         headers: apiHeaders(),
         body: JSON.stringify({

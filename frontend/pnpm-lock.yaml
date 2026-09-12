@@ -33,6 +33,9 @@ importers:
       runed:
         specifier: 0.37.1
         version: 0.37.1(svelte@5.56.8(@typescript-eslint/types@8.66.0))(zod@4.4.3)
+      valibot:
+        specifier: ^1.5.0
+        version: 1.5.0(typescript@6.0.3)
       xxhashjs:
         specifier: ^0.2.2
         version: 0.2.2
@@ -2931,6 +2934,14 @@ packages:
   uuid@11.1.1:
     resolution: {integrity: sha512-vIYxrBCC/N/K+Js3qSN88go7kIfNPssr/hHCesKCQNAjmgvYS2oqr69kIufEG+O4+PfezOH4EbIeHCfFov8ZgQ==}
     hasBin: true
+
+  valibot@1.5.0:
+    resolution: {integrity: sha512-nil6AkP2TChWL43Z5uJ6GTxX01CUA+g8LWUM+N/rB9NBbkUMaUsi9PUNzlUPgoKASgmx9f7eGOYpJ04/fSa6FQ==}
+    peerDependencies:
+      typescript: '>=5'
+    peerDependenciesMeta:
+      typescript:
+        optional: true
 
   vary@1.1.2:
     resolution: {integrity: sha512-BNGbWLfd0eUPabhkXUVm0j8uuvREyTh5ovRa/dyow/BqAbZJyC+5fU+IzQOzmAKzYqYRAISoRhdQr3eIZ/PXqg==}
@@ -6071,6 +6082,10 @@ snapshots:
   utils-merge@1.0.1: {}
 
   uuid@11.1.1: {}
+
+  valibot@1.5.0(typescript@6.0.3):
+    optionalDependencies:
+      typescript: 6.0.3
 
   vary@1.1.2: {}
 

@@ -5,6 +5,9 @@
   import Field from "$lib/components/ui/Field.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+  import { ApiPaths } from "$lib/core/http/api-paths";
+  import { parseJson } from "$lib/core/http/parse";
+  import { runtimeConfigSchema } from "$lib/config/schemas";
   import { auth } from "$lib/features/auth/store.svelte";
   import {
     applyRuntimeSentryConfig,
@@ -104,19 +107,15 @@
     sentryClientSaving = true;
     try {
       sentryClient = await saveSentryClientSettings(sentryClient);
-      const configResponse = await fetchWithRetry("/api/config", {
+      const configResponse = await fetchWithRetry(ApiPaths.config, {
         headers: apiHeaders(),
       });
       if (configResponse.ok) {
-        const cfg = (await configResponse.json()) as {
-          sentry?: {
-            dsn?: string;
-            environment?: string;
-            release?: string;
-            tracesSampleRate?: number;
-            clientReporting?: boolean;
-          };
-        };
+        const cfg = await parseJson(
+          runtimeConfigSchema,
+          configResponse,
+          "runtime config",
+        );
         if (sentryClient.enabled && cfg.sentry?.clientReporting) {
           applyRuntimeSentryConfig(cfg.sentry);
         } else {

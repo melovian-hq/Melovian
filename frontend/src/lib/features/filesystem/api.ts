@@ -1,8 +1,11 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { readAPIError } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import { directoryListingSchema } from "./schemas";
 
 export type DirectoryEntry = {
   name: string;
@@ -17,16 +20,21 @@ export type DirectoryListing = {
 
 export async function listDirectories(path = ""): Promise<DirectoryListing> {
   const query = path.trim() ? `?path=${encodeURIComponent(path.trim())}` : "";
-  const response = await fetchWithRetry(`/api/filesystem/directories${query}`, {
-    headers: apiHeaders(),
-  });
+  const response = await fetchWithRetry(
+    `${ApiPaths.filesystemDirectories}${query}`,
+    { headers: apiHeaders() },
+  );
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  const payload = (await response.json()) as DirectoryListing;
+  const payload = await parseJson(
+    directoryListingSchema,
+    response,
+    "directory listing",
+  );
   return {
     path: payload.path ?? "",
     parent: payload.parent ?? "",
-    entries: Array.isArray(payload.entries) ? payload.entries : [],
+    entries: payload.entries ?? [],
   };
 }

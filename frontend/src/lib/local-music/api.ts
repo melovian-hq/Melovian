@@ -2,8 +2,22 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { requireOk } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
 import { resolveMediaUrl } from "$lib/config/runtime";
+import * as v from "valibot";
+import {
+  localAlbumResponseSchema,
+  localAlbumsResponseSchema,
+  localArtistResponseSchema,
+  localArtistsResponseSchema,
+  localGenresResponseSchema,
+  localSearchResponseSchema,
+  localSongResponseSchema,
+  localSongsResponseSchema,
+  localStarredResponseSchema,
+} from "$lib/local-music/schemas";
 import {
   lyricsMatchText,
   lyricsSnippet,
@@ -105,15 +119,19 @@ function favoriteToLocalSong(fav: FavoriteTrack): SubsonicSong {
   };
 }
 
-async function localGet<T>(path: string): Promise<T> {
+async function localGet<TSchema extends v.GenericSchema>(
+  schema: TSchema,
+  path: string,
+): Promise<v.InferOutput<TSchema>> {
   const response = await fetchWithRetry(path, { headers: apiHeaders() });
   await requireOk(response, `Local music request failed: ${response.status}`);
-  return (await response.json()) as T;
+  return parseJson(schema, response, path);
 }
 
 export async function getArtists(): Promise<SubsonicArtist[]> {
-  const payload = await localGet<{ artists: Record<string, unknown>[] }>(
-    "/api/local-music/artists",
+  const payload = await localGet(
+    localArtistsResponseSchema,
+    ApiPaths.localMusicArtists,
   );
   return (payload.artists ?? []).map(mapArtist);
 }
@@ -121,10 +139,10 @@ export async function getArtists(): Promise<SubsonicArtist[]> {
 export async function getArtist(
   id: string,
 ): Promise<{ artist: SubsonicArtist; albums: SubsonicAlbum[] }> {
-  const payload = await localGet<{
-    artist: Record<string, unknown>;
-    albums: Record<string, unknown>[];
-  }>(`/api/local-music/artists/${encodeURIComponent(id)}`);
+  const payload = await localGet(
+    localArtistResponseSchema,
+    ApiPaths.localMusicArtist(id),
+  );
   return {
     artist: mapArtist(payload.artist ?? {}),
     albums: (payload.albums ?? []).map(mapAlbum),
@@ -134,10 +152,10 @@ export async function getArtist(
 export async function getAlbum(
   id: string,
 ): Promise<{ album: SubsonicAlbum; songs: SubsonicSong[] }> {
-  const payload = await localGet<{
-    album: Record<string, unknown>;
-    songs: Record<string, unknown>[];
-  }>(`/api/local-music/albums/${encodeURIComponent(id)}`);
+  const payload = await localGet(
+    localAlbumResponseSchema,
+    ApiPaths.localMusicAlbum(id),
+  );
   return {
     album: mapAlbum(payload.album ?? {}),
     songs: (payload.songs ?? []).map(mapSong),
@@ -160,8 +178,9 @@ export async function getAlbumList2(
     size: String(size),
     offset: String(offset),
   });
-  const payload = await localGet<{ albums: Record<string, unknown>[] }>(
-    `/api/local-music/albums?${params.toString()}`,
+  const payload = await localGet(
+    localAlbumsResponseSchema,
+    `${ApiPaths.localMusicAlbums}?${params.toString()}`,
   );
   return (payload.albums ?? []).map(mapAlbum);
 }
@@ -171,11 +190,10 @@ export async function search3(
   limit = 20,
 ): Promise<SubsonicSearchResult> {
   const params = new URLSearchParams({ q: query, limit: String(limit) });
-  const payload = await localGet<{
-    artists: Record<string, unknown>[];
-    albums: Record<string, unknown>[];
-    songs: Record<string, unknown>[];
-  }>(`/api/local-music/search?${params.toString()}`);
+  const payload = await localGet(
+    localSearchResponseSchema,
+    `${ApiPaths.localMusicSearch}?${params.toString()}`,
+  );
   return {
     artists: (payload.artists ?? []).map(mapArtist),
     albums: (payload.albums ?? []).map(mapAlbum),
@@ -185,8 +203,9 @@ export async function search3(
 
 export async function getSong(id: string): Promise<SubsonicSong | null> {
   try {
-    const payload = await localGet<Record<string, unknown>>(
-      `/api/local-music/songs/${encodeURIComponent(id)}`,
+    const payload = await localGet(
+      localSongResponseSchema,
+      ApiPaths.localMusicSong(id),
     );
     return mapSong(payload);
   } catch {
@@ -196,15 +215,17 @@ export async function getSong(id: string): Promise<SubsonicSong | null> {
 
 export async function getRandomSongs(size = 12): Promise<SubsonicSong[]> {
   const params = new URLSearchParams({ size: String(size) });
-  const payload = await localGet<{ songs: Record<string, unknown>[] }>(
-    `/api/local-music/randomSongs?${params.toString()}`,
+  const payload = await localGet(
+    localSongsResponseSchema,
+    `${ApiPaths.localMusicRandomSongs}?${params.toString()}`,
   );
   return (payload.songs ?? []).map(mapSong);
 }
 
 export async function getGenres(): Promise<SubsonicGenre[]> {
-  const payload = await localGet<{ genres: Record<string, unknown>[] }>(
-    "/api/local-music/genres",
+  const payload = await localGet(
+    localGenresResponseSchema,
+    ApiPaths.localMusicGenres,
   );
   return (payload.genres ?? []).map((raw) => ({
     name: String(raw.name ?? ""),
@@ -223,8 +244,9 @@ export async function getSongsByGenre(
     count: String(count),
     offset: String(offset),
   });
-  const payload = await localGet<{ songs: Record<string, unknown>[] }>(
-    `/api/local-music/songsByGenre?${params.toString()}`,
+  const payload = await localGet(
+    localSongsResponseSchema,
+    `${ApiPaths.localMusicSongsByGenre}?${params.toString()}`,
   );
   return (payload.songs ?? []).map(mapSong);
 }
@@ -246,11 +268,10 @@ export async function getInternetRadioStations(): Promise<
 }
 
 export async function getStarred2(): Promise<StarredContent> {
-  const payload = await localGet<{
-    songs: Record<string, unknown>[];
-    albums: Record<string, unknown>[];
-    artists: Record<string, unknown>[];
-  }>("/api/local-music/starred");
+  const payload = await localGet(
+    localStarredResponseSchema,
+    ApiPaths.localMusicStarred,
+  );
   const songs = (payload.songs ?? []).map(mapSong);
   // The endpoint only returns tracks still present in the catalog. Favorited
   // tracks whose files went missing are merged in from the favorites list so
@@ -295,8 +316,9 @@ export async function getSimilarSongs(
   count = 20,
 ): Promise<SubsonicSong[]> {
   const params = new URLSearchParams({ count: String(count) });
-  const payload = await localGet<{ songs: Record<string, unknown>[] }>(
-    `/api/local-music/songs/${encodeURIComponent(trackId)}/similar?${params.toString()}`,
+  const payload = await localGet(
+    localSongsResponseSchema,
+    `${ApiPaths.localMusicSongSimilar(trackId)}?${params.toString()}`,
   );
   return (payload.songs ?? []).map(mapSong);
 }
@@ -378,15 +400,13 @@ export async function searchLyricsByText(
 }
 
 export function localStreamUrl(trackId: string): string {
-  return resolveMediaUrl(
-    `/api/local-music/tracks/${encodeURIComponent(trackId)}/stream`,
-  );
+  return resolveMediaUrl(ApiPaths.localMusicTrackStream(trackId));
 }
 
 export function localCoverArtUrl(id?: string, size = 300): string | null {
   if (!id) return null;
   const params = new URLSearchParams({ size: String(size) });
   return resolveMediaUrl(
-    `/api/local-music/cover/${encodeURIComponent(id)}?${params.toString()}`,
+    `${ApiPaths.localMusicCover(id)}?${params.toString()}`,
   );
 }

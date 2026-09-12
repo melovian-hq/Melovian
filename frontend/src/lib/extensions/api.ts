@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { readAPIError } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import { extensionsPayloadSchema } from "./schemas";
 import type { ExtensionManifest } from "./types";
 
 export type ExtensionListItem = {
@@ -31,21 +34,36 @@ export type ExtensionsPayload = {
   dir: string;
 };
 
+async function parseExtensionsPayload(
+  response: Response,
+): Promise<ExtensionsPayload> {
+  const payload = await parseJson(
+    extensionsPayloadSchema,
+    response,
+    "extensions",
+  );
+  return {
+    items: payload.items ?? [],
+    manifests: payload.manifests ?? [],
+    dir: payload.dir ?? "",
+  };
+}
+
 export async function fetchExtensions(): Promise<ExtensionsPayload> {
-  const response = await fetchWithRetry("/api/extensions", {
+  const response = await fetchWithRetry(ApiPaths.extensions, {
     headers: apiHeaders(),
   });
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<ExtensionsPayload>;
+  return parseExtensionsPayload(response);
 }
 
 export async function setExtensionEnabled(
   id: string,
   enabled: boolean,
 ): Promise<ExtensionsPayload> {
-  const response = await fetchWithRetry(`/api/extensions/${id}/enabled`, {
+  const response = await fetchWithRetry(ApiPaths.extensionEnabled(id), {
     method: "PUT",
     headers: apiHeaders("application/json"),
     body: JSON.stringify({ enabled }),
@@ -53,13 +71,13 @@ export async function setExtensionEnabled(
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<ExtensionsPayload>;
+  return parseExtensionsPayload(response);
 }
 
 export async function installExtension(file: File): Promise<ExtensionsPayload> {
   const body = new FormData();
   body.append("package", file, file.name);
-  const response = await fetchWithRetry("/api/extensions/install", {
+  const response = await fetchWithRetry(ApiPaths.extensionsInstall, {
     method: "POST",
     headers: apiHeaders(),
     body,
@@ -67,31 +85,31 @@ export async function installExtension(file: File): Promise<ExtensionsPayload> {
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<ExtensionsPayload>;
+  return parseExtensionsPayload(response);
 }
 
 export async function uninstallExtension(
   id: string,
 ): Promise<ExtensionsPayload> {
-  const response = await fetchWithRetry(`/api/extensions/${id}`, {
+  const response = await fetchWithRetry(ApiPaths.extensionById(id), {
     method: "DELETE",
     headers: apiHeaders(),
   });
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<ExtensionsPayload>;
+  return parseExtensionsPayload(response);
 }
 
 export async function reinstallExtension(
   id: string,
 ): Promise<ExtensionsPayload> {
-  const response = await fetchWithRetry(`/api/extensions/${id}/reinstall`, {
+  const response = await fetchWithRetry(ApiPaths.extensionReinstall(id), {
     method: "POST",
     headers: apiHeaders(),
   });
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  return response.json() as Promise<ExtensionsPayload>;
+  return parseExtensionsPayload(response);
 }

@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+import { ApiPaths } from "$lib/core/http/api-paths";
 import { readAPIError } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import {
+  sentryClientSettingsSchema,
+  sentryServerSettingsResponseSchema,
+  sentryTestEventSchema,
+} from "./schemas";
 
 export type SentryEnvLocks = {
   dsn?: boolean;
@@ -82,7 +89,7 @@ export function mergeStoredSentrySettings(
 }
 
 export async function getSentryServerSettings(): Promise<SentryServerSettingsResponse> {
-  const response = await fetchWithRetry("/api/settings/sentry", {
+  const response = await fetchWithRetry(ApiPaths.settingsSentry, {
     headers: apiHeaders(),
   });
   if (!response.ok) {
@@ -90,13 +97,17 @@ export async function getSentryServerSettings(): Promise<SentryServerSettingsRes
       `Failed to load error tracking settings (${response.status})`,
     );
   }
-  return (await response.json()) as SentryServerSettingsResponse;
+  return parseJson(
+    sentryServerSettingsResponseSchema,
+    response,
+    "sentry settings",
+  );
 }
 
 export async function saveSentryServerSettings(
   settings: StoredSentrySettings,
 ): Promise<SentryServerSettingsResponse> {
-  const response = await fetchWithRetry("/api/settings/sentry", {
+  const response = await fetchWithRetry(ApiPaths.settingsSentry, {
     method: "PUT",
     headers: {
       ...apiHeaders(),
@@ -111,11 +122,15 @@ export async function saveSentryServerSettings(
       text || `Failed to save error tracking settings (${response.status})`,
     );
   }
-  return (await response.json()) as SentryServerSettingsResponse;
+  return parseJson(
+    sentryServerSettingsResponseSchema,
+    response,
+    "sentry settings",
+  );
 }
 
 export async function getSentryClientSettings(): Promise<SentryClientSettings> {
-  const response = await fetchWithRetry("/api/music/settings/sentry-client", {
+  const response = await fetchWithRetry(ApiPaths.musicSettingsSentryClient, {
     headers: apiHeaders(),
   });
   if (!response.ok) {
@@ -123,13 +138,17 @@ export async function getSentryClientSettings(): Promise<SentryClientSettings> {
       `Failed to load client error reporting (${response.status})`,
     );
   }
-  return (await response.json()) as SentryClientSettings;
+  return parseJson(
+    sentryClientSettingsSchema,
+    response,
+    "client error reporting settings",
+  );
 }
 
 export async function saveSentryClientSettings(
   settings: SentryClientSettings,
 ): Promise<SentryClientSettings> {
-  const response = await fetchWithRetry("/api/music/settings/sentry-client", {
+  const response = await fetchWithRetry(ApiPaths.musicSettingsSentryClient, {
     method: "PUT",
     headers: {
       ...apiHeaders(),
@@ -144,11 +163,15 @@ export async function saveSentryClientSettings(
       text || `Failed to save client error reporting (${response.status})`,
     );
   }
-  return (await response.json()) as SentryClientSettings;
+  return parseJson(
+    sentryClientSettingsSchema,
+    response,
+    "client error reporting settings",
+  );
 }
 
 export async function sendSentryTestEvent(): Promise<SentryTestEventResponse> {
-  const response = await fetchWithRetry("/api/settings/sentry/test", {
+  const response = await fetchWithRetry(ApiPaths.settingsSentryTest, {
     method: "POST",
     headers: {
       ...apiHeaders(),
@@ -164,12 +187,11 @@ export async function sendSentryTestEvent(): Promise<SentryTestEventResponse> {
     );
   }
 
-  const payload = (await response.json()) as {
-    ok?: boolean;
-    eventId?: string;
-    message?: string;
-    error?: string;
-  };
+  const payload = await parseJson(
+    sentryTestEventSchema,
+    response,
+    "sentry test event",
+  );
   if (!payload.ok || !payload.eventId) {
     throw new Error(
       payload.error || payload.message || "Test event failed: missing event id",

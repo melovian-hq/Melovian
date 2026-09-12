@@ -4,6 +4,8 @@
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry } from "$lib/core/http/client";
 import { readAPIError } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
+import { authStatusSchema, authUserResponseSchema } from "./schemas";
 
 export interface AuthUser {
   id: string;
@@ -27,7 +29,7 @@ export async function getAuthStatus(): Promise<AuthStatus> {
   if (!response.ok) {
     throw new Error("Failed to load auth status");
   }
-  return response.json() as Promise<AuthStatus>;
+  return parseJson(authStatusSchema, response, "auth status");
 }
 
 export async function setupAccount(
@@ -42,7 +44,11 @@ export async function setupAccount(
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  const payload = (await response.json()) as { user: AuthUser };
+  const payload = await parseJson(
+    authUserResponseSchema,
+    response,
+    "auth setup",
+  );
   return payload.user;
 }
 
@@ -58,7 +64,11 @@ export async function loginAccount(
   if (!response.ok) {
     throw new Error(await readAPIError(response));
   }
-  const payload = (await response.json()) as { user: AuthUser };
+  const payload = await parseJson(
+    authUserResponseSchema,
+    response,
+    "auth login",
+  );
   return payload.user;
 }
 

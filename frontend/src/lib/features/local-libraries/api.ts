@@ -3,6 +3,13 @@
 
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
+import { parseJson, parsePayload } from "$lib/core/http/parse";
+import {
+  activeLocalLibraryProbeSchema,
+  localLibrariesResponseSchema,
+  localLibraryConfigResponseSchema,
+  localLibrarySchema,
+} from "./schemas";
 import type {
   LocalLibrary,
   LocalLibraryConfig,
@@ -14,7 +21,11 @@ export async function listLocalLibraries(): Promise<LocalLibrary[]> {
     headers: apiHeaders(),
   });
   if (!response.ok) throw new Error("Failed to load local libraries");
-  const payload = (await response.json()) as { libraries: LocalLibrary[] };
+  const payload = await parseJson(
+    localLibrariesResponseSchema,
+    response,
+    "local libraries",
+  );
   return payload.libraries ?? [];
 }
 
@@ -23,8 +34,15 @@ export async function getActiveLocalLibrary(): Promise<LocalLibrary | null> {
     headers: apiHeaders(),
   });
   if (!response.ok) throw new Error("Failed to load active local library");
-  const payload = (await response.json()) as Partial<LocalLibrary>;
-  return payload.id ? (payload as LocalLibrary) : null;
+  const raw: unknown = await response.json();
+  // The endpoint returns an empty object when no library is active.
+  const probe = parsePayload(
+    activeLocalLibraryProbeSchema,
+    raw,
+    "active local library",
+  );
+  if (!probe.id) return null;
+  return parsePayload(localLibrarySchema, raw, "active local library");
 }
 
 export async function createLocalLibrary(
@@ -39,7 +57,7 @@ export async function createLocalLibrary(
     const text = await response.text();
     throw new Error(text || "Failed to create local library");
   }
-  return (await response.json()) as LocalLibrary;
+  return parseJson(localLibrarySchema, response, "local library");
 }
 
 export async function activateLocalLibrary(id: string): Promise<void> {
@@ -59,7 +77,7 @@ export async function scanLocalLibrary(id: string): Promise<LocalLibrary> {
     const text = await response.text();
     throw new Error(text || "Failed to scan local library");
   }
-  return (await response.json()) as LocalLibrary;
+  return parseJson(localLibrarySchema, response, "local library");
 }
 
 export async function deleteLocalLibrary(id: string): Promise<void> {
@@ -77,9 +95,11 @@ export async function fetchLocalLibraryConfig(): Promise<LocalLibraryConfig> {
   if (!response.ok) {
     return { enabled: false, defaultPath: "", allowCustomPath: false };
   }
-  const payload = (await response.json()) as {
-    localLibrary?: Partial<LocalLibraryConfig>;
-  };
+  const payload = await parseJson(
+    localLibraryConfigResponseSchema,
+    response,
+    "local library config",
+  );
   return {
     enabled: payload.localLibrary?.enabled ?? false,
     defaultPath: payload.localLibrary?.defaultPath ?? "",

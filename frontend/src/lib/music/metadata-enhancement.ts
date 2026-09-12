@@ -1,7 +1,10 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { StorageKeys } from "$lib/brand";
 import { createBoundedMap } from "$lib/core/bounded-cache";
+import { parseJson } from "$lib/core/http/parse";
+import { itunesSearchResponseSchema } from "./schemas";
 import type { MetadataEnhancementSettings } from "./metadata-enhancement-settings";
 
 interface ITunesItem {
@@ -17,7 +20,7 @@ const memoryCache = createBoundedMap<string, string | null>(
   MEMORY_CACHE_MAX_ENTRIES,
 );
 const inflight = new Map<string, Promise<string | null>>();
-const CACHE_PREFIX = "mel-meta-art:";
+const CACHE_PREFIX = StorageKeys.metaArtPrefix;
 const CACHE_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 
 const CYRILLIC = /[\u0400-\u04FF]/;
@@ -198,7 +201,11 @@ async function searchItunes(
   if (!response.ok) {
     throw new Error(`iTunes search failed: ${response.status}`);
   }
-  const payload = (await response.json()) as { results?: ITunesItem[] };
+  const payload = await parseJson(
+    itunesSearchResponseSchema,
+    response,
+    "itunes search",
+  );
   return payload.results ?? [];
 }
 

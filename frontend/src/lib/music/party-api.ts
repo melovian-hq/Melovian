@@ -4,7 +4,14 @@
 import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { requireOk } from "$lib/core/http/errors";
+import { parseJson } from "$lib/core/http/parse";
 import { resolveMediaUrl } from "$lib/config/runtime";
+import {
+  partyInviteLinkSchema,
+  partyInviteResultSchema,
+  partyJoinResultSchema,
+  partyStatusSchema,
+} from "$lib/music/schemas";
 import type { SyncPlaybackSnapshot } from "$lib/music/device-sync.svelte";
 
 export interface PartyInviteLink {
@@ -34,31 +41,32 @@ export interface PartyJoinResult {
   state?: SyncPlaybackSnapshot | null;
 }
 
+export interface PartyInviteResult {
+  sessionId: string;
+  token: string;
+  username: string;
+  userId: string;
+}
+
 export async function createPartyInviteLink(): Promise<PartyInviteLink> {
   const response = await fetchWithRetry(ApiPaths.partyInviteLink, {
     method: "POST",
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to create invite link");
-  return (await response.json()) as PartyInviteLink;
+  return parseJson(partyInviteLinkSchema, response, "party invite link");
 }
 
-export async function invitePartyUser(username: string): Promise<
-  PartyInviteLink & {
-    username: string;
-    userId: string;
-  }
-> {
+export async function invitePartyUser(
+  username: string,
+): Promise<PartyInviteResult> {
   const response = await fetchWithRetry(ApiPaths.partyInvite, {
     method: "POST",
     headers: apiHeaders("application/json"),
     body: JSON.stringify({ username }),
   });
   await requireOk(response, "Failed to invite user");
-  return (await response.json()) as PartyInviteLink & {
-    username: string;
-    userId: string;
-  };
+  return parseJson(partyInviteResultSchema, response, "party invite");
 }
 
 export async function joinPartyByToken(
@@ -70,7 +78,7 @@ export async function joinPartyByToken(
     body: JSON.stringify({ token }),
   });
   await requireOk(response, "Failed to join party");
-  return (await response.json()) as PartyJoinResult;
+  return parseJson(partyJoinResultSchema, response, "party join");
 }
 
 export async function getPartyStatus(sessionId: string): Promise<PartyStatus> {
@@ -78,7 +86,7 @@ export async function getPartyStatus(sessionId: string): Promise<PartyStatus> {
     headers: apiHeaders(),
   });
   await requireOk(response, "Failed to load party status");
-  return (await response.json()) as PartyStatus;
+  return parseJson(partyStatusSchema, response, "party status");
 }
 
 export function partyStreamUrl(sessionId: string, trackId: string): string {

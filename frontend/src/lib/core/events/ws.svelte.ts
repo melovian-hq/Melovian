@@ -2,7 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { resolveMediaUrl } from "$lib/config/runtime";
+import { ApiPaths } from "$lib/core/http/api-paths";
+import { parsePayload } from "$lib/core/http/parse";
 import { getOrCreateDeviceId } from "$lib/music/device-id";
+import { wsEventSchema } from "./schemas";
 
 export type WSEventType =
   | "scan.progress"
@@ -77,7 +80,7 @@ class EventSocketStore {
 
     const deviceId = getOrCreateDeviceId();
     const url = resolveMediaUrl(
-      `/api/ws?deviceId=${encodeURIComponent(deviceId)}`,
+      `${ApiPaths.ws}?deviceId=${encodeURIComponent(deviceId)}`,
     ).replace(/^http/, "ws");
     const generation = ++this.generation;
     this.connecting = true;
@@ -97,8 +100,12 @@ class EventSocketStore {
     socket.addEventListener("message", (event) => {
       if (generation !== this.generation) return;
       try {
-        const parsed = JSON.parse(String(event.data)) as WSEvent;
-        if (!parsed?.type) return;
+        const parsed = parsePayload(
+          wsEventSchema,
+          JSON.parse(String(event.data)),
+          "ws event",
+        );
+        if (!parsed.type) return;
         this.dispatch(parsed);
       } catch (err) {
         void err;
