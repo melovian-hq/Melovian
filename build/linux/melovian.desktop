@@ -7,6 +7,6 @@ StartupWMClass=melovian
 Categories=Audio;Music;Player;
 Comment=Music player for local libraries and Subsonic-compatible servers
 Terminal=false
-Keywords=music;player;subsonic;navidrome
+Keywords=music;player;local;subsonic;navidrome
 Version=1.0
 StartupNotify=false

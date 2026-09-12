@@ -8,6 +8,22 @@ mpv_lib="${APPDIR}/usr/lib/libmpv.so.2"
 if [[ -f "$mpv_lib" ]]; then
     export LD_PRELOAD="${mpv_lib}${LD_PRELOAD:+:${LD_PRELOAD}}"
 fi
+export LD_LIBRARY_PATH="${APPDIR}/usr/lib${LD_LIBRARY_PATH:+:${LD_LIBRARY_PATH}}"
+# Release builds of WebKitGTK ignore WEBKIT_EXEC_PATH, so the bundled
+# library was patched to look for its subprocess executables at a fixed
+# path. Point that path at the helpers bundled in this AppDir.
+webkit_link="/tmp/.melovian-webkit"
+for dir in "${APPDIR}"/usr/libexec/webkitgtk-* "${APPDIR}"/usr/libexec/webkit2gtk-*; do
+    if [[ -d "$dir" ]]; then
+        if [[ -L "$webkit_link" || ! -e "$webkit_link" ]]; then
+            ln -sfn "$dir" "$webkit_link" 2>/dev/null || \
+                echo "warning: cannot link ${webkit_link}; webkit helpers may not load" >&2
+        elif [[ "$(readlink -f "$webkit_link")" != "$dir" ]]; then
+            echo "warning: ${webkit_link} already exists; webkit helpers may not load" >&2
+        fi
+        break
+    fi
+done
 # Wayland sessions often do not export XAUTHORITY, and forcing the x11
 # backend then fails XWayland auth with "Authorization required, but no
 # authorization protocol specified". Prefer Wayland there, x11 elsewhere.

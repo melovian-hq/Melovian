@@ -6,6 +6,9 @@
 
 # Runtime data
 bin/
+/melovian
+/melovian-server
+/melovian.exe
 data/
 *.db
 *.db-shm

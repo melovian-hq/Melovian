@@ -126,16 +126,75 @@ export LDAI_OUTPUT="$APP_IMAGE_NAME"
 export LDAI_RUNTIME_FILE="${BUILD_DIR}/${RUNTIME}"
 export NO_STRIP=1
 
+cp "$APP_BINARY" "${USR_BIN}/${BINARY_NAME}"
+chmod 755 "${USR_BIN}/${BINARY_NAME}"
+
+# WebKitGTK subprocesses (WebKitWebProcess, WebKitNetworkProcess, ...) are
+# helper executables looked up at the libexec dir compiled into
+# libwebkitgtk, not linked libraries, so linuxdeploy never copies them.
+# Bundle them before the deploy pass so their own library dependencies are
+# resolved too.
+WEBKIT_LIBEXEC=""
+for candidate in \
+    "/usr/lib/${ARCH}-linux-gnu/webkitgtk-6.0" \
+    "/usr/lib/${ARCH}-linux-gnu/webkit2gtk-4.1" \
+    "/usr/lib/webkitgtk-6.0" \
+    "/usr/lib/webkit2gtk-4.1" \
+    "/usr/libexec/webkitgtk-6.0" \
+    "/usr/libexec/webkit2gtk-4.1"; do
+    if [[ -d "$candidate" ]]; then
+        WEBKIT_LIBEXEC="$candidate"
+        break
+    fi
+done
+
+LINUXDEPLOY_EXES=(--executable "${USR_BIN}/${BINARY_NAME}")
+if [[ -n "$WEBKIT_LIBEXEC" ]]; then
+    echo "Bundling WebKitGTK helpers from ${WEBKIT_LIBEXEC}"
+    WEBKIT_DEST="${APP_DIR}/usr/libexec/$(basename "$WEBKIT_LIBEXEC")"
+    mkdir -p "$WEBKIT_DEST"
+    cp -a "$WEBKIT_LIBEXEC/." "$WEBKIT_DEST/"
+    for helper in "$WEBKIT_DEST"/*; do
+        if [[ -f "$helper" && ! -L "$helper" && -x "$helper" ]]; then
+            LINUXDEPLOY_EXES+=(--executable "$helper")
+        fi
+    done
+else
+    echo "warning: no WebKitGTK libexec dir found; the AppImage webview will not work" >&2
+fi
+
 ./"${LINUXDEPLOY}" --appimage-extract-and-run \
     --appdir "$APP_DIR" \
     --custom-apprun "${SCRIPT_DIR}/AppRun" \
     --desktop-file "$APPIMAGE_DESKTOP" \
     --icon-file "$ICON_PATH" \
     --icon-filename "${APP_NAME}" \
-    --library "$LIBMPV"
+    --library "$LIBMPV" \
+    "${LINUXDEPLOY_EXES[@]}"
 
-cp "$APP_BINARY" "${USR_BIN}/${BINARY_NAME}"
-chmod 755 "${USR_BIN}/${BINARY_NAME}"
+if [[ -n "$WEBKIT_LIBEXEC" ]]; then
+    # Release builds of WebKitGTK ignore WEBKIT_EXEC_PATH, so rewrite the
+    # compiled-in libexec path inside the bundled libraries and helpers.
+    # AppRun symlinks this fixed location to the bundled helper directory.
+    # The replacement must not exceed the original string length because it
+    # is written in place over NUL terminated path strings.
+    WEBKIT_LINK="/tmp/.melovian-webkit"
+    if [[ ${#WEBKIT_LINK} -gt ${#WEBKIT_LIBEXEC} ]]; then
+        echo "warning: cannot relocate webkit libexec ${WEBKIT_LIBEXEC}; path too long" >&2
+    else
+        for target in "$APP_DIR"/usr/lib/libwebkitgtk-*.so.* "$APP_DIR"/usr/lib/libwebkit2gtk-*.so.* "$APP_DIR"/usr/lib/libjavascriptcoregtk-*.so.* "$WEBKIT_DEST"/*; do
+            if [[ -f "$target" && ! -L "$target" ]]; then
+                OLD="$WEBKIT_LIBEXEC" NEW="$WEBKIT_LINK" perl -0777 -i -pe '
+                    my ($old, $new) = ($ENV{OLD}, $ENV{NEW});
+                    s/\Q$old\E([^\0]*)\0/
+                        my $s = "$new$1\0";
+                        $s . "\0" x (length($&) - length($s))
+                    /ge;
+                ' "$target"
+            fi
+        done
+    fi
+fi
 
 ./"${LINUXDEPLOY}" --appimage-extract-and-run \
     --appdir "$APP_DIR" \
