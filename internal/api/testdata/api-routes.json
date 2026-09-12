@@ -22,6 +22,8 @@
     { "method": "POST", "pattern": "/api/auth/change-password" },
     { "method": "POST", "pattern": "/api/auth/username" },
     { "method": "POST", "pattern": "/api/auth/delete-account" },
+    { "method": "GET", "pattern": "/api/auth/subsonic-key" },
+    { "method": "POST", "pattern": "/api/auth/subsonic-key/rotate" },
     { "method": "GET", "pattern": "/api/auth/oidc/login", "requires": "oidc" },
     { "method": "GET", "pattern": "/api/auth/oidc/callback", "requires": "oidc" },
     { "method": "GET", "pattern": "/api/instances" },

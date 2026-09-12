@@ -35,6 +35,19 @@ func (s *Server) registerClientLogRoutes() {
 }
 
 func (s *Server) handleClientLog(w http.ResponseWriter, r *http.Request) {
+	// This endpoint is reachable before login and writes to disk, so it gets
+	// a per-IP request budget to blunt unauthenticated log flooding.
+	if s.clientLogLimiter != nil {
+		key := "clientlog"
+		if addr, ok := clientIP(r, s.cfg.TrustProxy); ok {
+			key += "|" + addr.String()
+		}
+		if s.clientLogLimiter.blocked(key) {
+			writeRateLimited(w, s.clientLogLimiter.retryAfterSeconds(key))
+			return
+		}
+		s.clientLogLimiter.record(key)
+	}
 	r.Body = http.MaxBytesReader(w, r.Body, maxClientLogBody)
 
 	var req clientLogRequest

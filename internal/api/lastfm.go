@@ -62,7 +62,7 @@ func (m *MusicService) saveLastFMSettings(userID string, payload lastFMPayload) 
 	if payload.APIKey == "" && payload.APISecret == "" && payload.SessionKey == "" && payload.Endpoint == "" {
 		return m.preferences.Delete(userID, store.PrefKeyLastFMSettings)
 	}
-	data, err := json.Marshal(payload)
+	data, err := json.Marshal(payload) //#nosec G117 -- settings persisted to the preferences store, not a response leak
 	if err != nil {
 		return err
 	}

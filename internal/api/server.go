@@ -72,11 +72,23 @@ type Server struct {
 	sentryCfg          appconfig.SentryConfig
 	db                 *store.DB
 	upd                updateState
+	setupMu            sync.Mutex
+	authLimiter        *rateLimiter
+	shareLimiter       *rateLimiter
+	clientLogLimiter   *rateLimiter
 }
 
 func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	ConfigureCORSOrigins(cfg.CORSOrigins)
 	instances := store.NewInstanceStore(db)
+	if cipher, err := store.LoadSecretCipher(cfg.DataDir); err != nil {
+		slog.Error("instance credential encryption unavailable", "err", err)
+	} else if cipher != nil {
+		instances.SetCipher(cipher)
+		if err := instances.MigratePasswords(); err != nil {
+			slog.Error("instance password migration failed", "err", err)
+		}
+	}
 	localLibraries := store.NewLocalLibraryStore(db)
 	localTracks := store.NewLocalTrackStore(db)
 	listen := store.NewListenStore(db)
@@ -86,29 +98,32 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	events := NewEventHub()
 
 	s := &Server{
-		cfg:            cfg,
-		db:             db,
-		instances:      instances,
-		localLibraries: localLibraries,
-		localTracks:    localTracks,
-		auth:           store.NewAuthStore(db, cfg.AuthSecret),
-		listen:         listen,
-		preferences:    preferences,
-		downloads:      downloads,
-		videoLinks:     store.NewTrackVideoLinkStore(db),
-		videoClient:    video.NewClient(),
-		mux:            http.NewServeMux(),
-		cache:          responseCache,
-		clientCache:    make(map[string]*subsonic.Client),
-		downloadSem:    make(chan struct{}, 3),
-		catalogCache:   localmusic.NewCatalogCache(),
-		coverCache:     localmusic.NewCoverCache(),
-		libraryScanner: metaloader.NewScanner(localLibraries, localTracks),
-		events:         events,
-		devices:        NewDeviceRegistry(events),
-		shares:         store.NewShareStore(db),
-		notifications:  store.NewNotificationStore(db),
-		jukebox:        jukebox.NewController(),
+		cfg:              cfg,
+		db:               db,
+		instances:        instances,
+		localLibraries:   localLibraries,
+		localTracks:      localTracks,
+		auth:             store.NewAuthStore(db, cfg.AuthSecret),
+		listen:           listen,
+		preferences:      preferences,
+		downloads:        downloads,
+		videoLinks:       store.NewTrackVideoLinkStore(db),
+		videoClient:      video.NewClient(),
+		mux:              http.NewServeMux(),
+		cache:            responseCache,
+		clientCache:      make(map[string]*subsonic.Client),
+		downloadSem:      make(chan struct{}, 3),
+		catalogCache:     localmusic.NewCatalogCache(),
+		coverCache:       localmusic.NewCoverCache(),
+		libraryScanner:   metaloader.NewScanner(localLibraries, localTracks),
+		events:           events,
+		devices:          NewDeviceRegistry(events),
+		shares:           store.NewShareStore(db),
+		notifications:    store.NewNotificationStore(db),
+		jukebox:          jukebox.NewController(),
+		authLimiter:      newRateLimiter(10, 5*time.Minute),
+		shareLimiter:     newRateLimiter(10, 5*time.Minute),
+		clientLogLimiter: newRateLimiter(60, time.Minute),
 	}
 	s.devices.lookupUsername = func(userID string) string {
 		if userID == "" || s.auth == nil {
@@ -240,7 +255,7 @@ func (s *Server) reloadActiveSubsonic() error {
 	s.mu.Unlock()
 	slog.Info("active subsonic instance loaded",
 		"instance_id", inst.ID,
-		"url", inst.ServerURL,
+		"url", httputil.RedactURLUserinfo(inst.ServerURL),
 		"name", inst.Name,
 	)
 	return nil
@@ -471,11 +486,30 @@ func (s *Server) buildAPIHandler() http.Handler {
 			return
 		}
 		if strings.HasPrefix(r.URL.Path, "/s/") {
+			// /rest/ and /s/ bypass the demo middleware chain, so public
+			// shares keep only read methods plus the unlock POST in demo mode.
+			if s.cfg.DemoModeEffective() && !demoShareMethodAllowed(r) {
+				httputil.WriteJSON(w, http.StatusForbidden, map[string]any{
+					"error": "demo mode is read-only",
+				})
+				return
+			}
 			s.handlePublicShare(w, r)
 			return
 		}
 		api.ServeHTTP(w, r)
 	}))
+}
+
+func demoShareMethodAllowed(r *http.Request) bool {
+	switch r.Method {
+	case http.MethodGet, http.MethodHead, http.MethodOptions:
+		return true
+	case http.MethodPost:
+		return strings.HasSuffix(strings.TrimSuffix(r.URL.Path, "/"), "/unlock")
+	default:
+		return false
+	}
 }
 
 func (s *Server) handleRefreshLibraryCache(w http.ResponseWriter, r *http.Request) {
@@ -493,7 +527,6 @@ func (s *Server) handleRefreshLibraryCache(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 	libCfg := s.cfg.LocalLibraryEffective()
 	payload := map[string]any{
-		"dataDir":            s.cfg.DataDir,
 		"listenAddr":         s.cfg.ListenAddr,
 		"publicUrl":          s.cfg.PublicURL,
 		"authEnabled":        s.cfg.AuthEnabled(),
@@ -510,9 +543,7 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		"transcoding": map[string]any{
 			"available": transcode.Available(),
 		},
-		"extensions": map[string]any{
-			"dir": extensions.ExtensionsDir(s.cfg.DataDir),
-		},
+		"extensions": map[string]any{},
 		"dlna": map[string]any{
 			"enabled": s.cfg.DLNAServerEffective(),
 			"port":    s.cfg.DLNAPort,
@@ -522,15 +553,42 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		},
 		"localLibrary": map[string]any{
 			"enabled":         libCfg.Enabled,
-			"defaultPath":     libCfg.DefaultPath,
 			"allowCustomPath": libCfg.AllowCustomPath,
 		},
+	}
+	// Host filesystem paths are only useful to a signed-in client or a local
+	// desktop install. Keep them out of the public response on anything that
+	// can be reached by strangers (auth enabled and signed out, server mode,
+	// demo mode).
+	trusted := s.configRequestAuthed(r) ||
+		(!s.cfg.AuthEnabled() && !s.cfg.ServerMode && !s.cfg.DemoModeEffective())
+	if trusted {
+		payload["dataDir"] = s.cfg.DataDir
+		payload["extensions"] = map[string]any{
+			"dir": extensions.ExtensionsDir(s.cfg.DataDir),
+		}
+		payload["localLibrary"].(map[string]any)["defaultPath"] = libCfg.DefaultPath
 	}
 	maps.Copy(payload, compat.ConfigFields())
 	if sentryPayload := s.clientSentryPayload(r); sentryPayload != nil {
 		payload["sentry"] = sentryPayload
 	}
 	httputil.WriteJSON(w, http.StatusOK, payload)
+}
+
+func (s *Server) configRequestAuthed(r *http.Request) bool {
+	if userID := UserIDFromContext(r.Context()); userID != "" {
+		return true
+	}
+	if s.auth == nil {
+		return false
+	}
+	token := sessionTokenFromRequest(r)
+	if token == "" {
+		return false
+	}
+	_, err := s.auth.UserIDFromToken(token)
+	return err == nil
 }
 
 func frontendDevServerEnabled() bool {

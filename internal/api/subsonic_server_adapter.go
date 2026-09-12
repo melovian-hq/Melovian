@@ -15,8 +15,9 @@ import (
 )
 
 type subsonicAuthAdapter struct {
-	auth *store.AuthStore
-	cfg  bool
+	auth    *store.AuthStore
+	cfg     bool
+	limiter *rateLimiter
 }
 
 func (a subsonicAuthAdapter) AuthRequired() bool {
@@ -27,26 +28,53 @@ func (a subsonicAuthAdapter) Authenticate(username, password string) (string, er
 	if a.auth == nil {
 		return "", errors.New("auth unavailable")
 	}
-	user, err := a.auth.Authenticate(username, password)
+	if a.limited(username) {
+		return "", errors.New("too many failed attempts, try again later")
+	}
+	user, err := a.auth.AuthenticateSubsonic(username, password)
 	if err != nil {
+		a.recordFailure(username)
 		return "", err
 	}
+	a.resetFailures(username)
 	return user.ID, nil
 }
 
 func (a subsonicAuthAdapter) AuthenticateToken(username, token, salt string) (string, error) {
+	if a.limited(username) {
+		return "", errors.New("too many failed attempts, try again later")
+	}
 	secret, err := a.auth.SubsonicAPISecret(username)
 	if err != nil {
+		a.recordFailure(username)
 		return "", err
 	}
 	if !subsonicserver.VerifyToken(secret, token, salt) {
+		a.recordFailure(username)
 		return "", errors.New("invalid token")
 	}
 	user, err := a.auth.GetUserByUsername(username)
 	if err != nil {
 		return "", err
 	}
+	a.resetFailures(username)
 	return user.ID, nil
+}
+
+func (a subsonicAuthAdapter) limited(username string) bool {
+	return a.limiter != nil && a.limiter.blocked("rest|"+username)
+}
+
+func (a subsonicAuthAdapter) recordFailure(username string) {
+	if a.limiter != nil {
+		a.limiter.record("rest|" + username)
+	}
+}
+
+func (a subsonicAuthAdapter) resetFailures(username string) {
+	if a.limiter != nil {
+		a.limiter.reset("rest|" + username)
+	}
 }
 
 type subsonicProviderAdapter struct {
@@ -239,11 +267,13 @@ func (s *Server) libraryIDsForUser(userID string) ([]string, error) {
 }
 
 func (s *Server) newSubsonicServer() *subsonicserver.Server {
-	return subsonicserver.New(
+	srv := subsonicserver.New(
 		subsonicProviderAdapter{server: s},
-		subsonicAuthAdapter{auth: s.auth, cfg: s.cfg.SubsonicServerEffective()},
+		subsonicAuthAdapter{auth: s.auth, cfg: s.cfg.SubsonicServerEffective(), limiter: s.authLimiter},
 		s.cfg.SubsonicServerEffective() && s.localLibraryEnabled(),
 	)
+	srv.SetReadOnly(s.cfg.DemoModeEffective())
+	return srv
 }
 
 func (s *Server) localCatalogForUser(userID string) (localmusic.Catalog, error) {

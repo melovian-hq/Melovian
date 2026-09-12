@@ -34,8 +34,11 @@ func (s *Server) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 		deviceID = r.URL.Query().Get("deviceId")
 	}
 
+	// Same-origin upgrades are always allowed by Accept. Cross-origin upgrades
+	// are limited to the configured CORS allowlist so a random web page cannot
+	// open a control socket to a desktop or LAN instance.
 	conn, err := websocket.Accept(w, r, &websocket.AcceptOptions{
-		OriginPatterns: []string{"*"},
+		OriginPatterns: wsOriginPatterns(),
 	})
 	if err != nil {
 		return

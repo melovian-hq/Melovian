@@ -28,6 +28,8 @@ func (s *Server) registerAuthRoutes() {
 	s.mux.HandleFunc("POST /api/auth/change-password", s.handleChangePassword)
 	s.mux.HandleFunc("POST /api/auth/username", s.handleChangeUsername)
 	s.mux.HandleFunc("POST /api/auth/delete-account", s.handleDeleteAccount)
+	s.mux.HandleFunc("GET /api/auth/subsonic-key", s.handleGetSubsonicKey)
+	s.mux.HandleFunc("POST /api/auth/subsonic-key/rotate", s.handleRotateSubsonicKey)
 	s.mux.HandleFunc("GET /health", s.handleHealth)
 }
 
@@ -101,6 +103,14 @@ func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, "local account setup disabled when oidc is enabled", http.StatusForbidden)
 		return
 	}
+	if s.loginKeysRateLimited(w, s.loginRateLimitKeys(r, "")) {
+		return
+	}
+
+	// The user-count check and the insert must be atomic for this public
+	// endpoint, otherwise two concurrent requests can both create accounts.
+	s.setupMu.Lock()
+	defer s.setupMu.Unlock()
 
 	count, err := s.auth.CountUsers()
 	if err != nil {
@@ -120,6 +130,9 @@ func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.auth.CreateUser(req.Username, req.Password)
 	if err != nil {
+		if s.authLimiter != nil {
+			s.authLimiter.record(s.loginRateLimitKeys(r, "")...)
+		}
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -146,11 +159,21 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
+	keys := s.loginRateLimitKeys(r, req.Username)
+	if s.loginKeysRateLimited(w, keys) {
+		return
+	}
 
 	user, err := s.auth.Authenticate(req.Username, req.Password)
 	if err != nil {
+		if s.authLimiter != nil {
+			s.authLimiter.record(keys...)
+		}
 		http.Error(w, "invalid credentials", http.StatusUnauthorized)
 		return
+	}
+	if s.authLimiter != nil {
+		s.authLimiter.reset(keys...)
 	}
 
 	if err := s.writeSession(w, r, user.ID); err != nil {
@@ -321,6 +344,73 @@ func (s *Server) writeSession(w http.ResponseWriter, r *http.Request, userID str
 
 func clearSessionCookie(w http.ResponseWriter, r *http.Request) {
 	clearHTTPOnlyCookie(w, r, store.SessionCookieName(), "/")
+}
+
+// loginRateLimitKeys scopes throttling to the client address and, when known,
+// the target account. A spoofed X-Forwarded-For can rotate the IP bucket but
+// the username bucket still bounds guessing against a single account.
+func (s *Server) loginRateLimitKeys(r *http.Request, username string) []string {
+	keys := []string{"login|ip|unknown"}
+	if addr, ok := clientIP(r, s.cfg.TrustProxy); ok {
+		keys[0] = "login|ip|" + addr.String()
+	}
+	if name := strings.TrimSpace(username); name != "" {
+		keys = append(keys, "login|user|"+name)
+	}
+	return keys
+}
+
+func (s *Server) loginKeysRateLimited(w http.ResponseWriter, keys []string) bool {
+	if s.authLimiter == nil || !s.authLimiter.blocked(keys...) {
+		return false
+	}
+	writeRateLimited(w, s.authLimiter.retryAfterSeconds(keys...))
+	return true
+}
+
+// handleGetSubsonicKey returns the caller's Subsonic API key so it can be
+// pasted into clients that use token auth or the "p" parameter.
+func (s *Server) handleGetSubsonicKey(w http.ResponseWriter, r *http.Request) {
+	if s.auth == nil || !s.auth.Enabled() {
+		httputil.WriteError(w, http.StatusNotFound, "auth_disabled", "auth disabled")
+		return
+	}
+	userID := UserIDFromContext(r.Context())
+	if userID == "" {
+		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
+		return
+	}
+	secret, err := s.auth.SubsonicAPISecretForUser(userID)
+	if err != nil {
+		httputil.WriteError(w, http.StatusNotFound, "no_key", "no subsonic api key configured")
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"apiKey":  secret,
+		"restUrl": "/rest",
+	})
+}
+
+// handleRotateSubsonicKey replaces the API key and returns the new value.
+func (s *Server) handleRotateSubsonicKey(w http.ResponseWriter, r *http.Request) {
+	if s.auth == nil || !s.auth.Enabled() {
+		httputil.WriteError(w, http.StatusNotFound, "auth_disabled", "auth disabled")
+		return
+	}
+	userID := UserIDFromContext(r.Context())
+	if userID == "" {
+		httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
+		return
+	}
+	secret, err := s.auth.RegenerateSubsonicAPISecret(userID)
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "rotate_failed", "failed to rotate api key")
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"apiKey":  secret,
+		"restUrl": "/rest",
+	})
 }
 
 func isSecureRequest(r *http.Request) bool {

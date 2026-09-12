@@ -114,6 +114,14 @@ func (s *Server) handleShareUnlock(w http.ResponseWriter, r *http.Request, share
 		httputil.WriteError(w, http.StatusBadRequest, "not_password_share", "share is not password protected")
 		return
 	}
+	limitKeys := []string{"share|" + share.Token}
+	if addr, ok := clientIP(r, s.cfg.TrustProxy); ok {
+		limitKeys = append(limitKeys, "share|"+share.Token+"|"+addr.String())
+	}
+	if s.shareLimiter != nil && s.shareLimiter.blocked(limitKeys...) {
+		writeRateLimited(w, s.shareLimiter.retryAfterSeconds(limitKeys...))
+		return
+	}
 	var req struct {
 		Password string `json:"password"`
 	}
@@ -122,8 +130,14 @@ func (s *Server) handleShareUnlock(w http.ResponseWriter, r *http.Request, share
 		return
 	}
 	if !s.shares.CheckPassword(share, req.Password) {
+		if s.shareLimiter != nil {
+			s.shareLimiter.record(limitKeys...)
+		}
 		httputil.WriteError(w, http.StatusUnauthorized, "invalid_password", "invalid password")
 		return
+	}
+	if s.shareLimiter != nil {
+		s.shareLimiter.reset(limitKeys...)
 	}
 	expires := time.Now().Add(24 * time.Hour)
 	setHTTPOnlyCookie(w, r, shareUnlockCookieName(share.Token), shareUnlockCookieValue(s.cfg.AuthSecret, share), "/s/"+share.Token, int(24*time.Hour/time.Second), expires)

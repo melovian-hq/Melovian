@@ -79,8 +79,8 @@ func TestGetConfig(t *testing.T) {
 }
 
 func TestUpdateInstance(t *testing.T) {
-	srv, db := newTestServer(t)
-	instances := store.NewInstanceStore(db)
+	srv, _ := newTestServer(t)
+	instances := srv.instances
 
 	inst, err := instances.Create(store.CreateInstanceInput{
 		Name:      "Original",
@@ -121,8 +121,8 @@ func TestPingInstance(t *testing.T) {
 		_, _ = io.WriteString(w, `{"subsonic-response":{"status":"ok","version":"1.16.1","server":{"name":"Navidrome","version":"0.52.0"}}}`)
 	}))
 	defer subsonicSrv.Close()
-	srv, db := newTestServer(t)
-	instances := store.NewInstanceStore(db)
+	srv, _ := newTestServer(t)
+	instances := srv.instances
 	inst, err := instances.Create(store.CreateInstanceInput{
 		Name:      "Ping Target",
 		ServerURL: subsonicSrv.URL,
