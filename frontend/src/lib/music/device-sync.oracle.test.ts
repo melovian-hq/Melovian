@@ -66,7 +66,9 @@ function emit(type: string, payload: unknown) {
   handlers.get(type)?.forEach((handler) => handler({ type, payload }));
 }
 
-describe("device-sync session isolation oracle", () => {
+// Dynamic imports in loadSync can exceed the default 5s timeout when the
+// whole suite is running and the transform queue is contended.
+describe("device-sync session isolation oracle", { timeout: 20_000 }, () => {
   beforeEach(() => {
     sendMock.mockClear();
     handlers.clear();
