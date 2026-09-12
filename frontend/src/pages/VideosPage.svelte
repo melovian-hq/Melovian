@@ -12,9 +12,8 @@
   import { listLocalVideos } from "$lib/video/api";
   import { videoFeature } from "$lib/video/feature.svelte";
   import { videoPlayerPath, type LocalVideo } from "$lib/video/ids";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
-  let loading = $state(true);
-  let error = $state<string | null>(null);
   let videos = $state<LocalVideo[]>([]);
   let searchQuery = $state("");
   let enabled = $state(false);
@@ -29,39 +28,22 @@
     ]),
   );
 
-  $effect(() => {
-    let cancelled = false;
-    loading = true;
-    error = null;
-    void videoFeature
-      .refresh()
-      .then((settings) => {
-        if (cancelled) return;
-        enabled = settings.enabled;
-        if (!settings.enabled) {
-          videos = [];
-          return;
-        }
-        if (!hasLibrary) {
-          videos = [];
-          return;
-        }
-        return listLocalVideos().then((items) => {
-          if (!cancelled) videos = items;
-        });
-      })
-      .catch((err: unknown) => {
-        if (!cancelled) {
-          error = err instanceof Error ? err.message : String(err);
-          videos = [];
-        }
-      })
-      .finally(() => {
-        if (!cancelled) loading = false;
-      });
-    return () => {
-      cancelled = true;
-    };
+  const page = createAsyncPage<{ enabled: boolean; items: LocalVideo[] }>({
+    onError: () => {
+      videos = [];
+    },
+    load: async () => {
+      const settings = await videoFeature.refresh();
+      if (!settings.enabled || !hasLibrary) {
+        return { enabled: settings.enabled, items: [] };
+      }
+      const items = await listLocalVideos();
+      return { enabled: settings.enabled, items };
+    },
+    apply: (result) => {
+      enabled = result.enabled;
+      videos = result.items;
+    },
   });
 </script>
 
@@ -71,7 +53,7 @@
     subtitle="Local music videos from your library folders."
   />
 
-  {#if loading}
+  {#if page.loading}
     <div class="videos-page__loading">
       <Spinner />
     </div>
@@ -87,8 +69,12 @@
       message="Add a local music folder in Settings, Sources, then scan. Videos with .mp4, .m4v, or .webm extensions show up here."
       icon="folderMusic"
     />
-  {:else if error}
-    <EmptyState title="Could not load videos" message={error} icon="alert" />
+  {:else if page.error}
+    <EmptyState
+      title="Could not load videos"
+      message={page.error}
+      icon="alert"
+    />
   {:else}
     <LocalSearchBox bind:value={searchQuery} placeholder="Filter videos" />
 

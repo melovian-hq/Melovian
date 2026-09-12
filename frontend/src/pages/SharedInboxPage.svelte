@@ -8,36 +8,25 @@
   import { auth } from "$lib/features/auth/store.svelte";
   import * as musicApi from "$lib/music/api";
   import type { MusicShare } from "$lib/music/api";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
-  let loading = $state(true);
-  let error = $state<string | null>(null);
   let items = $state<MusicShare[]>([]);
 
-  $effect(() => {
-    if (!auth.enabled || !auth.authenticated) {
-      loading = false;
+  const page = createAsyncPage<MusicShare[]>({
+    errorMessage: "Failed to load inbox",
+    onError: () => {
       items = [];
-      return;
-    }
-    let cancelled = false;
-    loading = true;
-    error = null;
-    void (async () => {
-      try {
-        const next = await musicApi.listShareInbox();
-        if (!cancelled) items = next;
-      } catch (err) {
-        if (!cancelled) {
-          error = err instanceof Error ? err.message : "Failed to load inbox";
-          items = [];
-        }
-      } finally {
-        if (!cancelled) loading = false;
+    },
+    load: (run) => {
+      if (!auth.enabled || !auth.authenticated) {
+        items = [];
+        return run.skip();
       }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      return musicApi.listShareInbox();
+    },
+    apply: (next) => {
+      items = next;
+    },
   });
 
   function label(share: MusicShare): string {
@@ -65,12 +54,12 @@
         <Link href="/account/login" class="shared-inbox__link">Sign in</Link>
       {/snippet}
     </EmptyState>
-  {:else if loading}
+  {:else if page.loading}
     <div class="shared-inbox__loading">
       <Spinner />
     </div>
-  {:else if error}
-    <EmptyState title="Could not load inbox" message={error} />
+  {:else if page.error}
+    <EmptyState title="Could not load inbox" message={page.error} />
   {:else if items.length === 0}
     <EmptyState
       title="Nothing shared yet"

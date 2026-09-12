@@ -13,6 +13,7 @@
   import type { QueueTrack } from "$lib/subsonic/types";
   import { downloadFromUrl, sanitizeFilename } from "$lib/utils/download";
   import { toast } from "$lib/ui/toast.svelte";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
   import { APP_NAME } from "$lib/brand";
   import { setPageMeta } from "$lib/seo/meta";
 
@@ -22,8 +23,6 @@
 
   let { token }: Props = $props();
 
-  let loading = $state(true);
-  let error = $state<string | null>(null);
   let share = $state<MusicShare | null>(null);
   let password = $state("");
   let unlocking = $state(false);
@@ -41,41 +40,19 @@
     };
   }
 
-  async function loadShare() {
-    loading = true;
-    error = null;
-    try {
-      share = await musicApi.getPublicShare(token);
-    } catch (err) {
+  const page = createAsyncPage<MusicShare>({
+    errorMessage: "Share unavailable",
+    onError: () => {
       share = null;
-      error = err instanceof Error ? err.message : "Share unavailable";
-    } finally {
-      loading = false;
-    }
-  }
-
-  $effect(() => {
-    const current = token;
-    let cancelled = false;
-    loading = true;
-    error = null;
-    share = null;
-    void (async () => {
-      try {
-        const result = await musicApi.getPublicShare(current);
-        if (!cancelled) share = result;
-      } catch (err) {
-        if (!cancelled) {
-          share = null;
-          error = err instanceof Error ? err.message : "Share unavailable";
-        }
-      } finally {
-        if (!cancelled) loading = false;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+    },
+    load: () => {
+      const current = token;
+      share = null;
+      return musicApi.getPublicShare(current);
+    },
+    apply: (result) => {
+      share = result;
+    },
   });
 
   async function unlock(event: Event) {
@@ -88,7 +65,7 @@
     try {
       await musicApi.unlockPublicShare(token, password);
       password = "";
-      await loadShare();
+      await page.reload();
     } catch (err) {
       toast.error(err instanceof Error ? err.message : "Invalid password");
     } finally {
@@ -151,10 +128,10 @@
 </script>
 
 <div class="share-page">
-  {#if loading}
+  {#if page.loading}
     <div class="share-page__state"><Spinner /></div>
-  {:else if error}
-    <EmptyState title="Share unavailable" message={error} icon="share">
+  {:else if page.error}
+    <EmptyState title="Share unavailable" message={page.error} icon="share">
       {#snippet actions()}
         <Link href="/music">Back to music</Link>
       {/snippet}

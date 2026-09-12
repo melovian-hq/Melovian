@@ -21,11 +21,11 @@
   import { coverArtUrl } from "$lib/subsonic";
   import LibraryUnavailable from "$lib/components/music/LibraryUnavailable.svelte";
   import { libraryUnavailable } from "$lib/music/library-gate";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
   import { Tabs } from "bits-ui";
 
   type FavoritesTab = "tracks" | "albums" | "artists";
 
-  let loading = $state(true);
   let searchQuery = $state("");
   let activeTab = $state<FavoritesTab>("tracks");
   let pageMenu = $state<{ x: number; y: number } | null>(null);
@@ -64,8 +64,18 @@
   );
 
   const hasSearch = $derived(searchQuery.trim().length > 0);
+
+  const page = createAsyncPage({
+    load: (run) => {
+      if (unavailable) return run.skip();
+      if (!music.libraryReady) return run.wait(music.loading);
+      if (totalCount > 0) return run.skip();
+      return music.refreshFavorites();
+    },
+  });
+
   const showInitialLoading = $derived(
-    !unavailable && loading && totalCount === 0 && !hasSearch,
+    !unavailable && page.loading && totalCount === 0 && !hasSearch,
   );
 
   const heroCoverSrc = $derived(
@@ -113,25 +123,6 @@
     if (activeTab === "albums") return filteredFavoriteAlbums.length === 0;
     if (activeTab === "artists") return filteredFavoriteArtists.length === 0;
     return filteredFavoriteSongs.length === 0;
-  });
-
-  $effect(() => {
-    if (unavailable) {
-      loading = false;
-      return;
-    }
-    if (!music.libraryReady) {
-      loading = music.loading;
-      return;
-    }
-    if (totalCount > 0) {
-      loading = false;
-      return;
-    }
-    loading = true;
-    void music.refreshFavorites().finally(() => {
-      loading = false;
-    });
   });
 
   function playCollection() {
@@ -270,7 +261,7 @@
     <LocalSearchBox
       bind:value={searchQuery}
       placeholder="Search in Favorites"
-      disabled={loading && totalCount === 0}
+      disabled={page.loading && totalCount === 0}
       resultCount={activeTab === "tracks"
         ? filteredFavoriteSongs.length
         : activeTab === "albums"

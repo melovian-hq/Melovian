@@ -9,8 +9,8 @@
   import { libraryUnavailable } from "$lib/music/library-gate";
   import { filterByLocalSearch } from "$lib/utils/local-search";
   import { rejectUnknownArtists } from "$lib/music/unknown-metadata";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
-  let loading = $state(true);
   let searchQuery = $state("");
 
   const unavailable = $derived(libraryUnavailable());
@@ -24,28 +24,19 @@
   );
 
   const hasSearch = $derived(searchQuery.trim().length > 0);
-  const showInitialLoading = $derived(
-    !unavailable && loading && music.allArtists.length === 0 && !hasSearch,
-  );
 
-  $effect(() => {
-    if (unavailable) {
-      loading = false;
-      return;
-    }
-    if (!music.libraryReady) {
-      loading = music.loading;
-      return;
-    }
-    if (music.allArtists.length > 0) {
-      loading = false;
-      return;
-    }
-    loading = true;
-    void music.loadArtists().finally(() => {
-      loading = false;
-    });
+  const page = createAsyncPage({
+    load: (run) => {
+      if (unavailable) return run.skip();
+      if (!music.libraryReady) return run.wait(music.loading);
+      if (music.allArtists.length > 0) return run.skip();
+      return music.loadArtists();
+    },
   });
+
+  const showInitialLoading = $derived(
+    !unavailable && page.loading && music.allArtists.length === 0 && !hasSearch,
+  );
 </script>
 
 <div class="artists-page">
@@ -54,7 +45,7 @@
   <LocalSearchBox
     bind:value={searchQuery}
     placeholder="Search artists"
-    disabled={unavailable || (loading && music.allArtists.length === 0)}
+    disabled={unavailable || (page.loading && music.allArtists.length === 0)}
     resultCount={filteredArtists.length}
     totalCount={visibleArtists.length}
   />

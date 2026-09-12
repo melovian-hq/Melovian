@@ -16,6 +16,7 @@
   import { filterByLocalSearch } from "$lib/utils/local-search";
   import type { SubsonicSong } from "$lib/subsonic";
   import { rejectUnknownTracks } from "$lib/music/unknown-metadata";
+  import { createPagedList } from "$lib/ui/async-page.svelte";
   import { APP_NAME } from "$lib/brand";
   import { setPageMeta } from "$lib/seo/meta";
 
@@ -36,16 +37,24 @@
   });
 
   const PAGE_SIZE = 200;
-  let loading = $state(true);
-  let loadingMore = $state(false);
-  let error = $state<string | null>(null);
   let searchQuery = $state("");
-  let songs = $state<SubsonicSong[]>([]);
-  let hasMore = $state(false);
   let pageMenu = $state<{ x: number; y: number } | null>(null);
 
+  const list = createPagedList<SubsonicSong>({
+    errorMessage: "Failed to load genre tracks",
+    load: async (offset) => {
+      const current = name;
+      if (offset === 0) list.items = [];
+      if (!music.libraryReady) {
+        throw new Error(music.error ?? "Not connected");
+      }
+      const page = await music.getGenreSongs(current, PAGE_SIZE, offset);
+      return { items: page, hasMore: page.length === PAGE_SIZE };
+    },
+  });
+
   const visibleSongs = $derived(
-    rejectUnknownTracks(songs, music.hideUnknownMetadata),
+    rejectUnknownTracks(list.items, music.hideUnknownMetadata),
   );
 
   const filteredSongs = $derived(
@@ -67,57 +76,8 @@
     music.playTracksNext(filteredSongs);
   }
   const showInitialLoading = $derived(
-    loading && songs.length === 0 && !hasSearch,
+    list.loading && list.items.length === 0 && !hasSearch,
   );
-
-  $effect(() => {
-    const current = name;
-    let cancelled = false;
-    loading = true;
-    error = null;
-    songs = [];
-    hasMore = false;
-    void (async () => {
-      if (!music.libraryReady) {
-        if (!cancelled) {
-          error = music.error ?? "Not connected";
-          loading = false;
-        }
-        return;
-      }
-      try {
-        const page = await music.getGenreSongs(current, PAGE_SIZE, 0);
-        if (!cancelled) {
-          songs = page;
-          hasMore = page.length === PAGE_SIZE;
-        }
-      } catch (err) {
-        if (!cancelled) {
-          error =
-            err instanceof Error ? err.message : "Failed to load genre tracks";
-        }
-      } finally {
-        if (!cancelled) loading = false;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
-  });
-
-  async function loadMore() {
-    if (loadingMore || !hasMore) return;
-    loadingMore = true;
-    try {
-      const page = await music.getGenreSongs(name, PAGE_SIZE, songs.length);
-      songs = [...songs, ...page];
-      hasMore = page.length === PAGE_SIZE;
-    } catch {
-      hasMore = false;
-    } finally {
-      loadingMore = false;
-    }
-  }
 
   function onPageContextMenu(event: MouseEvent) {
     pageMenu = contextMenuPositionFromEvent(event);
@@ -169,7 +129,7 @@
 <div class="genre-page" role="group" oncontextmenu={onPageContextMenu}>
   <PageHeader
     title={name}
-    subtitle={loading && songs.length === 0
+    subtitle={list.loading && list.items.length === 0
       ? "Loading..."
       : hasSearch
         ? `${filteredSongs.length} of ${visibleSongs.length} tracks`
@@ -217,7 +177,7 @@
   <LocalSearchBox
     bind:value={searchQuery}
     placeholder="Search tracks in this genre"
-    disabled={loading && songs.length === 0}
+    disabled={list.loading && list.items.length === 0}
     resultCount={filteredSongs.length}
     totalCount={visibleSongs.length}
   />
@@ -228,10 +188,10 @@
         <Skeleton class="track-skeleton" />
       {/each}
     </div>
-  {:else if error && songs.length === 0}
+  {:else if list.error && list.items.length === 0}
     <EmptyState
       title="Could not load genre"
-      message={error}
+      message={list.error}
       icon="alertCircle"
     />
   {:else if visibleSongs.length === 0}
@@ -253,13 +213,13 @@
         tracks={filteredSongs}
         onplay={(i) => music.playTracks(filteredSongs, i)}
         selectable={trackSelection.active}
-        onNearEnd={hasSearch ? undefined : loadMore}
+        onNearEnd={hasSearch ? undefined : list.loadMore}
         lazyThreshold={12}
       />
     </div>
-    {#if !hasSearch && hasMore && !loadingMore}
+    {#if !hasSearch && list.hasMore && !list.loadingMore}
       <p class="load-more-hint">Scroll down to load more tracks</p>
-    {:else if loadingMore}
+    {:else if list.loadingMore}
       <p class="load-more-hint">Loading more...</p>
     {/if}
   {/if}

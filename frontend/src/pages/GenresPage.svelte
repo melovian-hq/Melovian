@@ -14,10 +14,10 @@
   import LibraryUnavailable from "$lib/components/music/LibraryUnavailable.svelte";
   import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
   import { libraryUnavailable } from "$lib/music/library-gate";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
   const GENRE_BATCH = 60;
 
-  let loading = $state(true);
   let visibleCount = $state(GENRE_BATCH);
   let searchQuery = $state("");
   let genreMenu = $state<{ x: number; y: number; name: string } | null>(null);
@@ -35,33 +35,23 @@
   const hasMoreGenres = $derived(
     !hasSearch && visibleCount < filteredGenres.length,
   );
+  const page = createAsyncPage({
+    load: (run) => {
+      if (unavailable) return run.skip();
+      if (!music.libraryReady) return run.wait(music.loading);
+      if (music.genres.length > 0) return run.skip();
+      return music.loadGenres();
+    },
+  });
+
   const showInitialLoading = $derived(
-    !unavailable && loading && music.genres.length === 0 && !hasSearch,
+    !unavailable && page.loading && music.genres.length === 0 && !hasSearch,
   );
 
   $effect(() => {
     if (!hasSearch && music.genres.length >= 0) {
       visibleCount = GENRE_BATCH;
     }
-  });
-
-  $effect(() => {
-    if (unavailable) {
-      loading = false;
-      return;
-    }
-    if (!music.libraryReady) {
-      loading = music.loading;
-      return;
-    }
-    if (music.genres.length > 0) {
-      loading = false;
-      return;
-    }
-    loading = true;
-    void music.loadGenres().finally(() => {
-      loading = false;
-    });
   });
 
   function onGenreContextMenu(event: MouseEvent, name: string) {
@@ -77,7 +67,7 @@
   <LocalSearchBox
     bind:value={searchQuery}
     placeholder="Search genres"
-    disabled={unavailable || (loading && music.genres.length === 0)}
+    disabled={unavailable || (page.loading && music.genres.length === 0)}
     resultCount={filteredGenres.length}
     totalCount={music.genres.length}
   />

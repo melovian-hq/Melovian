@@ -32,6 +32,7 @@
   import type { SubsonicSong } from "$lib/subsonic";
   import { APP_NAME } from "$lib/brand";
   import { setPageMeta } from "$lib/seo/meta";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
   interface Props {
     albumId: string;
@@ -39,49 +40,31 @@
 
   let { albumId }: Props = $props();
 
-  let loading = $state(true);
-  let error = $state<string | null>(null);
   let album = $state<Awaited<ReturnType<typeof music.library.getAlbum>> | null>(
     null,
   );
   let albumMenu = $state<{ x: number; y: number } | null>(null);
 
-  $effect(() => {
-    const id = albumId;
-    const revision = music.libraryRevision;
-    let cancelled = false;
-    loading = true;
-    error = null;
-    album = null;
-    albumMenu = null;
-    if (revision > 0) invalidateAlbumDetailCache(id);
-    void (async () => {
+  const page = createAsyncPage({
+    errorMessage: "Failed to load album",
+    load: (run) => {
+      const id = albumId;
+      album = null;
+      albumMenu = null;
+      if (music.libraryRevision > 0) invalidateAlbumDetailCache(id);
       if (!music.libraryReady) {
-        if (!cancelled) {
-          error = music.error ?? "Not connected";
-          loading = false;
-        }
-        return;
+        throw new Error(music.error ?? "Not connected");
       }
-      try {
-        const result = await fetchAlbumWithCache(music.library, id, (stale) => {
-          if (!cancelled) {
-            album = stale;
-            loading = false;
-          }
-        });
-        if (!cancelled) album = result;
-      } catch (err) {
-        if (!cancelled) {
-          error = err instanceof Error ? err.message : "Failed to load album";
+      return fetchAlbumWithCache(music.library, id, (stale) => {
+        if (!run.cancelled) {
+          album = stale;
+          page.loading = false;
         }
-      } finally {
-        if (!cancelled) loading = false;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      });
+    },
+    apply: (result) => {
+      album = result;
+    },
   });
 
   const coverImage = $derived(
@@ -219,7 +202,7 @@
   <div class="album-page__body">
     <MusicBreadcrumbs items={breadcrumbItems} />
 
-    {#if loading}
+    {#if page.loading}
       <div
         class="album-page__skeleton"
         role="status"
@@ -233,10 +216,10 @@
           {/each}
         </div>
       </div>
-    {:else if error || !album}
+    {:else if page.error || !album}
       <EmptyState
         title="Could not load album"
-        message={error ?? "Album not found"}
+        message={page.error ?? "Album not found"}
         icon="alertCircle"
       >
         {#snippet actions()}

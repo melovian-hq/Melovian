@@ -22,6 +22,7 @@
   import type { PlaylistTrack, SubsonicSong } from "$lib/subsonic";
   import { APP_NAME } from "$lib/brand";
   import { setPageMeta } from "$lib/seo/meta";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
   interface Props {
     playlistId: string;
@@ -29,8 +30,6 @@
 
   let { playlistId }: Props = $props();
 
-  let loading = $state(true);
-  let error = $state<string | null>(null);
   let searchQuery = $state("");
   let refreshing = $state(false);
   let heroMenu = $state<{ x: number; y: number } | null>(null);
@@ -38,37 +37,19 @@
     null,
   );
 
-  $effect(() => {
-    const id = playlistId;
-    let cancelled = false;
-    loading = true;
-    error = null;
-    playlist = null;
-    void (async () => {
+  const page = createAsyncPage({
+    errorMessage: "Failed to load playlist",
+    load: () => {
+      const id = playlistId;
+      playlist = null;
       if (!music.libraryReady) {
-        if (!cancelled) {
-          error = music.error ?? "Not connected";
-          loading = false;
-        }
-        return;
+        throw new Error(music.error ?? "Not connected");
       }
-      try {
-        const result = await import("$lib/music/api").then((m) =>
-          m.getPlaylist(id),
-        );
-        if (!cancelled) playlist = result;
-      } catch (err) {
-        if (!cancelled) {
-          error =
-            err instanceof Error ? err.message : "Failed to load playlist";
-        }
-      } finally {
-        if (!cancelled) loading = false;
-      }
-    })();
-    return () => {
-      cancelled = true;
-    };
+      return import("$lib/music/api").then((m) => m.getPlaylist(id));
+    },
+    apply: (result) => {
+      playlist = result;
+    },
   });
 
   function trackToSong(track: PlaylistTrack): SubsonicSong {
@@ -195,7 +176,7 @@
 <div class="playlist-page">
   <MusicBreadcrumbs items={breadcrumbItems} />
 
-  {#if loading}
+  {#if page.loading}
     <div
       class="playlist-page__skeleton"
       role="status"
@@ -209,10 +190,10 @@
         {/each}
       </div>
     </div>
-  {:else if error || !playlist}
+  {:else if page.error || !playlist}
     <EmptyState
       title="Could not load playlist"
-      message={error ?? "Playlist not found"}
+      message={page.error ?? "Playlist not found"}
       icon="alertCircle"
     >
       {#snippet actions()}
@@ -288,7 +269,7 @@
     <LocalSearchBox
       bind:value={searchQuery}
       placeholder="Search playlist tracks"
-      disabled={loading && !playlist}
+      disabled={page.loading && !playlist}
       resultCount={filteredTracks.length}
       totalCount={playlist.tracks?.length ?? 0}
     />

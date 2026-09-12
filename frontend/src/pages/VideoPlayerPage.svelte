@@ -25,6 +25,7 @@
     registerVideoPause,
   } from "$lib/video/playback-gate.svelte";
   import { mediaTrackDownloadUrl } from "$lib/music/api";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
   interface Props {
     itemId?: string;
@@ -32,8 +33,6 @@
 
   let { itemId = "" }: Props = $props();
 
-  let loading = $state(true);
-  let error = $state<string | null>(null);
   let localVideo = $state<LocalVideo | null>(null);
   let embedUrl = $state<string | null>(null);
   let embedTitle = $state("");
@@ -104,76 +103,60 @@
     anchor.remove();
   }
 
-  $effect(() => {
-    const id = playId;
-    const hintTitle = queryTitle;
-    if (!id) {
-      loading = false;
-      error = "Missing video id";
-      return;
-    }
-    let cancelled = false;
-    loading = true;
-    error = null;
-    localVideo = null;
-    embedUrl = null;
-    heldEmbedUrl = null;
-    embedTitle = hintTitle;
-    embedAuthor = "";
-
-    async function load() {
-      try {
-        if (isInvidiousPlayId(id)) {
-          const videoId = invidiousIdFromPlayId(id);
-          if (!videoId) throw new Error("Invalid Invidious video id");
-          const resolved = await resolveVideo({
-            source: "invidious",
-            id: videoId,
-            title: hintTitle || undefined,
-          });
-          if (cancelled) return;
-          if (!resolved.embedUrl) {
-            throw new Error("No embed URL from Invidious settings");
-          }
-          embedUrl = resolved.embedUrl;
-          embedTitle = resolved.title || hintTitle;
-          embedAuthor = resolved.author ?? "";
-        } else if (isYouTubePlayId(id)) {
-          const videoId = youtubeIdFromPlayId(id);
-          if (!videoId) throw new Error("Invalid YouTube video id");
-          const resolved = await resolveVideo({
-            source: "youtube",
-            id: videoId,
-            title: hintTitle || undefined,
-          });
-          if (cancelled) return;
-          if (!resolved.embedUrl) {
-            throw new Error("No YouTube embed URL");
-          }
-          embedUrl = resolved.embedUrl;
-          embedTitle = resolved.title || hintTitle;
-          embedAuthor = resolved.author ?? "";
-        } else {
-          const video = await getLocalVideo(id);
-          if (cancelled) return;
-          localVideo = video;
-        }
-      } catch (err) {
-        if (!cancelled) {
-          error = err instanceof Error ? err.message : String(err);
-        }
-      } finally {
-        if (!cancelled) loading = false;
-      }
-    }
-
-    void load();
-    return () => {
-      cancelled = true;
+  const page = createAsyncPage({
+    cleanup: () => {
       releaseLocalVideo();
       embedUrl = null;
       heldEmbedUrl = null;
-    };
+    },
+    load: async (run) => {
+      const id = playId;
+      const hintTitle = queryTitle;
+      if (!id) throw new Error("Missing video id");
+      localVideo = null;
+      embedUrl = null;
+      heldEmbedUrl = null;
+      embedTitle = hintTitle;
+      embedAuthor = "";
+
+      if (isInvidiousPlayId(id)) {
+        const videoId = invidiousIdFromPlayId(id);
+        if (!videoId) throw new Error("Invalid Invidious video id");
+        const resolved = await resolveVideo({
+          source: "invidious",
+          id: videoId,
+          title: hintTitle || undefined,
+        });
+        if (run.cancelled) return;
+        if (!resolved.embedUrl) {
+          throw new Error("No embed URL from Invidious settings");
+        }
+        embedUrl = resolved.embedUrl;
+        embedTitle = resolved.title || hintTitle;
+        embedAuthor = resolved.author ?? "";
+        return;
+      }
+      if (isYouTubePlayId(id)) {
+        const videoId = youtubeIdFromPlayId(id);
+        if (!videoId) throw new Error("Invalid YouTube video id");
+        const resolved = await resolveVideo({
+          source: "youtube",
+          id: videoId,
+          title: hintTitle || undefined,
+        });
+        if (run.cancelled) return;
+        if (!resolved.embedUrl) {
+          throw new Error("No YouTube embed URL");
+        }
+        embedUrl = resolved.embedUrl;
+        embedTitle = resolved.title || hintTitle;
+        embedAuthor = resolved.author ?? "";
+        return;
+      }
+      const video = await getLocalVideo(id);
+      if (run.cancelled) return;
+      localVideo = video;
+    },
   });
 
   function releaseLocalVideo() {
@@ -239,13 +222,13 @@
     </Link>
   </div>
 
-  {#if loading}
+  {#if page.loading}
     <div class="video-player-page__center">
       <Spinner />
       <p class="video-player-page__loading-label">Loading video…</p>
     </div>
-  {:else if error}
-    <EmptyState title="Cannot play video" message={error} icon="alert">
+  {:else if page.error}
+    <EmptyState title="Cannot play video" message={page.error} icon="alert">
       {#snippet actions()}
         <Button
           variant="surface"

@@ -17,6 +17,7 @@
     type ContextMenuEntry,
   } from "$lib/components/ui/context-menu";
   import { toast } from "$lib/ui/toast.svelte";
+  import { createPagedList } from "$lib/ui/async-page.svelte";
   import { confirmDialog } from "$lib/ui/confirm.svelte";
   import {
     STATS_PERIOD_LABELS,
@@ -31,11 +32,6 @@
   const PAGE_SIZE = 100;
   const SEARCH_DEBOUNCE_MS = 250;
 
-  let loading = $state(true);
-  let loadingMore = $state(false);
-  let error = $state<string | null>(null);
-  let events = $state<ListenEvent[]>([]);
-  let hasMore = $state(false);
   let period = $state<StatsPeriod>("all");
   let searchQuery = $state("");
   let debouncedSearch = $state("");
@@ -44,8 +40,51 @@
 
   const unavailable = $derived(libraryUnavailable());
   const hasSearch = $derived(searchQuery.trim().length > 0);
+
+  const list = createPagedList<ListenEvent>({
+    errorMessage: "Failed to load listen history",
+    load: async (offset, run) => {
+      if (offset === 0) {
+        if (unavailable) {
+          list.items = [];
+          return run.skip();
+        }
+        if (!music.libraryReady) {
+          list.error = music.error;
+          return run.wait(music.loading);
+        }
+        list.items = [];
+        const currentPeriod = period;
+        const currentSearch = debouncedSearch.trim();
+        const [page, years] = await Promise.all([
+          musicApi.getListenEvents({
+            limit: PAGE_SIZE,
+            offset: 0,
+            period: currentPeriod,
+            q: currentSearch || undefined,
+          }),
+          currentPeriod === "all" && !currentSearch
+            ? musicApi.getListenEventYears()
+            : Promise.resolve(listenYears),
+        ]);
+        if (run.cancelled) return run.skip();
+        if (currentPeriod === "all" && !currentSearch) {
+          listenYears = years;
+        }
+        return { items: page.items, hasMore: page.hasMore };
+      }
+      const page = await musicApi.getListenEvents({
+        limit: PAGE_SIZE,
+        offset,
+        period,
+        q: debouncedSearch.trim() || undefined,
+      });
+      return { items: page.items, hasMore: page.hasMore };
+    },
+  });
+
   const showInitialLoading = $derived(
-    !unavailable && loading && events.length === 0,
+    !unavailable && list.loading && list.items.length === 0,
   );
 
   const scopeLabel = $derived.by(() => {
@@ -70,24 +109,28 @@
     return "All time";
   });
 
-  const playTracks = $derived(events.map(eventToSong));
+  const playTracks = $derived(list.items.map(eventToSong));
 
   const heroCoverSrc = $derived(
-    events[0]
+    list.items[0]
       ? coverArtUrl(
           music.config,
-          events[0].coverArtId || events[0].albumId || events[0].trackId,
+          list.items[0].coverArtId ||
+            list.items[0].albumId ||
+            list.items[0].trackId,
           800,
         )
       : null,
   );
 
   const heroMeta = $derived.by(() => {
-    if (events.length === 0) {
+    if (list.items.length === 0) {
       return `${periodLabel} · ${scopeLabel}`;
     }
-    const count = hasMore ? `${events.length}+` : String(events.length);
-    const plays = events.length === 1 ? "1 play" : `${count} plays`;
+    const count = list.hasMore
+      ? `${list.items.length}+`
+      : String(list.items.length);
+    const plays = list.items.length === 1 ? "1 play" : `${count} plays`;
     return `${plays} · ${periodLabel} · ${scopeLabel}`;
   });
 
@@ -98,83 +141,6 @@
     }, SEARCH_DEBOUNCE_MS);
     return () => clearTimeout(timer);
   });
-
-  $effect(() => {
-    if (unavailable) {
-      loading = false;
-      error = null;
-      events = [];
-      return;
-    }
-    if (!music.libraryReady) {
-      loading = music.loading;
-      error = music.error;
-      return;
-    }
-
-    const currentPeriod = period;
-    const currentSearch = debouncedSearch.trim();
-    let cancelled = false;
-
-    loading = true;
-    error = null;
-    events = [];
-    hasMore = false;
-
-    void (async () => {
-      try {
-        const [page, years] = await Promise.all([
-          musicApi.getListenEvents({
-            limit: PAGE_SIZE,
-            offset: 0,
-            period: currentPeriod,
-            q: currentSearch || undefined,
-          }),
-          currentPeriod === "all" && !currentSearch
-            ? musicApi.getListenEventYears()
-            : Promise.resolve(listenYears),
-        ]);
-        if (cancelled) return;
-        events = page.items;
-        hasMore = page.hasMore;
-        if (currentPeriod === "all" && !currentSearch) {
-          listenYears = years;
-        }
-      } catch (err) {
-        if (!cancelled) {
-          error =
-            err instanceof Error
-              ? err.message
-              : "Failed to load listen history";
-        }
-      } finally {
-        if (!cancelled) loading = false;
-      }
-    })();
-
-    return () => {
-      cancelled = true;
-    };
-  });
-
-  async function loadMore() {
-    if (loadingMore || !hasMore || loading) return;
-    loadingMore = true;
-    try {
-      const page = await musicApi.getListenEvents({
-        limit: PAGE_SIZE,
-        offset: events.length,
-        period,
-        q: debouncedSearch.trim() || undefined,
-      });
-      events = [...events, ...page.items];
-      hasMore = page.hasMore;
-    } catch {
-      hasMore = false;
-    } finally {
-      loadingMore = false;
-    }
-  }
 
   function eventToSong(event: ListenEvent): SubsonicSong {
     return {
@@ -217,8 +183,8 @@
     if (!ok) return;
     try {
       await music.clearListenHistory();
-      events = [];
-      hasMore = false;
+      list.items = [];
+      list.hasMore = false;
       listenYears = [];
       toast.success("History cleared");
     } catch (err) {
@@ -263,7 +229,7 @@
       label: "Clear history",
       icon: "trash2",
       danger: true,
-      disabled: events.length === 0 && music.listenHistory.length === 0,
+      disabled: list.items.length === 0 && music.listenHistory.length === 0,
       onclick: () => void clearHistory(),
     },
   ]);
@@ -279,8 +245,8 @@
     tone="history"
     icon="history"
     coverSrc={heroCoverSrc}
-    coverSeed={events[0]?.trackId ?? "history"}
-    playDisabled={events.length === 0}
+    coverSeed={list.items[0]?.trackId ?? "history"}
+    playDisabled={list.items.length === 0}
     onplay={playAll}
     onshuffle={shuffleAll}
     onplaynext={() => music.playTracksNext(playTracks)}
@@ -317,16 +283,16 @@
     <LocalSearchBox
       bind:value={searchQuery}
       placeholder="Search history"
-      resultCount={events.length}
+      resultCount={list.items.length}
     />
   </div>
 
   {#if unavailable}
     <LibraryUnavailable />
-  {:else if error}
+  {:else if list.error}
     <EmptyState
       title="Could not load history"
-      message={error}
+      message={list.error}
       icon="alertCircle"
     />
   {:else if showInitialLoading}
@@ -340,7 +306,7 @@
         <Skeleton variant="row" />
       {/each}
     </div>
-  {:else if events.length === 0}
+  {:else if list.items.length === 0}
     <EmptyState
       title={hasSearch ? "No matches" : "No listening history yet"}
       message={hasSearch
@@ -356,8 +322,12 @@
         <span>Played</span>
         <span>Time</span>
       </div>
-      <ListenHistoryList {events} onplay={playAt} onNearEnd={loadMore} />
-      {#if loadingMore}
+      <ListenHistoryList
+        events={list.items}
+        onplay={playAt}
+        onNearEnd={list.loadMore}
+      />
+      {#if list.loadingMore}
         <div class="history-page__more">
           <Spinner />
         </div>

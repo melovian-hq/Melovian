@@ -9,6 +9,7 @@
   import LibraryUnavailable from "$lib/components/music/LibraryUnavailable.svelte";
   import { music } from "$lib/config/music.svelte";
   import { libraryUnavailable } from "$lib/music/library-gate";
+  import { createPagedList } from "$lib/ui/async-page.svelte";
   import { type SubsonicAlbum } from "$lib/subsonic";
   import { filterByLocalSearch } from "$lib/utils/local-search";
   import { rejectUnknownAlbums } from "$lib/music/unknown-metadata";
@@ -24,17 +25,34 @@
 
   const ALBUM_PAGE_SIZE = 200;
 
-  let loading = $state(true);
-  let loadingMore = $state(false);
-  let hasMore = $state(true);
   let sort = $state<AlbumSort>("alphabeticalByName");
-  let albums = $state.raw<SubsonicAlbum[]>([]);
   let searchQuery = $state("");
 
   const unavailable = $derived(libraryUnavailable());
+  const hasSearch = $derived(searchQuery.trim().length > 0);
+
+  const list = createPagedList<SubsonicAlbum>({
+    canLoadMore: () => !unavailable && !hasSearch,
+    load: async (offset, run) => {
+      if (offset === 0) {
+        if (unavailable) {
+          list.items = [];
+          return run.skip();
+        }
+        if (!music.libraryReady) return run.wait(music.loading);
+        list.items = [];
+      }
+      const items = await music.library.getAlbumList2(
+        sort,
+        ALBUM_PAGE_SIZE,
+        offset,
+      );
+      return { items, hasMore: items.length >= ALBUM_PAGE_SIZE };
+    },
+  });
 
   const visibleAlbums = $derived(
-    rejectUnknownAlbums(albums, music.hideUnknownMetadata),
+    rejectUnknownAlbums(list.items, music.hideUnknownMetadata),
   );
 
   const filteredAlbums = $derived(
@@ -44,65 +62,9 @@
     ]),
   );
 
-  const hasSearch = $derived(searchQuery.trim().length > 0);
   const showInitialLoading = $derived(
-    !unavailable && loading && albums.length === 0 && !hasSearch,
+    !unavailable && list.loading && list.items.length === 0 && !hasSearch,
   );
-
-  async function loadMoreAlbums() {
-    if (unavailable || loading || loadingMore || !hasMore || hasSearch) return;
-    loadingMore = true;
-    try {
-      const items = await music.library.getAlbumList2(
-        sort,
-        ALBUM_PAGE_SIZE,
-        albums.length,
-      );
-      if (items.length < ALBUM_PAGE_SIZE) {
-        hasMore = false;
-      }
-      if (items.length > 0) {
-        albums = [...albums, ...items];
-      }
-    } catch {
-      hasMore = false;
-    } finally {
-      loadingMore = false;
-    }
-  }
-
-  $effect(() => {
-    const activeSort = sort;
-    if (unavailable) {
-      loading = false;
-      albums = [];
-      return;
-    }
-    if (!music.libraryReady) {
-      loading = music.loading;
-      return;
-    }
-    let cancelled = false;
-    loading = true;
-    hasMore = true;
-    albums = [];
-    void music.library
-      .getAlbumList2(activeSort, ALBUM_PAGE_SIZE, 0)
-      .then((items) => {
-        if (cancelled) return;
-        albums = items;
-        hasMore = items.length >= ALBUM_PAGE_SIZE;
-      })
-      .catch(() => {
-        if (!cancelled) albums = [];
-      })
-      .finally(() => {
-        if (!cancelled) loading = false;
-      });
-    return () => {
-      cancelled = true;
-    };
-  });
 </script>
 
 <div class="albums-page">
@@ -135,7 +97,7 @@
   <LocalSearchBox
     bind:value={searchQuery}
     placeholder="Search albums"
-    disabled={unavailable || (loading && albums.length === 0)}
+    disabled={unavailable || (list.loading && list.items.length === 0)}
     resultCount={filteredAlbums.length}
     totalCount={visibleAlbums.length}
   />
@@ -170,14 +132,14 @@
       albums={filteredAlbums}
       size="md"
       lazyThreshold={18}
-      onNearEnd={() => void loadMoreAlbums()}
+      onNearEnd={() => void list.loadMore()}
     />
-    {#if !hasSearch && hasMore}
+    {#if !hasSearch && list.hasMore}
       <div class="albums-page__more">
-        {#if loadingMore}
+        {#if list.loadingMore}
           <Spinner />
         {:else}
-          <Button variant="surface" onclick={() => void loadMoreAlbums()}>
+          <Button variant="surface" onclick={() => void list.loadMore()}>
             Load more albums
           </Button>
         {/if}

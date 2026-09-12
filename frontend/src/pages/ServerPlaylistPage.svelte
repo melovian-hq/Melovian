@@ -17,6 +17,7 @@
   import { formatPlaylistDuration } from "$lib/music/playlist-duration";
   import { stableItemKey } from "$lib/core/collection";
   import { toast } from "$lib/ui/toast.svelte";
+  import { createAsyncPage } from "$lib/ui/async-page.svelte";
   import { confirmDialog } from "$lib/ui/confirm.svelte";
   import { exportPlaylistM3U } from "$lib/music/playlist-m3u";
   import { savePlaylistFilesToDevice } from "$lib/music/context-actions";
@@ -29,9 +30,7 @@
 
   let { playlistId }: Props = $props();
 
-  let loading = $state(true);
   let saving = $state(false);
-  let error = $state<string | null>(null);
   let searchQuery = $state("");
   let playlist = $state<ServerPlaylist | null>(null);
   let songs = $state.raw<SubsonicSong[]>([]);
@@ -40,40 +39,24 @@
 
   const canEdit = $derived(sources.hasSubsonicActive);
 
-  async function loadPlaylist(id: string) {
-    loading = true;
-    error = null;
-    playlist = null;
-    songs = [];
-    try {
+  const page = createAsyncPage({
+    errorMessage: "Failed to load playlist",
+    load: async () => {
+      const id = playlistId;
+      playlist = null;
+      songs = [];
       if (!music.libraryReady) {
-        error = music.error ?? "Not connected";
-        return;
+        throw new Error(music.error ?? "Not connected");
       }
       const result = await music.fetchServerPlaylist(id);
-      if (!result) {
-        error = "Playlist not found";
-        return;
-      }
+      if (!result) throw new Error("Playlist not found");
+      return result;
+    },
+    apply: (result) => {
       playlist = result.playlist;
       songs = result.songs;
       renameValue = result.playlist.name;
-    } catch (err) {
-      error = err instanceof Error ? err.message : "Failed to load playlist";
-    } finally {
-      loading = false;
-    }
-  }
-
-  $effect(() => {
-    const id = playlistId;
-    let cancelled = false;
-    void loadPlaylist(id).then(() => {
-      if (cancelled) return;
-    });
-    return () => {
-      cancelled = true;
-    };
+    },
   });
 
   const filteredSongs = $derived(
@@ -139,7 +122,7 @@
     saving = true;
     try {
       await task();
-      await loadPlaylist(playlistId);
+      await page.reload();
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Playlist update failed",
@@ -214,10 +197,10 @@
 <div class="server-playlist-page">
   <MusicBreadcrumbs items={breadcrumbItems} />
 
-  {#if loading}
+  {#if page.loading}
     <div class="server-playlist-page__loading"><Spinner /></div>
-  {:else if error}
-    <p class="server-playlist-page__error">{error}</p>
+  {:else if page.error}
+    <p class="server-playlist-page__error">{page.error}</p>
     <Link href="/music/playlists">Back to playlists</Link>
   {:else if playlist}
     <header class="server-playlist-header">
