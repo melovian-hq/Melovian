@@ -8,6 +8,7 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"fmt"
+	"melovian/internal/httputil"
 	"net/http"
 	"time"
 
@@ -72,19 +73,19 @@ func (s *Server) oidcRuntime() (*oidcRuntime, error) {
 
 func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 	if s.auth == nil || !s.auth.Enabled() || !s.cfg.OIDCEnabled() {
-		http.Error(w, "oidc disabled", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "oidc_disabled", "oidc disabled")
 		return
 	}
 
 	runtime, err := s.oidcRuntime()
 	if err != nil {
-		http.Error(w, "oidc unavailable", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "oidc unavailable")
 		return
 	}
 
 	state, err := randomOIDCState()
 	if err != nil {
-		http.Error(w, "failed to start oidc login", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to start oidc login")
 		return
 	}
 	verifier := oauth2.GenerateVerifier()
@@ -102,35 +103,35 @@ func (s *Server) handleOIDCLogin(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 	if s.auth == nil || !s.auth.Enabled() || !s.cfg.OIDCEnabled() {
-		http.Error(w, "oidc disabled", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "oidc_disabled", "oidc disabled")
 		return
 	}
 
 	runtime, err := s.oidcRuntime()
 	if err != nil {
-		http.Error(w, "oidc unavailable", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "oidc unavailable")
 		return
 	}
 
 	if errMsg := r.URL.Query().Get("error"); errMsg != "" {
-		http.Error(w, errMsg, http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "oidc_error", errMsg)
 		return
 	}
 
 	stateCookie, err := r.Cookie(oidcStateCookie)
 	if err != nil || stateCookie.Value == "" || stateCookie.Value != r.URL.Query().Get("state") {
-		http.Error(w, "invalid oidc state", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_oidc_state", "invalid oidc state")
 		return
 	}
 	verifierCookie, err := r.Cookie(oidcVerifierCookie)
 	if err != nil || verifierCookie.Value == "" {
-		http.Error(w, "missing oidc verifier", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_oidc_verifier", "missing oidc verifier")
 		return
 	}
 
 	code := r.URL.Query().Get("code")
 	if code == "" {
-		http.Error(w, "missing authorization code", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_authorization_code", "missing authorization code")
 		return
 	}
 
@@ -139,20 +140,20 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 
 	token, err := runtime.oauth2.Exchange(ctx, code, oauth2.VerifierOption(verifierCookie.Value))
 	if err != nil {
-		http.Error(w, "oidc exchange failed", http.StatusBadGateway)
+		httputil.WriteError(w, http.StatusBadGateway, "bad_gateway", "oidc exchange failed")
 		return
 	}
 
 	rawIDToken, ok := token.Extra("id_token").(string)
 	if !ok || rawIDToken == "" {
-		http.Error(w, "missing id token", http.StatusBadGateway)
+		httputil.WriteError(w, http.StatusBadGateway, "bad_gateway", "missing id token")
 		return
 	}
 
 	verifier := runtime.provider.Verifier(&oidc.Config{ClientID: s.cfg.OIDC.ClientID})
 	idToken, err := verifier.Verify(ctx, rawIDToken)
 	if err != nil {
-		http.Error(w, "invalid id token", http.StatusUnauthorized)
+		httputil.WriteError(w, http.StatusUnauthorized, "invalid_id_token", "invalid id token")
 		return
 	}
 
@@ -163,7 +164,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 		Name              string `json:"name"`
 	}
 	if err := idToken.Claims(&claims); err != nil {
-		http.Error(w, "invalid id token claims", http.StatusBadGateway)
+		httputil.WriteError(w, http.StatusBadGateway, "bad_gateway", "invalid id token claims")
 		return
 	}
 
@@ -177,7 +178,7 @@ func (s *Server) handleOIDCCallback(w http.ResponseWriter, r *http.Request) {
 
 	user, err := s.auth.FindOrCreateOIDCUser(idToken.Issuer, claims.Subject, username)
 	if err != nil {
-		http.Error(w, "failed to provision user", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to provision user")
 		return
 	}
 

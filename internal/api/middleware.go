@@ -6,6 +6,7 @@ package api
 import (
 	"context"
 	"fmt"
+	"melovian/internal/httputil"
 	"net/http"
 	"strings"
 
@@ -77,7 +78,7 @@ func AuthMiddleware(auth *store.AuthStore, demo bool, next http.Handler) http.Ha
 		token := sessionTokenFromRequest(r)
 		userID, err := auth.UserIDFromToken(token)
 		if err != nil {
-			http.Error(w, "unauthorized", http.StatusUnauthorized)
+			httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 			return
 		}
 
@@ -95,7 +96,7 @@ func Middleware(resolver InstanceResolver, next http.Handler) http.Handler {
 		}
 		instanceID, err := resolver.ResolveInstanceID(r)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 		ctx = context.WithValue(ctx, instanceContextKey, instanceID)

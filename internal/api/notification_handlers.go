@@ -39,12 +39,12 @@ func (s *Server) handleListNotifications(w http.ResponseWriter, r *http.Request)
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	items, err := s.notifications.List(userID, limit, offset)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleListNotifications", err)
 		return
 	}
 	unread, err := s.notifications.UnreadCount(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleListNotifications", err)
 		return
 	}
 	out := make([]map[string]any, len(items))
@@ -62,7 +62,7 @@ func (s *Server) handleNotificationUnreadCount(w http.ResponseWriter, r *http.Re
 	}
 	unread, err := s.notifications.UnreadCount(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleNotificationUnreadCount", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{"unread": unread})
@@ -80,7 +80,7 @@ func (s *Server) handleMarkNotificationRead(w http.ResponseWriter, r *http.Reque
 			http.NotFound(w, r)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleMarkNotificationRead", err)
 		return
 	}
 	s.pushNotificationUpdated(userID, item)
@@ -95,7 +95,7 @@ func (s *Server) handleMarkAllNotificationsRead(w http.ResponseWriter, r *http.R
 	}
 	n, err := s.notifications.MarkAllRead(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleMarkAllNotificationsRead", err)
 		return
 	}
 	s.events.BroadcastToUser(userID, Event{
@@ -119,7 +119,7 @@ func (s *Server) handleDeleteNotification(w http.ResponseWriter, r *http.Request
 			http.NotFound(w, r)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteNotification", err)
 		return
 	}
 	s.events.BroadcastToUser(userID, Event{

@@ -227,7 +227,7 @@ func (s *Server) handlePartyStream(w http.ResponseWriter, r *http.Request) {
 
 	if strings.HasPrefix(trackID, "trk_") {
 		if !s.partyHostMayAccessLocalTrack(session.HostUserID, trackID) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 			return
 		}
 		s.serveLocalTrackFile(w, r, trackID, false)
@@ -236,12 +236,12 @@ func (s *Server) handlePartyStream(w http.ResponseWriter, r *http.Request) {
 
 	client := s.subsonicClientForPartyHost(session.HostUserID)
 	if !client.Enabled() {
-		http.Error(w, "subsonic not configured", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "subsonic not configured")
 		return
 	}
 	body, contentType, err := client.Stream(trackID)
 	if err != nil {
-		http.Error(w, "stream failed: "+err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "stream failed:", err)
 		return
 	}
 	defer func() { _ = body.Close() }()

@@ -122,7 +122,7 @@ func (m *MusicService) handleResume(w http.ResponseWriter, r *http.Request) {
 	limit := httputil.QueryIntClamped(r, "limit", 18, 1, 500)
 	items, err := m.listen.ResumeTracks(userID, limit)
 	if err != nil {
-		http.Error(w, "failed to load resume tracks", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load resume tracks")
 		return
 	}
 
@@ -138,7 +138,7 @@ func (m *MusicService) handleHistory(w http.ResponseWriter, r *http.Request) {
 	limit := httputil.QueryIntClamped(r, "limit", 50, 1, 500)
 	items, err := m.listen.History(userID, limit)
 	if err != nil {
-		http.Error(w, "failed to load history", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load history")
 		return
 	}
 
@@ -170,7 +170,7 @@ func (m *MusicService) handleListenEvents(w http.ResponseWriter, r *http.Request
 		Search: search,
 	})
 	if err != nil {
-		http.Error(w, "failed to load listen events", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load listen events")
 		return
 	}
 
@@ -190,7 +190,7 @@ func (m *MusicService) handleListenEventYears(w http.ResponseWriter, r *http.Req
 	userID := ResolveProgressUserID(r.Context())
 	years, err := m.listen.ListenEventYears(userID)
 	if err != nil {
-		http.Error(w, "failed to load listen years", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load listen years")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{"years": years})
@@ -199,7 +199,7 @@ func (m *MusicService) handleListenEventYears(w http.ResponseWriter, r *http.Req
 func (m *MusicService) handleClearListenEvents(w http.ResponseWriter, r *http.Request) {
 	userID := ResolveProgressUserID(r.Context())
 	if err := m.listen.ClearHistory(userID); err != nil {
-		http.Error(w, "failed to clear listen history", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to clear listen history")
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -240,7 +240,7 @@ func (m *MusicService) handleStats(w http.ResponseWriter, r *http.Request) {
 	limit := httputil.QueryInt(r, "limit", 8)
 	stats, err := m.listen.Stats(userID, limit)
 	if err != nil {
-		http.Error(w, "failed to load stats", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load stats")
 		return
 	}
 
@@ -283,7 +283,7 @@ func (m *MusicService) handleBatch(w http.ResponseWriter, r *http.Request) {
 
 	items, err := m.listen.Batch(userID, filtered)
 	if err != nil {
-		http.Error(w, "failed to load progress", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load progress")
 		return
 	}
 
@@ -303,7 +303,7 @@ func (m *MusicService) handleGet(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{})
 			return
 		}
-		http.Error(w, "failed to load progress", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load progress")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, item.JSON())
@@ -315,7 +315,7 @@ func (m *MusicService) handleUpsert(w http.ResponseWriter, r *http.Request) {
 
 	var req listenUpsertRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 
@@ -332,7 +332,7 @@ func (m *MusicService) handleUpsert(w http.ResponseWriter, r *http.Request) {
 		DurationMs:    req.DurationMs,
 		CoverArtID:    req.CoverArtID,
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -348,7 +348,7 @@ func (m *MusicService) handlePlayed(w http.ResponseWriter, r *http.Request) {
 	userID := ResolveProgressUserID(r.Context())
 	trackID := r.PathValue("trackId")
 	if err := m.listen.MarkPlayed(userID, trackID); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handlePlayed", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -362,7 +362,7 @@ func (m *MusicService) handleDelete(w http.ResponseWriter, r *http.Request) {
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDelete", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -372,7 +372,7 @@ func (m *MusicService) handleListPlaylists(w http.ResponseWriter, r *http.Reques
 	userID := ResolveProgressUserID(r.Context())
 	playlists, err := m.listen.ListPlaylists(userID)
 	if err != nil {
-		http.Error(w, "failed to load playlists", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load playlists")
 		return
 	}
 
@@ -395,7 +395,7 @@ func (m *MusicService) handleCreatePlaylist(w http.ResponseWriter, r *http.Reque
 	userID := ResolveProgressUserID(r.Context())
 	var req createPlaylistRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 
@@ -405,7 +405,7 @@ func (m *MusicService) handleCreatePlaylist(w http.ResponseWriter, r *http.Reque
 		RulesJSON: req.RulesJSON,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	httputil.WriteJSON(w, http.StatusCreated, pl.ToJSON())
@@ -417,10 +417,10 @@ func (m *MusicService) handleGetPlaylist(w http.ResponseWriter, r *http.Request)
 	pl, err := m.listen.GetPlaylist(userID, playlistID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, "failed to load playlist", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load playlist")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, pl.ToJSON())
@@ -435,16 +435,16 @@ func (m *MusicService) handleRenamePlaylist(w http.ResponseWriter, r *http.Reque
 	playlistID := r.PathValue("playlistId")
 	var req renamePlaylistRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 
 	if err := m.listen.RenamePlaylist(userID, playlistID, req.Name); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -461,10 +461,10 @@ func (m *MusicService) handleDeletePlaylist(w http.ResponseWriter, r *http.Reque
 	playlistID := r.PathValue("playlistId")
 	if err := m.listen.DeletePlaylist(userID, playlistID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeletePlaylist", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -479,16 +479,16 @@ func (m *MusicService) handleSetTracks(w http.ResponseWriter, r *http.Request) {
 	playlistID := r.PathValue("playlistId")
 	var req setTracksRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 
 	if err := m.listen.SetPlaylistTracks(userID, playlistID, req.Tracks); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -501,16 +501,16 @@ func (m *MusicService) handleAddTrack(w http.ResponseWriter, r *http.Request) {
 	playlistID := r.PathValue("playlistId")
 	var track store.PlaylistTrack
 	if err := json.NewDecoder(r.Body).Decode(&track); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 
 	if err := m.listen.AddPlaylistTrack(userID, playlistID, track); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -524,10 +524,10 @@ func (m *MusicService) handleRemoveTrack(w http.ResponseWriter, r *http.Request)
 	trackID := r.PathValue("trackId")
 	if err := m.listen.RemovePlaylistTrack(userID, playlistID, trackID); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleRemoveTrack", err)
 		return
 	}
 
@@ -549,7 +549,7 @@ func (m *MusicService) handleListFavorites(w http.ResponseWriter, r *http.Reques
 	limit := httputil.QueryInt(r, "limit", 200)
 	items, err := m.listen.ListFavorites(userID, limit)
 	if err != nil {
-		http.Error(w, "failed to load favorites", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load favorites")
 		return
 	}
 
@@ -566,7 +566,7 @@ func (m *MusicService) handleAddFavorite(w http.ResponseWriter, r *http.Request)
 
 	var req favoriteTrackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 
@@ -579,7 +579,7 @@ func (m *MusicService) handleAddFavorite(w http.ResponseWriter, r *http.Request)
 		DurationMs: req.DurationMs,
 		CoverArtID: req.CoverArtID,
 	}); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -593,7 +593,7 @@ func (m *MusicService) handleRemoveFavorite(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleRemoveFavorite", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -607,7 +607,7 @@ func (m *MusicService) handleGetEq(w http.ResponseWriter, r *http.Request) {
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{})
 			return
 		}
-		http.Error(w, "failed to load eq settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load eq settings")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -619,15 +619,15 @@ func (m *MusicService) handlePutEq(w http.ResponseWriter, r *http.Request) {
 	userID := ResolveProgressUserID(r.Context())
 	body, err := httputil.ReadJSONBytes(r)
 	if err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	if !json.Valid(body) {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	if err := m.preferences.Set(userID, store.PrefKeyMusicEq, string(body)); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -643,7 +643,7 @@ func (m *MusicService) handleGetConnectionSettings(w http.ResponseWriter, r *htt
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{})
 			return
 		}
-		http.Error(w, "failed to load connection settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load connection settings")
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")
@@ -655,15 +655,15 @@ func (m *MusicService) handlePutConnectionSettings(w http.ResponseWriter, r *htt
 	userID := ResolveProgressUserID(r.Context())
 	body, err := httputil.ReadJSONBytes(r)
 	if err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	if !json.Valid(body) {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	if err := m.preferences.Set(userID, store.PrefKeyConnectionSettings, string(body)); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	w.Header().Set("Content-Type", "application/json")

@@ -62,7 +62,7 @@ func (s *Server) handleSetMultiLocalLibrary(w http.ResponseWriter, r *http.Reque
 	}
 	userID := UserIDFromContext(r.Context())
 	if err := s.preferences.SetMultiLocalLibrary(userID, req.Enabled); err != nil {
-		httputil.WriteError(w, http.StatusInternalServerError, "save_failed", err.Error())
+		httputil.WriteInternalError(w, r, "set multi local library", err)
 		return
 	}
 	s.handleSourceStatus(w, r)

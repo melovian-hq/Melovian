@@ -91,7 +91,7 @@ func (m *MusicService) handleGetLastFMSettings(w http.ResponseWriter, r *http.Re
 	userID := ResolveProgressUserID(r.Context())
 	payload, err := m.loadLastFMSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load last.fm settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load last.fm settings")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, lastFMSettings{
@@ -108,7 +108,7 @@ func (m *MusicService) handlePutLastFMSettings(w http.ResponseWriter, r *http.Re
 	userID := ResolveProgressUserID(r.Context())
 	var payload lastFMPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	payload.APIKey = strings.TrimSpace(payload.APIKey)
@@ -116,7 +116,7 @@ func (m *MusicService) handlePutLastFMSettings(w http.ResponseWriter, r *http.Re
 	payload.SessionKey = strings.TrimSpace(payload.SessionKey)
 	payload.Endpoint = strings.TrimSpace(payload.Endpoint)
 	if err := m.saveLastFMSettings(userID, payload); err != nil {
-		http.Error(w, "failed to save last.fm settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to save last.fm settings")
 		return
 	}
 	m.handleGetLastFMSettings(w, r)
@@ -126,12 +126,12 @@ func (m *MusicService) handleTestLastFMToken(w http.ResponseWriter, r *http.Requ
 	userID := ResolveProgressUserID(r.Context())
 	var body lastFMPayload
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	saved, err := m.loadLastFMSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load last.fm settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load last.fm settings")
 		return
 	}
 	apiKey := firstNonEmpty(strings.TrimSpace(body.APIKey), saved.APIKey)
@@ -139,7 +139,7 @@ func (m *MusicService) handleTestLastFMToken(w http.ResponseWriter, r *http.Requ
 	sessionKey := firstNonEmpty(strings.TrimSpace(body.SessionKey), saved.SessionKey)
 	endpoint := defaultLastFMEndpoint(firstNonEmpty(strings.TrimSpace(body.Endpoint), saved.Endpoint))
 	if apiKey == "" || apiSecret == "" || sessionKey == "" {
-		http.Error(w, "last.fm credentials are not configured", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "last_fm_credentials_are_not_configured", "last.fm credentials are not configured")
 		return
 	}
 	client := lastfm.NewClient(m.httpClient)
@@ -148,7 +148,7 @@ func (m *MusicService) handleTestLastFMToken(w http.ResponseWriter, r *http.Requ
 	defer cancel()
 	userName, err := client.ValidateToken(ctx, apiKey, apiSecret, sessionKey)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("last.fm token test failed: %s", err.Error()), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "token_test_failed", fmt.Sprintf("last.fm token test failed: %s", err.Error()))
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -174,7 +174,7 @@ func (m *MusicService) doLastFMScrobble(w http.ResponseWriter, r *http.Request, 
 	userID := ResolveProgressUserID(r.Context())
 	payload, err := m.loadLastFMSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load last.fm settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load last.fm settings")
 		return
 	}
 	if payload.APIKey == "" || payload.APISecret == "" || payload.SessionKey == "" {
@@ -183,7 +183,7 @@ func (m *MusicService) doLastFMScrobble(w http.ResponseWriter, r *http.Request, 
 	}
 	var req scrobblerTrackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	track := lastfm.Track{
@@ -203,7 +203,7 @@ func (m *MusicService) doLastFMScrobble(w http.ResponseWriter, r *http.Request, 
 		err = client.Scrobble(ctx, payload.APIKey, payload.APISecret, payload.SessionKey, track, time.Now())
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "doLastFMScrobble", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

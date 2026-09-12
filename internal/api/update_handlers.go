@@ -248,7 +248,7 @@ func (s *Server) handleGetUpdateSettings(w http.ResponseWriter, r *http.Request)
 	userID := ResolveProgressUserID(r.Context())
 	settings, err := s.loadUpdateSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load update settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load update settings")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, settings)
@@ -258,21 +258,21 @@ func (s *Server) handlePutUpdateSettings(w http.ResponseWriter, r *http.Request)
 	userID := ResolveProgressUserID(r.Context())
 	body, err := httputil.ReadJSONBytes(r)
 	if err != nil || !json.Valid(body) {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	settings, err := mergeUpdateSettings(body)
 	if err != nil {
-		http.Error(w, "invalid update settings", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_update_settings", "invalid update settings")
 		return
 	}
 	encoded, err := json.Marshal(settings)
 	if err != nil {
-		http.Error(w, "encode update settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "encode update settings")
 		return
 	}
 	if err := s.preferences.Set(userID, store.PrefKeyUpdateSettings, string(encoded)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handlePutUpdateSettings", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, settings)
@@ -285,7 +285,7 @@ func (s *Server) handlePutUpdateSettings(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 	userID := ResolveProgressUserID(r.Context())
 	if s.cfg.AuthEnabled() && userID == "" {
-		http.Error(w, "authentication required", http.StatusUnauthorized)
+		httputil.WriteError(w, http.StatusUnauthorized, "authentication_required", "authentication required")
 		return
 	}
 	s.upd.mu.Lock()
@@ -302,7 +302,7 @@ func (s *Server) handleApplyUpdate(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if !canApplyUpdate() {
-		http.Error(w, "self-update is not available on this install (container or read-only binary); update via your package manager or image", http.StatusConflict)
+		httputil.WriteError(w, http.StatusConflict, "self_update_is_not_available_on_this_ins", "self-update is not available on this install (container or read-only binary); update via your package manager or image")
 		return
 	}
 	s.upd.mu.Lock()
@@ -358,7 +358,7 @@ func (s *Server) handleRestartUpdate(w http.ResponseWriter, r *http.Request) {
 	hooks := s.upd.updHooks
 	s.upd.mu.Unlock()
 	if hooks == nil || hooks.Restart == nil {
-		http.Error(w, "restart-into-update is only available on desktop builds", http.StatusConflict)
+		httputil.WriteError(w, http.StatusConflict, "restart_into_update_is_only_available_on", "restart-into-update is only available on desktop builds")
 		return
 	}
 	if err := hooks.Restart(r.Context()); err != nil {

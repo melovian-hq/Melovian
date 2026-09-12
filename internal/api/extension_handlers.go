@@ -131,10 +131,10 @@ func (s *Server) buildExtensionList() ([]extensionListItem, []extensions.Manifes
 	return out, manifests, nil
 }
 
-func (s *Server) writeExtensionList(w http.ResponseWriter) {
+func (s *Server) writeExtensionList(w http.ResponseWriter, r *http.Request) {
 	out, manifests, err := s.buildExtensionList()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "list extensions", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -145,22 +145,22 @@ func (s *Server) writeExtensionList(w http.ResponseWriter) {
 }
 
 func (s *Server) handleListExtensions(w http.ResponseWriter, r *http.Request) {
-	s.writeExtensionList(w)
+	s.writeExtensionList(w, r)
 }
 
 func (s *Server) handleExtensionScript(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_id", "missing id")
 		return
 	}
 	data, contentType, err := extensions.ReadScript(s.cfg.DataDir, id)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", err.Error())
 		return
 	}
 	if err := extensions.ValidateScript(string(data)); err != nil {
-		http.Error(w, "script blocked by sandbox policy", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "script_blocked_by_sandbox_policy", "script blocked by sandbox policy")
 		return
 	}
 	w.Header().Set("Content-Type", contentType)
@@ -173,12 +173,12 @@ func (s *Server) handleExtensionAsset(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	rel := strings.TrimSpace(r.PathValue("path"))
 	if id == "" || rel == "" {
-		http.Error(w, "missing path", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_path", "missing path")
 		return
 	}
 	full, err := extensions.ResolveAssetPath(s.cfg.DataDir, id, rel)
 	if err != nil {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
@@ -189,7 +189,7 @@ func (s *Server) handleExtensionAsset(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleSetExtensionEnabled(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_id", "missing id")
 		return
 	}
 	var req extensionEnabledRequest
@@ -198,10 +198,10 @@ func (s *Server) handleSetExtensionEnabled(w http.ResponseWriter, r *http.Reques
 		return
 	}
 	if err := extensions.SetEnabled(s.cfg.DataDir, id, req.Enabled); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", err.Error())
 		return
 	}
-	s.writeExtensionList(w)
+	s.writeExtensionList(w, r)
 }
 
 func (s *Server) handleInstallExtension(w http.ResponseWriter, r *http.Request) {
@@ -236,7 +236,7 @@ func (s *Server) handleInstallExtension(w http.ResponseWriter, r *http.Request) 
 			httputil.WriteError(w, http.StatusBadRequest, "install_failed", err.Error())
 			return
 		}
-		s.writeExtensionList(w)
+		s.writeExtensionList(w, r)
 		return
 	}
 
@@ -249,26 +249,26 @@ func (s *Server) handleInstallExtension(w http.ResponseWriter, r *http.Request) 
 		httputil.WriteError(w, http.StatusBadRequest, "install_failed", err.Error())
 		return
 	}
-	s.writeExtensionList(w)
+	s.writeExtensionList(w, r)
 }
 
 func (s *Server) handleUninstallExtension(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_id", "missing id")
 		return
 	}
 	if err := extensions.Uninstall(s.cfg.DataDir, id); err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", err.Error())
 		return
 	}
-	s.writeExtensionList(w)
+	s.writeExtensionList(w, r)
 }
 
 func (s *Server) handleReinstallExtension(w http.ResponseWriter, r *http.Request) {
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
-		http.Error(w, "missing id", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "missing_id", "missing id")
 		return
 	}
 	if !extensions.IsBundled(id) {
@@ -276,8 +276,8 @@ func (s *Server) handleReinstallExtension(w http.ResponseWriter, r *http.Request
 		return
 	}
 	if err := extensions.ReinstallBundled(s.cfg.DataDir, id); err != nil {
-		httputil.WriteError(w, http.StatusInternalServerError, "reinstall_failed", err.Error())
+		httputil.WriteInternalError(w, r, "reinstall bundled extension", err)
 		return
 	}
-	s.writeExtensionList(w)
+	s.writeExtensionList(w, r)
 }

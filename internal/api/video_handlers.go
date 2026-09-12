@@ -109,12 +109,12 @@ func (s *Server) handleLocalVideosList(w http.ResponseWriter, r *http.Request) {
 	userID := UserIDFromContext(r.Context())
 	libraryIDs, err := s.libraryIDsForUser(userID)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	tracks, err := s.localTracks.ListVideosInLibraries(libraryIDs)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalVideosList", err)
 		return
 	}
 	videos := make([]localVideoView, 0, len(tracks))
@@ -133,22 +133,22 @@ func (s *Server) handleLocalVideoGet(w http.ResponseWriter, r *http.Request) {
 	track, err := s.localTracks.GetByID(trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalVideoGet", err)
 		return
 	}
 	if store.NormalizeMediaKind(track.MediaKind) != store.MediaKindVideo {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	if _, err := s.localLibraries.GetForUser(userID, track.LibraryID); err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	if track.Status != store.TrackStatusPresent || track.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localVideoViewFrom(track))
@@ -161,7 +161,7 @@ func (s *Server) handleVideoSearch(w http.ResponseWriter, r *http.Request) {
 	}
 	query := strings.TrimSpace(r.URL.Query().Get("q"))
 	if query == "" {
-		http.Error(w, "q is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "q_is_required", "q is required")
 		return
 	}
 	provider := strings.TrimSpace(r.URL.Query().Get("provider"))
@@ -178,20 +178,20 @@ func (s *Server) handleVideoSearch(w http.ResponseWriter, r *http.Request) {
 	switch provider {
 	case VideoSearchProviderYouTube:
 		if settings.YouTubeAPIKey == "" {
-			http.Error(w, "configure a YouTube Data API key in Settings → Video", http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "configure_a_youtube_data_api_key_in_sett", "configure a YouTube Data API key in Settings → Video")
 			return
 		}
 		results, err = s.videoClient.SearchYouTube(ctx, settings.YouTubeAPIKey, query)
 	default:
 		provider = VideoSearchProviderInvidious
 		if settings.InvidiousBaseURL == "" {
-			http.Error(w, "configure an Invidious instance in Settings → Video", http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "configure_an_invidious_instance_in_setti", "configure an Invidious instance in Settings → Video")
 			return
 		}
 		results, err = s.videoClient.SearchInvidious(ctx, settings.InvidiousBaseURL, query)
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "handleVideoSearch", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, videoSearchResponse{Results: results, Provider: provider})
@@ -214,11 +214,11 @@ func (s *Server) handleVideoResolve(w http.ResponseWriter, r *http.Request) {
 	}
 	normalizedSource, err := store.NormalizeVideoSource(source)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	if videoID == "" {
-		http.Error(w, "id is required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "id_is_required", "id is required")
 		return
 	}
 	if normalizedSource == store.VideoSourceLocal {
@@ -245,7 +245,7 @@ func (s *Server) handleVideoResolve(w http.ResponseWriter, r *http.Request) {
 		}
 	default:
 		if settings.InvidiousBaseURL == "" {
-			http.Error(w, "configure an Invidious instance in Settings → Video", http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "configure_an_invidious_instance_in_setti", "configure an Invidious instance in Settings → Video")
 			return
 		}
 		embedURL, err = video.EmbedURL(settings.InvidiousBaseURL, videoID)
@@ -257,7 +257,7 @@ func (s *Server) handleVideoResolve(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, videoResolveResponse{
@@ -279,10 +279,10 @@ func (s *Server) handleGetTrackVideoLink(w http.ResponseWriter, r *http.Request)
 	link, err := s.videoLinks.Get(userID, trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleGetTrackVideoLink", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, trackVideoLinkView{
@@ -302,7 +302,7 @@ func (s *Server) handlePutTrackVideoLink(w http.ResponseWriter, r *http.Request)
 	trackID := r.PathValue("trackId")
 	var req upsertTrackVideoLinkRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	link, err := s.videoLinks.Upsert(store.UpsertTrackVideoLinkInput{
@@ -313,7 +313,7 @@ func (s *Server) handlePutTrackVideoLink(w http.ResponseWriter, r *http.Request)
 		Title:   req.Title,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, trackVideoLinkView{
@@ -336,7 +336,7 @@ func (s *Server) handleDeleteTrackVideoLink(w http.ResponseWriter, r *http.Reque
 			w.WriteHeader(http.StatusNoContent)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteTrackVideoLink", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

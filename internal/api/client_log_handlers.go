@@ -52,7 +52,7 @@ func (s *Server) handleClientLog(w http.ResponseWriter, r *http.Request) {
 
 	var req clientLogRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -62,7 +62,7 @@ func (s *Server) handleClientLog(w http.ResponseWriter, r *http.Request) {
 	}
 	req.Message = strings.TrimSpace(req.Message)
 	if req.Message == "" {
-		http.Error(w, "message required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "message_required", "message required")
 		return
 	}
 	if req.Time == "" {

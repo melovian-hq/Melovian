@@ -58,7 +58,7 @@ func (s *Server) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 
 	count, err := s.auth.CountUsers()
 	if err != nil {
-		http.Error(w, "failed to read auth status", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to read auth status")
 		return
 	}
 	payload["setupRequired"] = count == 0 && !s.cfg.OIDCEnabled()
@@ -96,11 +96,11 @@ type authCredentialsRequest struct {
 
 func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 	if s.auth == nil || !s.auth.Enabled() {
-		http.Error(w, "auth disabled", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "auth_disabled", "auth disabled")
 		return
 	}
 	if s.cfg.OIDCEnabled() {
-		http.Error(w, "local account setup disabled when oidc is enabled", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "local_account_setup_disabled_when_oidc_i", "local account setup disabled when oidc is enabled")
 		return
 	}
 	if s.loginKeysRateLimited(w, s.loginRateLimitKeys(r, "")) {
@@ -114,17 +114,17 @@ func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 
 	count, err := s.auth.CountUsers()
 	if err != nil {
-		http.Error(w, "failed to read users", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to read users")
 		return
 	}
 	if count > 0 {
-		http.Error(w, "setup already completed", http.StatusConflict)
+		httputil.WriteError(w, http.StatusConflict, "setup_already_completed", "setup already completed")
 		return
 	}
 
 	var req authCredentialsRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -133,7 +133,7 @@ func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 		if s.authLimiter != nil {
 			s.authLimiter.record(s.loginRateLimitKeys(r, "")...)
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -150,13 +150,13 @@ func (s *Server) handleAuthSetup(w http.ResponseWriter, r *http.Request) {
 
 func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 	if s.auth == nil || !s.auth.Enabled() {
-		http.Error(w, "auth disabled", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "auth_disabled", "auth disabled")
 		return
 	}
 
 	var req authCredentialsRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	keys := s.loginRateLimitKeys(r, req.Username)
@@ -169,7 +169,7 @@ func (s *Server) handleAuthLogin(w http.ResponseWriter, r *http.Request) {
 		if s.authLimiter != nil {
 			s.authLimiter.record(keys...)
 		}
-		http.Error(w, "invalid credentials", http.StatusUnauthorized)
+		httputil.WriteError(w, http.StatusUnauthorized, "invalid_credentials", "invalid credentials")
 		return
 	}
 	if s.authLimiter != nil {
@@ -335,7 +335,7 @@ func (s *Server) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 func (s *Server) writeSession(w http.ResponseWriter, r *http.Request, userID string) error {
 	token, expires, err := s.auth.CreateSession(userID)
 	if err != nil {
-		http.Error(w, "failed to create session", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to create session")
 		return err
 	}
 	setHTTPOnlyCookie(w, r, store.SessionCookieName(), token, "/", int(time.Until(expires).Seconds()), expires)

@@ -60,7 +60,7 @@ func (s *Server) activeLocalCatalog(r *http.Request) (localmusic.Catalog, store.
 func (s *Server) handleLocalMusicArtists(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localArtistsResponse{
@@ -71,12 +71,12 @@ func (s *Server) handleLocalMusicArtists(w http.ResponseWriter, r *http.Request)
 func (s *Server) handleLocalMusicArtist(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	artist, albums, ok := catalog.Artist(r.PathValue("id"))
 	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localArtistDetailResponse{
@@ -88,7 +88,7 @@ func (s *Server) handleLocalMusicArtist(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleLocalMusicAlbumList(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	listType := r.URL.Query().Get("type")
@@ -105,12 +105,12 @@ func (s *Server) handleLocalMusicAlbumList(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleLocalMusicAlbum(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	album, songs, ok := catalog.Album(r.PathValue("id"))
 	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localAlbumDetailResponse{
@@ -122,7 +122,7 @@ func (s *Server) handleLocalMusicAlbum(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleLocalMusicSearch(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -137,12 +137,12 @@ func (s *Server) handleLocalMusicSearch(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleLocalMusicSong(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	song, ok := catalog.Song(r.PathValue("id"))
 	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	views := s.decorateLocalSongViews(r, []localSongView{localSongViewFrom(song)})
@@ -152,7 +152,7 @@ func (s *Server) handleLocalMusicSong(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleLocalMusicRandomSongs(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	size, _ := strconv.Atoi(r.URL.Query().Get("size"))
@@ -164,12 +164,12 @@ func (s *Server) handleLocalMusicRandomSongs(w http.ResponseWriter, r *http.Requ
 func (s *Server) handleLocalMusicGenres(w http.ResponseWriter, r *http.Request) {
 	_, lib, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	counts, err := s.localTracks.ListGenreCounts([]string{lib.ID})
 	if err != nil {
-		http.Error(w, "failed to load genres", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load genres")
 		return
 	}
 	genres := make([]map[string]any, 0, len(counts))
@@ -186,7 +186,7 @@ func (s *Server) handleLocalMusicGenres(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleLocalMusicSongsByGenre(w http.ResponseWriter, r *http.Request) {
 	_, lib, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	genre := strings.TrimSpace(r.URL.Query().Get("genre"))
@@ -198,7 +198,7 @@ func (s *Server) handleLocalMusicSongsByGenre(w http.ResponseWriter, r *http.Req
 	offset, _ := strconv.Atoi(r.URL.Query().Get("offset"))
 	tracks, err := s.localTracks.ListByGenre(lib.ID, genre, count, offset)
 	if err != nil {
-		http.Error(w, "failed to load songs", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load songs")
 		return
 	}
 	views := make([]localSongView, 0, len(tracks))
@@ -213,13 +213,13 @@ func (s *Server) handleLocalMusicSongsByGenre(w http.ResponseWriter, r *http.Req
 func (s *Server) handleLocalMusicStarred(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	userID := ResolveProgressUserID(r.Context())
 	favorites, err := s.listen.ListFavorites(userID, 2000)
 	if err != nil {
-		http.Error(w, "failed to load favorites", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load favorites")
 		return
 	}
 	songs := make([]localSongView, 0, len(favorites))
@@ -259,20 +259,20 @@ func (s *Server) handleLocalMusicSimilar(w http.ResponseWriter, r *http.Request)
 	track, err := s.localTracks.GetByID(trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMusicSimilar", err)
 		return
 	}
 	if _, err := s.localLibraries.GetForUser(userID, track.LibraryID); err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	count, _ := strconv.Atoi(r.URL.Query().Get("count"))
 	tracks, err := s.localTracks.ListSimilarTracks(track.LibraryID, track.Genre, track.Artist, trackID, count)
 	if err != nil {
-		http.Error(w, "failed to load similar songs", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load similar songs")
 		return
 	}
 	views := make([]localSongView, 0, len(tracks))
@@ -290,38 +290,38 @@ func (s *Server) handleLocalMusicStream(w http.ResponseWriter, r *http.Request) 
 	track, err := s.localTracks.GetByID(trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMusicStream", err)
 		return
 	}
 	lib, err := s.localLibraries.GetForUser(userID, track.LibraryID)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	if track.Status != store.TrackStatusPresent || track.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 
 	path, err := localmusic.ResolveTrackPath(lib.Path, track.AbsPath)
 	if err != nil {
-		http.Error(w, "invalid track path", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "invalid_track_path", "invalid track path")
 		return
 	}
 
 	file, err := os.Open(path) //#nosec G304 -- path validated against library root
 	if err != nil {
-		http.Error(w, "open track", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "open_track", "open track")
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
 	if err != nil {
-		http.Error(w, "stat track", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "stat track")
 		return
 	}
 
@@ -333,13 +333,13 @@ func (s *Server) handleLocalMusicStream(w http.ResponseWriter, r *http.Request) 
 func (s *Server) handleLocalMusicCover(w http.ResponseWriter, r *http.Request) {
 	catalog, _, err := s.activeLocalCatalog(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	id := r.PathValue("id")
 	data, contentType, ok := s.localCoverData(r, catalog, id)
 	if !ok {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 
@@ -376,12 +376,12 @@ func (s *Server) decorateLocalSongViews(r *http.Request, views []localSongView) 
 	return views
 }
 
-func (s *Server) writeLocalMusicError(w http.ResponseWriter, err error) {
+func (s *Server) writeLocalMusicError(w http.ResponseWriter, r *http.Request, err error) {
 	if errors.Is(err, sql.ErrNoRows) {
-		http.Error(w, "no active local library", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "no_active_local_library", "no active local library")
 		return
 	}
-	http.Error(w, err.Error(), http.StatusInternalServerError)
+	httputil.WriteInternalError(w, r, "local music", err)
 }
 
 func (s *Server) localCoverData(r *http.Request, catalog localmusic.Catalog, id string) ([]byte, string, bool) {

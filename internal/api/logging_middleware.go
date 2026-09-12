@@ -132,7 +132,7 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 				}
 				observability.CapturePanic(recovered, tags)
 				observability.Flush(2 * time.Second)
-				http.Error(w, "internal server error", http.StatusInternalServerError)
+				httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "internal server error")
 			}
 		}()
 		next.ServeHTTP(w, r)

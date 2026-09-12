@@ -47,13 +47,13 @@ func (s *Server) handlePublicShare(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if share.Expired() {
-		http.Error(w, "share expired", http.StatusGone)
+		httputil.WriteError(w, http.StatusGone, "share_expired", "share expired")
 		return
 	}
 
 	if len(parts) >= 2 && parts[1] == "unlock" {
 		if r.Method != http.MethodPost {
-			http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+			httputil.WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 			return
 		}
 		s.handleShareUnlock(w, r, share)
@@ -148,7 +148,7 @@ func (s *Server) handleListShares(w http.ResponseWriter, r *http.Request) {
 	userID := shareOwnerUserID(UserIDFromContext(r.Context()))
 	items, err := s.shares.ListForUser(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleListShares", err)
 		return
 	}
 	out := make([]map[string]any, len(items))
@@ -166,7 +166,7 @@ func (s *Server) handleListShareInbox(w http.ResponseWriter, r *http.Request) {
 	}
 	items, err := s.shares.ListInbox(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleListShareInbox", err)
 		return
 	}
 	out := make([]map[string]any, 0, len(items))
@@ -283,7 +283,7 @@ func (s *Server) handleCreateShare(w http.ResponseWriter, r *http.Request) {
 		RecipientIDs: recipientIDs,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	if accessMode == store.ShareAccessRestricted {
@@ -330,7 +330,7 @@ func (s *Server) handleDeleteShare(w http.ResponseWriter, r *http.Request) {
 			http.NotFound(w, r)
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteShare", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)
@@ -349,7 +349,7 @@ type shareSongView struct {
 func (s *Server) writeShareDetail(w http.ResponseWriter, r *http.Request, share store.Share) {
 	payload, err := s.shareDetailPayload(share, true)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", err.Error())
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, payload)
@@ -531,17 +531,17 @@ func (s *Server) serveShareTrack(w http.ResponseWriter, r *http.Request, share s
 			}
 		}
 		if !found {
-			http.Error(w, "track not in share", http.StatusForbidden)
+			httputil.WriteError(w, http.StatusForbidden, "track_not_in_share", "track not in share")
 			return
 		}
 	} else if trackID != share.ResourceID {
-		http.Error(w, "track not in share", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "track_not_in_share", "track not in share")
 		return
 	}
 
 	if strings.HasPrefix(trackID, "trk_") {
 		if !s.shareOwnerMayAccessLocalTrack(share, trackID) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 			return
 		}
 		s.serveLocalTrackFile(w, r, trackID, asDownload)
@@ -550,12 +550,12 @@ func (s *Server) serveShareTrack(w http.ResponseWriter, r *http.Request, share s
 
 	client := s.subsonicClientForShare(share)
 	if !client.Enabled() {
-		http.Error(w, "subsonic not configured", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "subsonic not configured")
 		return
 	}
 	body, contentType, err := client.Stream(trackID)
 	if err != nil {
-		http.Error(w, "stream failed: "+err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "stream failed:", err)
 		return
 	}
 	defer func() { _ = body.Close() }()
@@ -626,7 +626,7 @@ func (s *Server) serveLocalTrackFile(w http.ResponseWriter, r *http.Request, tra
 	}
 	path, err := localmusic.ResolveTrackPath(lib.Path, track.AbsPath)
 	if err != nil {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 	file, err := os.Open(path) //#nosec G304 -- path resolved under library jail
@@ -809,7 +809,7 @@ func (s *Server) writeShareAccessDenied(w http.ResponseWriter, share store.Share
 			"accessMode":    share.AccessMode,
 		})
 	default:
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 	}
 }
 

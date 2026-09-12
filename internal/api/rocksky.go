@@ -70,7 +70,7 @@ func (m *MusicService) handleGetRockskySettings(w http.ResponseWriter, r *http.R
 	userID := ResolveProgressUserID(r.Context())
 	token, err := m.loadRockskyToken(userID)
 	if err != nil {
-		http.Error(w, "failed to load rocksky settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load rocksky settings")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, rockskySettings{
@@ -84,11 +84,11 @@ func (m *MusicService) handlePutRockskySettings(w http.ResponseWriter, r *http.R
 	userID := ResolveProgressUserID(r.Context())
 	var payload rockskyTokenPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	if err := m.saveRockskyToken(userID, strings.TrimSpace(payload.Token)); err != nil {
-		http.Error(w, "failed to save rocksky settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to save rocksky settings")
 		return
 	}
 	m.handleGetRockskySettings(w, r)
@@ -98,7 +98,7 @@ func (m *MusicService) handleTestRockskyToken(w http.ResponseWriter, r *http.Req
 	userID := ResolveProgressUserID(r.Context())
 	var payload rockskyTokenPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	token := strings.TrimSpace(payload.Token)
@@ -106,14 +106,14 @@ func (m *MusicService) handleTestRockskyToken(w http.ResponseWriter, r *http.Req
 		token, _ = m.loadRockskyToken(userID)
 	}
 	if token == "" {
-		http.Error(w, "rocksky token is not configured", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "rocksky_token_is_not_configured", "rocksky token is not configured")
 		return
 	}
 	ctx, cancel := context.WithTimeout(r.Context(), 15*time.Second)
 	defer cancel()
 	userName, err := m.rocksky.ValidateToken(ctx, token)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("rocksky token test failed: %s", err.Error()), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "token_test_failed", fmt.Sprintf("rocksky token test failed: %s", err.Error()))
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -130,7 +130,7 @@ func (m *MusicService) doRockskyScrobble(w http.ResponseWriter, r *http.Request,
 	userID := ResolveProgressUserID(r.Context())
 	token, err := m.loadRockskyToken(userID)
 	if err != nil {
-		http.Error(w, "failed to load rocksky token", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load rocksky token")
 		return
 	}
 	if token == "" {
@@ -139,7 +139,7 @@ func (m *MusicService) doRockskyScrobble(w http.ResponseWriter, r *http.Request,
 	}
 	var req scrobblerTrackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	track := rocksky.Track{
@@ -157,7 +157,7 @@ func (m *MusicService) doRockskyScrobble(w http.ResponseWriter, r *http.Request,
 		err = m.rocksky.SubmitScrobble(ctx, token, track, time.Now())
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "doRockskyScrobble", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

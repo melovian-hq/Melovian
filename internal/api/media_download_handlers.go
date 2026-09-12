@@ -7,6 +7,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"melovian/internal/httputil"
 	"net/http"
 	"os"
 	"path/filepath"
@@ -38,12 +39,12 @@ func (s *Server) handleMediaTrackDownload(w http.ResponseWriter, r *http.Request
 	}
 	client := s.subsonicForContext(r.Context())
 	if !client.Enabled() {
-		http.Error(w, "subsonic not configured", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "subsonic not configured")
 		return
 	}
 	body, contentType, err := client.Stream(trackID)
 	if err != nil {
-		http.Error(w, "download failed: "+err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "download failed:", err)
 		return
 	}
 	defer func() { _ = body.Close() }()
@@ -65,12 +66,12 @@ func (s *Server) handleMediaAlbumDownloadZip(w http.ResponseWriter, r *http.Requ
 	if strings.HasPrefix(albumID, "alb_") {
 		catalog, err := s.localCatalogForUser(UserIDFromContext(r.Context()))
 		if err != nil {
-			http.Error(w, "album not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "album_not_found", "album not found")
 			return
 		}
 		album, localSongs, ok := catalog.Album(albumID)
 		if !ok {
-			http.Error(w, "album not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "album_not_found", "album not found")
 			return
 		}
 		name = album.Name
@@ -80,12 +81,12 @@ func (s *Server) handleMediaAlbumDownloadZip(w http.ResponseWriter, r *http.Requ
 	} else {
 		client := s.subsonicForContext(r.Context())
 		if !client.Enabled() {
-			http.Error(w, "subsonic not configured", http.StatusServiceUnavailable)
+			httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "subsonic not configured")
 			return
 		}
 		album, err := client.GetAlbum(albumID)
 		if err != nil {
-			http.Error(w, "album not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "album_not_found", "album not found")
 			return
 		}
 		name = album.Name
@@ -101,7 +102,7 @@ func (s *Server) handleMediaPlaylistDownloadZip(w http.ResponseWriter, r *http.R
 	userID := ResolveProgressUserID(r.Context())
 	pl, err := s.listen.GetPlaylist(userID, playlistID)
 	if err != nil {
-		http.Error(w, "playlist not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "playlist_not_found", "playlist not found")
 		return
 	}
 	songs := make([]mediaZipTrack, 0, len(pl.Tracks))
@@ -115,12 +116,12 @@ func (s *Server) handleMediaServerPlaylistDownloadZip(w http.ResponseWriter, r *
 	playlistID := r.PathValue("playlistId")
 	client := s.subsonicForContext(r.Context())
 	if !client.Enabled() {
-		http.Error(w, "subsonic not configured", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "subsonic not configured")
 		return
 	}
 	pl, err := client.GetPlaylist(playlistID)
 	if err != nil {
-		http.Error(w, "playlist not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "playlist_not_found", "playlist not found")
 		return
 	}
 	songs := make([]mediaZipTrack, 0, len(pl.Songs))
@@ -138,7 +139,7 @@ type mediaZipTrack struct {
 
 func (s *Server) writeTracksZip(w http.ResponseWriter, r *http.Request, filename string, songs []mediaZipTrack) {
 	if len(songs) == 0 {
-		http.Error(w, "no tracks", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "no_tracks", "no tracks")
 		return
 	}
 	w.Header().Set("Content-Type", "application/zip")

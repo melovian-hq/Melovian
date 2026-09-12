@@ -117,17 +117,17 @@ func (s *Server) activeLocalLibrary(r *http.Request) (store.LocalLibrary, error)
 func (s *Server) handleLocalMetadataSummary(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	unknownArtist, unknownAlbum, missingTitle, any, err := s.localTracks.CountMetadataIssues(lib.ID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataSummary", err)
 		return
 	}
 	present, _, _, err := s.localTracks.CountByStatus(lib.ID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataSummary", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localMetadataSummaryResponse{
@@ -142,7 +142,7 @@ func (s *Server) handleLocalMetadataSummary(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleLocalMetadataSearch(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	limit, _ := strconv.Atoi(r.URL.Query().Get("limit"))
@@ -155,7 +155,7 @@ func (s *Server) handleLocalMetadataSearch(w http.ResponseWriter, r *http.Reques
 		Offset:    offset,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataSearch", err)
 		return
 	}
 	views := make([]localMetadataTrackView, len(tracks))
@@ -171,21 +171,21 @@ func (s *Server) handleLocalMetadataSearch(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleLocalMetadataTrack(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	trackID := r.PathValue("id")
 	track, err := s.localTracks.Get(lib.ID, trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataTrack", err)
 		return
 	}
 	if track.Status != store.TrackStatusPresent || track.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localMetadataTrackViewFrom(track))
@@ -194,27 +194,27 @@ func (s *Server) handleLocalMetadataTrack(w http.ResponseWriter, r *http.Request
 func (s *Server) handleLocalMetadataUpdate(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	trackID := r.PathValue("id")
 	track, err := s.localTracks.Get(lib.ID, trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataUpdate", err)
 		return
 	}
 	if track.Status != store.TrackStatusPresent || track.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 
 	var req localMetadataUpdateRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 
@@ -255,17 +255,17 @@ func (s *Server) handleLocalMetadataUpdate(w http.ResponseWriter, r *http.Reques
 
 	path, err := localmusic.ResolveTrackPath(lib.Path, track.AbsPath)
 	if err != nil {
-		http.Error(w, "invalid track path", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "invalid_track_path", "invalid track path")
 		return
 	}
 	if err := metaloader.WriteTrackMetadata(path, meta); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
 	updated, err := s.libraryScanner.RescanFile(lib.ID, trackID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataUpdate", err)
 		return
 	}
 	s.invalidateLocalLibraryData(lib.ID)
@@ -274,7 +274,7 @@ func (s *Server) handleLocalMetadataUpdate(w http.ResponseWriter, r *http.Reques
 
 func (s *Server) handleLocalMetadataLookup(w http.ResponseWriter, r *http.Request) {
 	if _, err := s.activeLocalLibrary(r); err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	source := strings.TrimSpace(r.URL.Query().Get("source"))
@@ -288,16 +288,16 @@ func (s *Server) handleLocalMetadataLookup(w http.ResponseWriter, r *http.Reques
 	if trackID != "" {
 		lib, libErr := s.activeLocalLibrary(r)
 		if libErr != nil {
-			s.writeLocalMusicError(w, libErr)
+			s.writeLocalMusicError(w, r, libErr)
 			return
 		}
 		track, err := s.localTracks.Get(lib.ID, trackID)
 		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				http.Error(w, "not found", http.StatusNotFound)
+				httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 				return
 			}
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httputil.WriteInternalError(w, r, "handleLocalMetadataLookup", err)
 			return
 		}
 		if query.Query == "" {
@@ -318,7 +318,7 @@ func (s *Server) handleLocalMetadataLookup(w http.ResponseWriter, r *http.Reques
 	defer cancel()
 	matches, err := metadata.Lookup(ctx, source, query, limit)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataLookup", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localMetadataLookupResponse{Matches: matches})
@@ -327,38 +327,38 @@ func (s *Server) handleLocalMetadataLookup(w http.ResponseWriter, r *http.Reques
 func (s *Server) handleLocalMetadataAutofix(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	trackID := r.PathValue("id")
 	track, err := s.localTracks.Get(lib.ID, trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataAutofix", err)
 		return
 	}
 	if track.Status != store.TrackStatusPresent || track.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 
 	var req localMetadataAutofixRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	match := req.Match
 	if strings.TrimSpace(match.Title) == "" {
-		http.Error(w, "match title required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "match_title_required", "match title required")
 		return
 	}
 
 	updated, err := s.writeTrackMetadataMatch(lib, track, match)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	s.invalidateLocalLibraryData(lib.ID)
@@ -368,42 +368,42 @@ func (s *Server) handleLocalMetadataAutofix(w http.ResponseWriter, r *http.Reque
 func (s *Server) handleLocalMetadataAutofixAlbum(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	trackID := r.PathValue("id")
 	anchor, err := s.localTracks.Get(lib.ID, trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataAutofixAlbum", err)
 		return
 	}
 	if anchor.Status != store.TrackStatusPresent || anchor.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 
 	var req localMetadataAutofixRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	match := req.Match
 	if strings.TrimSpace(match.Album) == "" && strings.TrimSpace(match.Artist) == "" {
-		http.Error(w, "match album or artist required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "match_album_or_artist_required", "match album or artist required")
 		return
 	}
 
 	peers, err := s.localTracks.ListByAlbumArtist(lib.ID, anchor.Album, anchor.Artist)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataAutofixAlbum", err)
 		return
 	}
 	if len(peers) > 100 {
-		http.Error(w, "too many tracks in album", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "too_many_tracks_in_album", "too many tracks in album")
 		return
 	}
 
@@ -418,7 +418,7 @@ func (s *Server) handleLocalMetadataAutofixAlbum(w http.ResponseWriter, r *http.
 		updated = append(updated, localMetadataTrackViewFrom(merged))
 	}
 	if len(updated) == 0 {
-		http.Error(w, "no tracks updated", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "no_tracks_updated", "no tracks updated")
 		return
 	}
 	s.invalidateLocalLibraryData(lib.ID)
@@ -432,21 +432,21 @@ func (s *Server) handleLocalMetadataAutofixAlbum(w http.ResponseWriter, r *http.
 func (s *Server) handleLocalMetadataSuggestions(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 	trackID := r.PathValue("id")
 	track, err := s.localTracks.Get(lib.ID, trackID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleLocalMetadataSuggestions", err)
 		return
 	}
 	if track.Status != store.TrackStatusPresent || track.DuplicateOf != "" {
-		http.Error(w, "not found", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, localMetadataSuggestionsResponse{
@@ -457,21 +457,21 @@ func (s *Server) handleLocalMetadataSuggestions(w http.ResponseWriter, r *http.R
 func (s *Server) handleLocalMetadataAutofixBatch(w http.ResponseWriter, r *http.Request) {
 	lib, err := s.activeLocalLibrary(r)
 	if err != nil {
-		s.writeLocalMusicError(w, err)
+		s.writeLocalMusicError(w, r, err)
 		return
 	}
 
 	var req localMetadataBatchRequest
 	if err := json.NewDecoder(io.LimitReader(r.Body, 1<<20)).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	if len(req.TrackIDs) == 0 {
-		http.Error(w, "trackIds required", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "trackids_required", "trackIds required")
 		return
 	}
 	if len(req.TrackIDs) > 25 {
-		http.Error(w, "too many tracks", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "too_many_tracks", "too many tracks")
 		return
 	}
 	source := strings.TrimSpace(req.Source)

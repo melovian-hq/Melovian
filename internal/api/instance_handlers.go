@@ -8,7 +8,6 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
-	"net/url"
 	"strings"
 	"time"
 
@@ -40,12 +39,12 @@ type instanceRequest struct {
 // validateInstanceServerURL rejects non HTTP(S) upstreams and URLs that embed
 // basic auth credentials, which would otherwise be stored and logged.
 func validateInstanceServerURL(raw string) error {
-	u, err := url.Parse(strings.TrimSpace(raw))
-	if err != nil || u.Host == "" {
-		return errors.New("server url is not valid")
-	}
-	if u.Scheme != "http" && u.Scheme != "https" {
+	u, err := httputil.ParseHTTPURL(raw)
+	switch {
+	case errors.Is(err, httputil.ErrURLScheme):
 		return errors.New("server url must use http or https")
+	case err != nil:
+		return errors.New("server url is not valid")
 	}
 	if u.User != nil {
 		return errors.New("credentials in the server url are not allowed, use the username and password fields")
@@ -57,7 +56,7 @@ func (s *Server) handleListInstances(w http.ResponseWriter, r *http.Request) {
 	userID := UserIDFromContext(r.Context())
 	items, err := s.instances.ListForUser(userID)
 	if err != nil {
-		http.Error(w, "failed to list instances", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to list instances")
 		return
 	}
 
@@ -71,18 +70,18 @@ func (s *Server) handleListInstances(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateInstance(w http.ResponseWriter, r *http.Request) {
 	var req instanceRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	if err := validateInstanceServerURL(req.ServerURL); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
 	client := subsonic.NewClient(req.ServerURL, req.Username, req.Password)
 	serverName, _, err := client.Ping()
 	if err != nil {
-		http.Error(w, "connection test failed: "+err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", "connection test failed: "+err.Error())
 		return
 	}
 	if req.ServerName == "" {
@@ -97,7 +96,7 @@ func (s *Server) handleCreateInstance(w http.ResponseWriter, r *http.Request) {
 		ServerName: req.ServerName,
 	})
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -152,7 +151,7 @@ func (s *Server) handleGetActiveInstance(w http.ResponseWriter, r *http.Request)
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{})
 			return
 		}
-		http.Error(w, "failed to load active instance", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load active instance")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, s.instances.PublicView(inst))
@@ -163,20 +162,20 @@ func (s *Server) handleActivateInstance(w http.ResponseWriter, r *http.Request) 
 	userID := UserIDFromContext(r.Context())
 	if err := s.instances.SetActiveForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleActivateInstance", err)
 		return
 	}
 	if !s.shouldKeepOtherSourceOnActivate(userID) {
 		if err := s.localLibraries.ClearActiveForUser(userID); err != nil {
-			http.Error(w, err.Error(), http.StatusInternalServerError)
+			httputil.WriteInternalError(w, r, "handleActivateInstance", err)
 			return
 		}
 	}
 	if err := s.reloadActiveSubsonic(); err != nil {
-		http.Error(w, "failed to reload subsonic client", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to reload subsonic client")
 		return
 	}
 	_ = s.instances.TouchLastUsed(id)
@@ -195,10 +194,10 @@ func (s *Server) handlePingInstance(w http.ResponseWriter, r *http.Request) {
 	inst, err := s.instances.GetForUser(userID, id)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handlePingInstance", err)
 		return
 	}
 
@@ -232,23 +231,23 @@ func (s *Server) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 	userID := UserIDFromContext(r.Context())
 	if _, err := s.instances.GetForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleUpdateInstance", err)
 		return
 	}
 
 	var req instanceRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
 	serverURL := strings.TrimSpace(req.ServerURL)
 	if serverURL != "" {
 		if err := validateInstanceServerURL(serverURL); err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 	}
@@ -258,7 +257,7 @@ func (s *Server) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 		client := subsonic.NewClient(serverURL, username, password)
 		serverName, _, err := client.Ping()
 		if err != nil {
-			http.Error(w, "connection test failed: "+err.Error(), http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "bad_request", "connection test failed: "+err.Error())
 			return
 		}
 		if req.ServerName == "" {
@@ -275,10 +274,10 @@ func (s *Server) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -299,10 +298,10 @@ func (s *Server) handleDeleteInstance(w http.ResponseWriter, r *http.Request) {
 	userID := UserIDFromContext(r.Context())
 	if _, err := s.instances.GetForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteInstance", err)
 		return
 	}
 
@@ -313,10 +312,10 @@ func (s *Server) handleDeleteInstance(w http.ResponseWriter, r *http.Request) {
 
 	if err := s.instances.Delete(id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			http.Error(w, "not found", http.StatusNotFound)
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
 		}
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleDeleteInstance", err)
 		return
 	}
 

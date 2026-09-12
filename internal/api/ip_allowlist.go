@@ -4,6 +4,7 @@
 package api
 
 import (
+	"melovian/internal/httputil"
 	"net"
 	"net/http"
 	"net/netip"
@@ -17,7 +18,7 @@ func IPAllowlistMiddleware(allowed []netip.Prefix, trustProxy bool, next http.Ha
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		addr, ok := clientIP(r, trustProxy)
 		if !ok || !ipAllowed(addr, allowed) {
-			http.Error(w, "forbidden", http.StatusForbidden)
+			httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 			return
 		}
 		next.ServeHTTP(w, r)

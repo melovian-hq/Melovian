@@ -91,11 +91,11 @@ func (s *Server) requireVideoEnabled(w http.ResponseWriter, r *http.Request) (Vi
 	userID := ResolveProgressUserID(r.Context())
 	settings, err := s.loadVideoSettings(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "requireVideoEnabled", err)
 		return VideoSettings{}, false
 	}
 	if !settings.Enabled {
-		http.Error(w, "videos are disabled. enable them in Settings → Video", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "videos_are_disabled_enable_them_in_setti", "videos are disabled. enable them in Settings → Video")
 		return VideoSettings{}, false
 	}
 	return settings, true
@@ -105,7 +105,7 @@ func (s *Server) handleGetVideoSettings(w http.ResponseWriter, r *http.Request) 
 	userID := ResolveProgressUserID(r.Context())
 	settings, err := s.loadVideoSettings(userID)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handleGetVideoSettings", err)
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, settings)
@@ -115,7 +115,7 @@ func (s *Server) handlePutVideoSettings(w http.ResponseWriter, r *http.Request) 
 	userID := ResolveProgressUserID(r.Context())
 	var req VideoSettings
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	settings := VideoSettings{
@@ -127,18 +127,18 @@ func (s *Server) handlePutVideoSettings(w http.ResponseWriter, r *http.Request) 
 	if settings.InvidiousBaseURL != "" {
 		normalized, err := video.NormalizeInstanceURL(settings.InvidiousBaseURL)
 		if err != nil {
-			http.Error(w, err.Error(), http.StatusBadRequest)
+			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
 		settings.InvidiousBaseURL = normalized
 	}
 	encoded, err := json.Marshal(settings)
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handlePutVideoSettings", err)
 		return
 	}
 	if err := s.preferences.Set(userID, store.PrefKeyVideoSettings, string(encoded)); err != nil {
-		http.Error(w, err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "handlePutVideoSettings", err)
 		return
 	}
 	s.videoSettingsCache.Store(userID, settings)

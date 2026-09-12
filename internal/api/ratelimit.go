@@ -4,6 +4,7 @@
 package api
 
 import (
+	"melovian/internal/httputil"
 	"net/http"
 	"strconv"
 	"sync"
@@ -109,5 +110,5 @@ func writeRateLimited(w http.ResponseWriter, retryAfterSec int) {
 		retryAfterSec = 1
 	}
 	w.Header().Set("Retry-After", strconv.Itoa(retryAfterSec))
-	http.Error(w, "too many requests", http.StatusTooManyRequests)
+	httputil.WriteError(w, http.StatusTooManyRequests, "too_many_requests", "too many requests")
 }

@@ -101,13 +101,13 @@ func (s *Server) canManageServerSentrySettings(r *http.Request) bool {
 
 func (s *Server) handleGetSentryServerSettings(w http.ResponseWriter, r *http.Request) {
 	if !s.canManageServerSentrySettings(r) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 
 	stored, err := s.loadStoredSentrySettings()
 	if err != nil {
-		http.Error(w, "failed to load sentry settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load sentry settings")
 		return
 	}
 	effective := s.mergeEffectiveSentry(stored)
@@ -130,18 +130,18 @@ func (s *Server) handleGetSentryServerSettings(w http.ResponseWriter, r *http.Re
 
 func (s *Server) handlePutSentryServerSettings(w http.ResponseWriter, r *http.Request) {
 	if !s.canManageServerSentrySettings(r) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 
 	body, err := httputil.ReadJSONBytes(r)
 	if err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	stored, err := appconfig.MergeStoredSentrySettings(body)
 	if err != nil {
-		http.Error(w, "invalid sentry settings", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_sentry_settings", "invalid sentry settings")
 		return
 	}
 	stored.DSN = strings.TrimSpace(stored.DSN)
@@ -179,11 +179,11 @@ func (s *Server) handlePutSentryServerSettings(w http.ResponseWriter, r *http.Re
 	}
 
 	if err := s.saveStoredSentrySettings(stored); err != nil {
-		http.Error(w, "failed to save sentry settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to save sentry settings")
 		return
 	}
 	if err := s.refreshSentryRuntime(stored); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 
@@ -192,16 +192,16 @@ func (s *Server) handlePutSentryServerSettings(w http.ResponseWriter, r *http.Re
 
 func (s *Server) handlePostSentryTestEvent(w http.ResponseWriter, r *http.Request) {
 	if !s.canManageServerSentrySettings(r) {
-		http.Error(w, "forbidden", http.StatusForbidden)
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "forbidden")
 		return
 	}
 	if !observability.Enabled() {
-		http.Error(w, "error tracking is not active. Save a DSN with server tracking enabled first.", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "error_tracking_is_not_active_save_a_dsn_", "error tracking is not active. Save a DSN with server tracking enabled first.")
 		return
 	}
 	eventID, err := observability.SendTestEvent()
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -230,7 +230,7 @@ func (s *Server) handleGetSentryClientSettings(w http.ResponseWriter, r *http.Re
 	userID := ResolveProgressUserID(r.Context())
 	settings, err := s.loadSentryClientSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load client sentry settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load client sentry settings")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, settings)
@@ -240,21 +240,21 @@ func (s *Server) handlePutSentryClientSettings(w http.ResponseWriter, r *http.Re
 	userID := ResolveProgressUserID(r.Context())
 	body, err := httputil.ReadJSONBytes(r)
 	if err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	settings := store.DefaultSentryClientSettings()
 	if err := json.Unmarshal(body, &settings); err != nil {
-		http.Error(w, "invalid client sentry settings", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_client_sentry_settings", "invalid client sentry settings")
 		return
 	}
 	encoded, err := json.Marshal(settings)
 	if err != nil {
-		http.Error(w, "encode client sentry settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "encode client sentry settings")
 		return
 	}
 	if err := s.preferences.Set(userID, store.PrefKeySentryClient, string(encoded)); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, settings)

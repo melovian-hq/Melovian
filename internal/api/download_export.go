@@ -7,6 +7,7 @@ import (
 	"archive/zip"
 	"fmt"
 	"io"
+	"melovian/internal/httputil"
 	"net/http"
 	"path/filepath"
 	"strings"
@@ -103,20 +104,20 @@ func (s *Server) handleExportDownload(w http.ResponseWriter, r *http.Request) {
 	instanceID := InstanceIDFromContext(r.Context())
 	entry, err := s.downloads.Get(instanceID, trackID)
 	if err != nil {
-		http.Error(w, "not downloaded", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "not_downloaded", "not downloaded")
 		return
 	}
 
 	file, err := s.openDownloadPath(instanceID, entry.Path)
 	if err != nil {
-		http.Error(w, "open cache file", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "open_cache_file", "open cache file")
 		return
 	}
 	defer func() { _ = file.Close() }()
 
 	info, err := file.Stat()
 	if err != nil {
-		http.Error(w, "stat cache file", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "stat cache file")
 		return
 	}
 
@@ -133,11 +134,11 @@ func (s *Server) handleExportAllDownloads(w http.ResponseWriter, r *http.Request
 	instanceID := InstanceIDFromContext(r.Context())
 	items, err := s.downloads.List(instanceID)
 	if err != nil {
-		http.Error(w, "list downloads: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "list downloads:", err)
 		return
 	}
 	if len(items) == 0 {
-		http.Error(w, "no downloads", http.StatusNotFound)
+		httputil.WriteError(w, http.StatusNotFound, "no_downloads", "no downloads")
 		return
 	}
 

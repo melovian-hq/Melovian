@@ -74,7 +74,7 @@ func (m *MusicService) handleGetListenBrainzSettings(w http.ResponseWriter, r *h
 	userID := ResolveProgressUserID(r.Context())
 	payload, err := m.loadListenBrainzSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load listenbrainz settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load listenbrainz settings")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, listenBrainzSettings{
@@ -89,13 +89,13 @@ func (m *MusicService) handlePutListenBrainzSettings(w http.ResponseWriter, r *h
 	userID := ResolveProgressUserID(r.Context())
 	var payload listenBrainzPayload
 	if err := json.NewDecoder(r.Body).Decode(&payload); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	payload.Token = strings.TrimSpace(payload.Token)
 	payload.Endpoint = strings.TrimSpace(payload.Endpoint)
 	if err := m.saveListenBrainzSettings(userID, payload); err != nil {
-		http.Error(w, "failed to save listenbrainz settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to save listenbrainz settings")
 		return
 	}
 	m.handleGetListenBrainzSettings(w, r)
@@ -105,12 +105,12 @@ func (m *MusicService) handleTestListenBrainzToken(w http.ResponseWriter, r *htt
 	userID := ResolveProgressUserID(r.Context())
 	var body listenBrainzPayload
 	if err := json.NewDecoder(r.Body).Decode(&body); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	saved, err := m.loadListenBrainzSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load listenbrainz settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load listenbrainz settings")
 		return
 	}
 	token := strings.TrimSpace(body.Token)
@@ -120,7 +120,7 @@ func (m *MusicService) handleTestListenBrainzToken(w http.ResponseWriter, r *htt
 		endpoint = defaultListenBrainzEndpoint(saved.Endpoint)
 	}
 	if token == "" {
-		http.Error(w, "listenbrainz token is not configured", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "listenbrainz_token_is_not_configured", "listenbrainz token is not configured")
 		return
 	}
 	client := rocksky.NewClient(m.httpClient)
@@ -129,7 +129,7 @@ func (m *MusicService) handleTestListenBrainzToken(w http.ResponseWriter, r *htt
 	defer cancel()
 	userName, err := client.ValidateToken(ctx, token)
 	if err != nil {
-		http.Error(w, fmt.Sprintf("listenbrainz token test failed: %s", err.Error()), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "token_test_failed", fmt.Sprintf("listenbrainz token test failed: %s", err.Error()))
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -146,7 +146,7 @@ func (m *MusicService) doListenBrainzScrobble(w http.ResponseWriter, r *http.Req
 	userID := ResolveProgressUserID(r.Context())
 	payload, err := m.loadListenBrainzSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load listenbrainz settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load listenbrainz settings")
 		return
 	}
 	if payload.Token == "" {
@@ -155,7 +155,7 @@ func (m *MusicService) doListenBrainzScrobble(w http.ResponseWriter, r *http.Req
 	}
 	var req scrobblerTrackRequest
 	if err := json.NewDecoder(r.Body).Decode(&req); err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	track := rocksky.Track{
@@ -175,7 +175,7 @@ func (m *MusicService) doListenBrainzScrobble(w http.ResponseWriter, r *http.Req
 		err = client.SubmitScrobble(ctx, payload.Token, track, time.Now())
 	}
 	if err != nil {
-		http.Error(w, err.Error(), http.StatusBadGateway)
+		httputil.WriteInternalError(w, r, "doListenBrainzScrobble", err)
 		return
 	}
 	w.WriteHeader(http.StatusNoContent)

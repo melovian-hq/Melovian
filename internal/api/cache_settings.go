@@ -64,12 +64,12 @@ func (s *Server) handleGetCacheSettings(w http.ResponseWriter, r *http.Request) 
 	userID := ResolveProgressUserID(r.Context())
 	settings, err := s.loadCacheSettings(userID)
 	if err != nil {
-		http.Error(w, "failed to load cache settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load cache settings")
 		return
 	}
 	totalSize, count, err := s.downloads.Stats(InstanceIDFromContext(r.Context()))
 	if err != nil {
-		http.Error(w, "failed to load cache stats", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load cache stats")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -85,30 +85,30 @@ func (s *Server) handlePutCacheSettings(w http.ResponseWriter, r *http.Request) 
 	userID := ResolveProgressUserID(r.Context())
 	body, err := httputil.ReadJSONBytes(r)
 	if err != nil {
-		http.Error(w, "invalid request", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_request", "invalid request")
 		return
 	}
 	if !json.Valid(body) {
-		http.Error(w, "invalid json", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", "invalid json")
 		return
 	}
 	settings, err := mergeCacheSettings(body)
 	if err != nil {
-		http.Error(w, "invalid cache settings", http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_cache_settings", "invalid cache settings")
 		return
 	}
 	encoded, err := json.Marshal(settings)
 	if err != nil {
-		http.Error(w, "encode cache settings", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "encode cache settings")
 		return
 	}
 	if err := s.preferences.Set(userID, store.PrefKeyCacheSettings, string(encoded)); err != nil {
-		http.Error(w, err.Error(), http.StatusBadRequest)
+		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
 	totalSize, count, err := s.downloads.Stats(InstanceIDFromContext(r.Context()))
 	if err != nil {
-		http.Error(w, "failed to load cache stats", http.StatusInternalServerError)
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to load cache stats")
 		return
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -124,7 +124,7 @@ func (s *Server) handleClearDownloads(w http.ResponseWriter, r *http.Request) {
 	instanceID := InstanceIDFromContext(r.Context())
 	paths, err := s.downloads.ClearInstance(instanceID)
 	if err != nil {
-		http.Error(w, "clear cache: "+err.Error(), http.StatusInternalServerError)
+		httputil.WriteInternalError(w, r, "clear cache:", err)
 		return
 	}
 	for _, path := range paths {

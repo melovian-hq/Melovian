@@ -363,12 +363,12 @@ func (s *Server) registerSubsonicRoutes() {
 			client := s.subsonicForContext(r.Context())
 			remote, remoteErr := client.LibraryStats()
 			if remoteErr != nil {
-				http.Error(w, "failed to load library stats", http.StatusBadGateway)
+				httputil.WriteError(w, http.StatusBadGateway, "bad_gateway", "failed to load library stats")
 				return
 			}
 			artistCount, albumCount, countErr := s.localTracks.CountDistinctArtistsAlbums(localLib.ID)
 			if countErr != nil {
-				http.Error(w, countErr.Error(), http.StatusInternalServerError)
+				httputil.WriteInternalError(w, r, "count library stats", countErr)
 				return
 			}
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -385,7 +385,7 @@ func (s *Server) registerSubsonicRoutes() {
 		if store.IsLocalSourceView(mode) && localErr == nil {
 			artistCount, albumCount, countErr := s.localTracks.CountDistinctArtistsAlbums(localLib.ID)
 			if countErr != nil {
-				http.Error(w, countErr.Error(), http.StatusInternalServerError)
+				httputil.WriteInternalError(w, r, "count library stats", countErr)
 				return
 			}
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -407,7 +407,7 @@ func (s *Server) registerSubsonicRoutes() {
 		if localErr == nil {
 			artistCount, albumCount, countErr := s.localTracks.CountDistinctArtistsAlbums(localLib.ID)
 			if countErr != nil {
-				http.Error(w, countErr.Error(), http.StatusInternalServerError)
+				httputil.WriteInternalError(w, r, "count library stats", countErr)
 				return
 			}
 			httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -419,7 +419,7 @@ func (s *Server) registerSubsonicRoutes() {
 			})
 			return
 		}
-		http.Error(w, "no music source configured", http.StatusServiceUnavailable)
+		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "no music source configured")
 	})
 	s.mux.HandleFunc("POST /api/music/library/refresh", s.handleRefreshLibraryCache)
 
@@ -514,7 +514,7 @@ func demoShareMethodAllowed(r *http.Request) bool {
 
 func (s *Server) handleRefreshLibraryCache(w http.ResponseWriter, r *http.Request) {
 	if r.Method != http.MethodPost {
-		http.Error(w, "method not allowed", http.StatusMethodNotAllowed)
+		httputil.WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
 		return
 	}
 
