@@ -15,6 +15,7 @@ Environment variables can live in `.env` for local development or in your shell 
 | `NAVIDROME_SERVER` | (unset) | Optional bootstrap server URL (migrated into the first saved instance) |
 | `NAVIDROME_USER` | (unset) | Optional bootstrap username |
 | `NAVIDROME_PASSWORD` | (unset) | Optional bootstrap password |
+| `MELOVIAN_INSTANCE_KEY` | (unset) | 64-char hex key used to encrypt stored instance passwords. Defaults to a generated `instance.key` file in `MELOVIAN_DATA` |
 
 ## Demo mode and access control
 
@@ -30,6 +31,7 @@ Environment variables can live in `.env` for local development or in your shell 
 |----------|---------|-------------|
 | `MELOVIAN_LOCAL_LIBRARY` | `true` on desktop | Enable or disable local folder indexing |
 | `MELOVIAN_LOCAL_LIBRARY_PATH` | (unset) | Shared music folder for multi-user deployments. Disables per-user custom paths when auth is on |
+| `MELOVIAN_LOCAL_LIBRARY_ROOTS` | (unset) | Extra `:`-separated roots allowed for browsed or user-supplied library paths. On a multi-user server, custom library paths must stay under home, `/media`, `/mnt`, `/run/media`, the data directory, or these roots |
 
 Local libraries are scanned into the configured database (SQLite by default) and show up in the same browse, search, queue, and playback UI as Subsonic sources.
 

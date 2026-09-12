@@ -1,8 +1,10 @@
 <script lang="ts">
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
+  import Button from "$lib/components/ui/Button.svelte";
   import { APP_NAME } from "$lib/brand";
   import { sources } from "$lib/features/sources/store.svelte";
   import { localLibraries } from "$lib/features/local-libraries/store.svelte";
+  import { auth } from "$lib/features/auth/store.svelte";
   import {
     getMediaBaseUrl,
     isServerMode,
@@ -18,6 +20,9 @@
   let jukeboxEnabled = $state(false);
   let extensionsDir = $state("");
   let savingMulti = $state(false);
+  let apiKey = $state("");
+  let apiKeyVisible = $state(false);
+  let apiKeyBusy = $state(false);
 
   const publicBase = $derived.by(() => {
     const raw =
@@ -54,8 +59,50 @@
       } catch {
         // ignore
       }
+      if (subsonicEnabled && auth.enabled && auth.authenticated) {
+        await loadSubsonicKey();
+      }
     })();
   });
+
+  async function loadSubsonicKey() {
+    try {
+      const res = await fetchWithRetry("/api/auth/subsonic-key", {
+        headers: apiHeaders(),
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { apiKey?: string };
+      apiKey = data.apiKey ?? "";
+    } catch {
+      // ignore
+    }
+  }
+
+  async function rotateSubsonicKey() {
+    apiKeyBusy = true;
+    try {
+      const res = await fetchWithRetry("/api/auth/subsonic-key/rotate", {
+        method: "POST",
+        headers: apiHeaders("application/json"),
+        body: "{}",
+      });
+      if (!res.ok) return;
+      const data = (await res.json()) as { apiKey?: string };
+      apiKey = data.apiKey ?? "";
+      apiKeyVisible = true;
+    } finally {
+      apiKeyBusy = false;
+    }
+  }
+
+  async function copySubsonicKey() {
+    if (!apiKey) return;
+    try {
+      await navigator.clipboard.writeText(apiKey);
+    } catch {
+      // clipboard unavailable
+    }
+  }
 
   async function toggleMultiLibrary(enabled: boolean) {
     savingMulti = true;
@@ -85,6 +132,33 @@
       is enabled, or connect without credentials on trusted desktop installs.
     </p>
     <code class="music-server-settings__url">{restUrl}</code>
+    {#if auth.enabled && auth.authenticated && apiKey}
+      <p class="music-server-settings__hint">
+        Clients that ask for a password can use this API key instead of your
+        account password. Keep it private.
+      </p>
+      <div class="music-server-settings__key">
+        <code class="music-server-settings__url"
+          >{apiKeyVisible ? apiKey : "•".repeat(32)}</code
+        >
+        <div class="music-server-settings__key-actions">
+          <Button
+            variant="surface"
+            onclick={() => (apiKeyVisible = !apiKeyVisible)}
+            >{apiKeyVisible ? "Hide" : "Show"}</Button
+          >
+          <Button variant="surface" onclick={() => void copySubsonicKey()}
+            >Copy</Button
+          >
+          <Button
+            variant="surface"
+            disabled={apiKeyBusy}
+            onclick={() => void rotateSubsonicKey()}
+            >{apiKeyBusy ? "Rotating..." : "Rotate"}</Button
+          >
+        </div>
+      </div>
+    {/if}
     {#if isServerMode()}
       <p class="music-server-settings__meta">
         Server mode exposes the REST API on the same host as the web UI.
@@ -170,5 +244,16 @@
     background: var(--jb-surface-2);
     font-size: 0.85rem;
     overflow-x: auto;
+  }
+
+  .music-server-settings__key {
+    display: grid;
+    gap: 0.5rem;
+  }
+
+  .music-server-settings__key-actions {
+    display: flex;
+    gap: 0.5rem;
+    flex-wrap: wrap;
   }
 </style>
