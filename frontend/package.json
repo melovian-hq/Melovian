@@ -34,6 +34,7 @@
     "@iconify/svelte": "^5.2.2",
     "@sentry/svelte": "^10.71.0",
     "@wailsio/runtime": "3.0.0-beta.8",
+    "bits-ui": "^2.19.2",
     "xxhashjs": "^0.2.2"
   },
   "devDependencies": {

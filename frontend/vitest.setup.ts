@@ -57,6 +57,38 @@ Object.defineProperty(Element.prototype, "animate", {
   },
 });
 
+// jsdom lacks pointer capture and a few layout APIs that Bits UI primitives
+// call when overlay components mount.
+if (!Element.prototype.scrollIntoView) {
+  Element.prototype.scrollIntoView = () => {};
+}
+for (const method of ["setPointerCapture", "releasePointerCapture"] as const) {
+  if (!Element.prototype[method]) {
+    Object.defineProperty(Element.prototype, method, {
+      configurable: true,
+      writable: true,
+      value: () => {},
+    });
+  }
+}
+if (!Element.prototype.hasPointerCapture) {
+  Object.defineProperty(Element.prototype, "hasPointerCapture", {
+    configurable: true,
+    writable: true,
+    value: () => false,
+  });
+}
+if (typeof globalThis.ResizeObserver === "undefined") {
+  vi.stubGlobal(
+    "ResizeObserver",
+    class {
+      observe() {}
+      unobserve() {}
+      disconnect() {}
+    },
+  );
+}
+
 const storage = new Map<string, string>();
 
 beforeEach(() => {
