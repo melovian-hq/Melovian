@@ -4,11 +4,8 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"slices"
 	"strings"
 	"time"
@@ -343,19 +340,11 @@ func normalizeShareAccessMode(mode string) string {
 }
 
 func newShareID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("share-%d", time.Now().UnixNano())
-	}
-	return "shr_" + hex.EncodeToString(buf)
+	return "shr_" + mustRandomHex(16)
 }
 
 func newShareToken() string {
-	buf := make([]byte, 24)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("tok-%d", time.Now().UnixNano())
-	}
-	return hex.EncodeToString(buf)
+	return mustRandomHex(24)
 }
 
 func scanShare(row *sql.Row) (Share, error) {

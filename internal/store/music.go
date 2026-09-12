@@ -4,9 +4,7 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -456,11 +454,7 @@ func (s *ListenStore) scanRows(rows *sql.Rows) ([]ListenProgress, error) {
 }
 
 func newPlaylistID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("pl-%d", time.Now().UnixNano())
-	}
-	return hex.EncodeToString(buf)
+	return mustRandomHex(16)
 }
 
 func (s *ListenStore) ListPlaylists(userID string) ([]MusicPlaylist, error) {

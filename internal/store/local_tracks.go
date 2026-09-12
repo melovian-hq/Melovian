@@ -4,10 +4,7 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -82,11 +79,7 @@ func NewLocalTrackStore(db *DB) *LocalTrackStore {
 }
 
 func newLocalTrackID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("trk-%d", time.Now().UnixNano())
-	}
-	return "trk_" + hex.EncodeToString(buf)
+	return "trk_" + mustRandomHex(16)
 }
 
 func (s *LocalTrackStore) GetByRelPath(libraryID, relPath string) (LocalTrack, error) {

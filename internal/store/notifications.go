@@ -4,11 +4,8 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
-	"fmt"
 	"strings"
 	"time"
 )
@@ -79,7 +76,7 @@ func (s *NotificationStore) Create(input CreateNotificationInput) (Notification,
 		return Notification{}, errors.New("user, kind, and title are required")
 	}
 	id := newNotificationID()
-	now := time.Now().Unix()
+	now := nowUnix()
 	_, err := s.db.exec(
 		`INSERT INTO notifications (
 			id, user_id, kind, title, body, href, payload_json, read_at, created_at
@@ -138,7 +135,7 @@ func (s *NotificationStore) UnreadCount(userID string) (int, error) {
 }
 
 func (s *NotificationStore) MarkRead(userID, id string) (Notification, error) {
-	now := time.Now().Unix()
+	now := nowUnix()
 	res, err := s.db.exec(
 		`UPDATE notifications SET read_at = COALESCE(read_at, ?)
 		 WHERE id = ? AND user_id = ?`,
@@ -158,7 +155,7 @@ func (s *NotificationStore) MarkRead(userID, id string) (Notification, error) {
 }
 
 func (s *NotificationStore) MarkAllRead(userID string) (int64, error) {
-	now := time.Now().Unix()
+	now := nowUnix()
 	res, err := s.db.exec(
 		`UPDATE notifications SET read_at = ? WHERE user_id = ? AND read_at IS NULL`,
 		now, userID,
@@ -188,11 +185,7 @@ func (s *NotificationStore) Delete(userID, id string) error {
 }
 
 func newNotificationID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("ntf_%d", time.Now().UnixNano())
-	}
-	return "ntf_" + hex.EncodeToString(buf)
+	return "ntf_" + mustRandomHex(16)
 }
 
 func scanNotification(row *sql.Row) (Notification, error) {

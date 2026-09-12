@@ -4,9 +4,7 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"path/filepath"
@@ -54,11 +52,7 @@ func NewLocalLibraryStore(db *DB) *LocalLibraryStore {
 }
 
 func newLocalLibraryID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("lib-%d", time.Now().UnixNano())
-	}
-	return "lib_" + hex.EncodeToString(buf)
+	return "lib_" + mustRandomHex(16)
 }
 
 func (s *LocalLibraryStore) ListForUser(userID string) ([]LocalLibrary, error) {

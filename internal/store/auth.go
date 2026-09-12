@@ -4,7 +4,6 @@
 package store
 
 import (
-	"crypto/rand"
 	"crypto/sha256"
 	"crypto/subtle"
 	"database/sql"
@@ -292,7 +291,7 @@ func (s *AuthStore) UserIDFromToken(token string) (string, error) {
 	if err := row.Scan(&userID, &expires); err != nil {
 		return "", err
 	}
-	if time.Now().Unix() > expires {
+	if nowUnix() > expires {
 		_, _ = s.db.exec(
 			`DELETE FROM melovian_sessions WHERE token_hash = ?`,
 			hashSessionToken(s.secret, token),
@@ -577,11 +576,7 @@ func SessionCookieName() string {
 }
 
 func randomToken() (string, error) {
-	buf := make([]byte, 32)
-	if _, err := rand.Read(buf); err != nil {
-		return "", err
-	}
-	return hex.EncodeToString(buf), nil
+	return randomHex(32)
 }
 
 func hashSessionToken(secret []byte, token string) string {

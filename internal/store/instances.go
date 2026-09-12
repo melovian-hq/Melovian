@@ -4,9 +4,7 @@
 package store
 
 import (
-	"crypto/rand"
 	"database/sql"
-	"encoding/hex"
 	"errors"
 	"fmt"
 	"strings"
@@ -100,11 +98,7 @@ func (s *InstanceStore) MigratePasswords() error {
 }
 
 func newInstanceID() string {
-	buf := make([]byte, 16)
-	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("inst-%d", time.Now().UnixNano())
-	}
-	return hex.EncodeToString(buf)
+	return mustRandomHex(16)
 }
 
 func (s *InstanceStore) ListForUser(userID string) ([]SubsonicInstance, error) {
