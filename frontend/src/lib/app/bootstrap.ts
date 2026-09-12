@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { untrack } from "svelte";
+import { MediaQuery } from "svelte/reactivity";
 import { music } from "$lib/config/music.svelte";
 import { instances } from "$lib/features/instances/store.svelte";
 import { localLibraries } from "$lib/features/local-libraries/store.svelte";
@@ -36,37 +37,38 @@ import {
 import { bindPlaybackLifecycle } from "$lib/music/playback-lifecycle";
 import { connection } from "$lib/music/connection.svelte";
 import { toast } from "$lib/ui/toast.svelte";
-import { layout } from "$lib/components/layout/layout.svelte";
+import {
+  layout,
+  MOBILE_MEDIA,
+} from "$lib/components/layout/layout.svelte";
 import { loadExtensions } from "$lib/extensions/registry";
 
-export function syncSidebarWidthEffect(): (() => void) | undefined {
-  if (typeof document === "undefined") return;
+let mobileMedia: MediaQuery | undefined;
 
-  function syncSidebarWidth() {
-    const mobile = window.matchMedia("(max-width: 768px)").matches;
-    layout.setMobileViewport(mobile);
-    if (mobile) {
-      document.documentElement.style.setProperty(
-        "--jb-sidebar-current-width",
-        "0px",
-      );
-      return;
-    }
-    const styles = getComputedStyle(document.documentElement);
-    const width = layout.sidebarCollapsed
-      ? styles.getPropertyValue("--jb-sidebar-width-collapsed").trim() ||
-        "4.5rem"
-      : styles.getPropertyValue("--jb-sidebar-width").trim() || "16rem";
+// Runs inside an $effect in App.svelte. Reading mobileMedia.current and
+// layout.sidebarCollapsed tracks them, so the effect re-runs on viewport or
+// collapse changes and no manual listener is needed.
+export function syncSidebarWidthEffect(): void {
+  if (typeof document === "undefined") return;
+  mobileMedia ??= new MediaQuery(MOBILE_MEDIA);
+
+  const mobile = mobileMedia.current;
+  layout.setMobileViewport(mobile);
+  if (mobile) {
     document.documentElement.style.setProperty(
       "--jb-sidebar-current-width",
-      width,
+      "0px",
     );
+    return;
   }
-
-  syncSidebarWidth();
-  const media = window.matchMedia("(max-width: 768px)");
-  media.addEventListener("change", syncSidebarWidth);
-  return () => media.removeEventListener("change", syncSidebarWidth);
+  const styles = getComputedStyle(document.documentElement);
+  const width = layout.sidebarCollapsed
+    ? styles.getPropertyValue("--jb-sidebar-width-collapsed").trim() || "4.5rem"
+    : styles.getPropertyValue("--jb-sidebar-width").trim() || "16rem";
+  document.documentElement.style.setProperty(
+    "--jb-sidebar-current-width",
+    width,
+  );
 }
 
 export function runInitialBootstrap(

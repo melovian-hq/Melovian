@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { PersistedState } from "runed";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import { layout } from "$lib/components/layout/layout.svelte";
   import { keyboardHelp } from "$lib/ui/keyboard-help.svelte";
@@ -6,18 +7,16 @@
 
   const STORAGE_KEY = "mel-home-tips-dismissed";
 
-  let dismissed = $state(
-    typeof localStorage !== "undefined" &&
-      localStorage.getItem(STORAGE_KEY) === "1",
-  );
+  // Keep the "1" storage format so existing dismissals still apply
+  const dismissed = new PersistedState<boolean>(STORAGE_KEY, false, {
+    serializer: {
+      serialize: (value) => (value ? "1" : "0"),
+      deserialize: (value) => value === "1",
+    },
+  });
 
   function dismiss() {
-    dismissed = true;
-    try {
-      localStorage.setItem(STORAGE_KEY, "1");
-    } catch {
-      // ignore quota / private mode
-    }
+    dismissed.current = true;
   }
 
   function openPalette() {
@@ -26,7 +25,7 @@
   }
 </script>
 
-{#if !dismissed && !layout.isMobileViewport}
+{#if !dismissed.current && !layout.isMobileViewport}
   <div class="home-tips" role="note">
     <MdiIcon name="lightbulb" size={18} />
     <p>

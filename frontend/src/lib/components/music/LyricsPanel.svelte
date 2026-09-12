@@ -4,7 +4,8 @@
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import LyricsDisplay from "$lib/components/music/LyricsDisplay.svelte";
   import { music } from "$lib/config/music.svelte";
-  import { layout } from "$lib/components/layout/layout.svelte";
+  import { MediaQuery } from "svelte/reactivity";
+  import { layout, MOBILE_MEDIA } from "$lib/components/layout/layout.svelte";
   import { playerBottomInset } from "$lib/music/player-bottom-inset";
   import { filterLyricsLines } from "$lib/music/lyrics";
   import {
@@ -37,7 +38,8 @@
   let panelSize = $state<PanelSize>(
     loadLyricsPanelSize() ?? DEFAULT_PANEL_SIZE,
   );
-  let isMobile = $state(false);
+  const mobileQuery = new MediaQuery(MOBILE_MEDIA);
+  let isMobile = $derived(mobileQuery.current);
   let draggingPanel = $state(false);
   let resizingPanel = $state(false);
   let dragOrigin = { pointerX: 0, pointerY: 0, startX: 0, startY: 0 };
@@ -158,14 +160,6 @@
   }
 
   $effect(() => {
-    if (typeof window === "undefined") return;
-    const media = window.matchMedia("(max-width: 768px)");
-    const update = () => {
-      isMobile = media.matches;
-    };
-    update();
-    media.addEventListener("change", update);
-
     const onResize = () => {
       panelSize = clampLyricsPanelSize(panelSize);
       if (panelPosition && panelEl) {
@@ -175,7 +169,6 @@
     window.addEventListener("resize", onResize);
 
     return () => {
-      media.removeEventListener("change", update);
       window.removeEventListener("resize", onResize);
     };
   });

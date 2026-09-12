@@ -44,7 +44,7 @@
   let bootstrapped = $state(false);
 
   $effect(() => {
-    return syncSidebarWidthEffect();
+    syncSidebarWidthEffect();
   });
 
   $effect(() => {

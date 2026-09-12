@@ -1,5 +1,7 @@
 <script lang="ts">
   import { Command, Dialog } from "bits-ui";
+  import { untrack } from "svelte";
+  import { useDebounce } from "runed";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import { commandPalette } from "$lib/ui/command-palette.svelte";
   import {
@@ -20,21 +22,33 @@
     selected = "";
   });
 
+  const debouncedSearch = useDebounce(
+    async (currentQuery: string, token: number) => {
+      const results = await searchPaletteWithMusic(currentQuery);
+      if (token !== searchToken) return;
+      commands = results;
+      loading = false;
+    },
+    120,
+  );
+
   $effect(() => {
     if (!commandPalette.open) return;
     const currentQuery = query;
     const token = ++searchToken;
     loading = true;
 
-    const timer = setTimeout(() => {
-      void searchPaletteWithMusic(currentQuery).then((results) => {
-        if (token !== searchToken) return;
-        commands = results;
-        loading = false;
-      });
-    }, 120);
+    // untrack so the debounce timer state inside useDebounce is not tracked
+    // as a dependency of this effect
+    void untrack(() => debouncedSearch(currentQuery, token)).catch(
+      (error: unknown) => {
+        // cancel() rejects pending calls with "Cancelled". Anything else is a
+        // real search failure and stays unhandled like before.
+        if (error !== "Cancelled") throw error;
+      },
+    );
 
-    return () => clearTimeout(timer);
+    return () => void debouncedSearch.cancel();
   });
 
   function close() {
@@ -116,14 +130,20 @@
                           class="command-palette__group-title"
                         >
                           {#snippet child({ props: headingProps })}
-                            <h3 {...headingProps}>{group}</h3>
+                            <!-- A div, not a heading. Heading roles are not
+                                 allowed inside the listbox and the group is
+                                 already labelled via aria-labelledby. -->
+                            <div {...headingProps}>{group}</div>
                           {/snippet}
                         </Command.GroupHeading>
                         <Command.GroupItems class="command-palette__list">
                           {#snippet child({ props: listProps })}
                             <ul {...listProps}>
                               {#each items as command (command.id)}
-                                <li>
+                                <!-- role=none keeps the li wrapper from
+                                     inserting listitem roles between the
+                                     group and its option buttons -->
+                                <li role="none">
                                   <Command.Item
                                     value={command.id}
                                     onSelect={() => void runCommand(command)}

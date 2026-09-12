@@ -1,17 +1,21 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { PersistedState } from "runed";
 import { StorageKeys } from "$lib/brand";
 
-const SIDEBAR_COLLAPSED_KEY = StorageKeys.sidebarCollapsed;
 const MOBILE_MEDIA = "(max-width: 768px)";
 
-function loadCollapsed(): boolean {
-  try {
-    return localStorage.getItem(SIDEBAR_COLLAPSED_KEY) === "true";
-  } catch {
-    return false;
-  }
+// Created lazily because localStorage may not exist yet at module load.
+// JSON.stringify(true) writes "true", matching the format this key always used.
+let collapsedState: PersistedState<boolean> | undefined;
+
+function collapsed(): PersistedState<boolean> {
+  collapsedState ??= new PersistedState<boolean>(
+    StorageKeys.sidebarCollapsed,
+    false,
+  );
+  return collapsedState;
 }
 
 function readMobileViewport(): boolean {
@@ -20,10 +24,17 @@ function readMobileViewport(): boolean {
 }
 
 class LayoutStore {
-  sidebarCollapsed = $state(loadCollapsed());
   sidebarOpen = $state(false);
   tvMode = $state(false);
   isMobileViewport = $state(readMobileViewport());
+
+  get sidebarCollapsed() {
+    return collapsed().current;
+  }
+
+  set sidebarCollapsed(value: boolean) {
+    collapsed().current = value;
+  }
 
   setMobileViewport(mobile: boolean) {
     this.isMobileViewport = mobile;
@@ -31,14 +42,6 @@ class LayoutStore {
 
   toggleCollapsed() {
     this.sidebarCollapsed = !this.sidebarCollapsed;
-    try {
-      localStorage.setItem(
-        SIDEBAR_COLLAPSED_KEY,
-        String(this.sidebarCollapsed),
-      );
-    } catch {
-      /* ignore */
-    }
   }
 
   openSidebar() {
