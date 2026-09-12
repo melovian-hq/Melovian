@@ -99,6 +99,16 @@ func collectPathEntries(cfg appconfig.Config, mode Mode) ([]pathEntry, error) {
 		if runtimeDir := desktopRuntimeDir(); runtimeDir != "" {
 			entries = append(entries, pathEntry{path: runtimeDir, resolveUnix: true})
 		}
+		// WebKitGTK needs these even with its own sandbox disabled: it opens
+		// /dev/null at init, uses /dev/shm for IPC buffers, opens render nodes
+		// under /dev/dri for accelerated rendering, reads /proc and /sys, and
+		// writes scratch under /tmp. fontconfig reads its system cache under /var.
+		for _, path := range []string{"/tmp", "/dev/shm", "/dev/dri"} {
+			entries = append(entries, pathEntry{path: path, readWrite: true})
+		}
+		for _, path := range []string{"/dev", "/proc", "/sys", "/var", "/run"} {
+			entries = append(entries, pathEntry{path: path})
+		}
 	}
 
 	return dedupePathEntries(entries), nil
