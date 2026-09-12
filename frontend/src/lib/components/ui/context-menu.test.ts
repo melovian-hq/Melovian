@@ -3,7 +3,6 @@
 
 import { describe, expect, it } from "vitest";
 import {
-  clampContextMenuPosition,
   contextMenuPositionFromEvent,
   getPlayerBarInsetPx,
   isContextMenuItem,
@@ -11,30 +10,6 @@ import {
 } from "./context-menu";
 
 describe("context menu helpers", () => {
-  it("clamps the menu inside the viewport", () => {
-    expect(
-      clampContextMenuPosition(2000, 2000, 220, 160, 800, 600, 8, 0),
-    ).toEqual({
-      x: 572,
-      y: 432,
-    });
-    expect(
-      clampContextMenuPosition(-20, -10, 220, 160, 800, 600, 8, 0),
-    ).toEqual({
-      x: 8,
-      y: 8,
-    });
-  });
-
-  it("respects bottom inset when clamping", () => {
-    expect(
-      clampContextMenuPosition(40, 500, 220, 160, 800, 600, 8, 88),
-    ).toEqual({
-      x: 40,
-      y: 344,
-    });
-  });
-
   it("returns zero player inset when player chrome is hidden", () => {
     expect(getPlayerBarInsetPx()).toBe(0);
   });

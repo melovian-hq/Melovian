@@ -111,20 +111,3 @@ export function getPlayerBarInsetPx(): number {
 
   return inset + safeAreaInsetBottomPx();
 }
-
-export function clampContextMenuPosition(
-  x: number,
-  y: number,
-  width: number,
-  height: number,
-  viewportWidth = typeof window !== "undefined" ? window.innerWidth : 1280,
-  viewportHeight = typeof window !== "undefined" ? window.innerHeight : 800,
-  pad = 8,
-  bottomInset = getPlayerBarInsetPx(),
-): ContextMenuPosition {
-  const maxY = viewportHeight - height - pad - bottomInset;
-  return {
-    x: Math.max(pad, Math.min(x, viewportWidth - width - pad)),
-    y: Math.max(pad, Math.min(y, maxY)),
-  };
-}

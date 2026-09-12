@@ -42,10 +42,11 @@ function renderMenu() {
 
 describe("ContextMenu", () => {
   it("renders actions and runs the clicked item", () => {
-    const { target, play, cleanup } = renderMenu();
-    expect(target.textContent).toContain("Play now");
-    expect(target.textContent).toContain("Add to queue");
-    const buttons = target.querySelectorAll("[role='menuitem']");
+    const { play, cleanup } = renderMenu();
+    // Bits UI Portal renders the menu into document.body, not the mount target
+    expect(document.body.textContent).toContain("Play now");
+    expect(document.body.textContent).toContain("Add to queue");
+    const buttons = document.querySelectorAll("[role='menuitem']");
     expect(buttons).toHaveLength(2);
     (buttons[0] as HTMLButtonElement).click();
     expect(play).toHaveBeenCalledTimes(1);

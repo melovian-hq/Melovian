@@ -1,9 +1,11 @@
 <script lang="ts">
+  import { ContextMenu } from "bits-ui";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import {
-    clampContextMenuPosition,
+    getPlayerBarInsetPx,
     isContextMenuItem,
     type ContextMenuEntry,
+    type ContextMenuItem,
   } from "./context-menu";
 
   interface Props {
@@ -16,117 +18,119 @@
 
   let { x, y, onclose, label = "Actions", items = [] }: Props = $props();
 
-  let menuEl = $state<HTMLDivElement | undefined>();
-  let didFocus = false;
+  let open = $state(true);
 
-  function attachMenu(node: HTMLDivElement) {
-    menuEl = node;
-    const next = clampContextMenuPosition(
-      x,
-      y,
-      node.offsetWidth,
-      node.offsetHeight,
-    );
-    node.style.left = `${next.x}px`;
-    node.style.top = `${next.y}px`;
-    if (!didFocus) {
-      didFocus = true;
-      node
-        .querySelector<HTMLButtonElement>("[role='menuitem']:not(:disabled)")
-        ?.focus();
-    }
-    return () => {
-      if (menuEl === node) menuEl = undefined;
+  // A fresh object per position change so Bits repositions the floating layer
+  const anchor = $derived.by(() => {
+    const ax = x;
+    const ay = y;
+    return {
+      getBoundingClientRect: (): DOMRect => ({
+        x: ax,
+        y: ay,
+        top: ay,
+        right: ax,
+        bottom: ay,
+        left: ax,
+        width: 0,
+        height: 0,
+        toJSON: () => ({}),
+      }),
     };
+  });
+
+  const collisionPadding = {
+    top: 8,
+    right: 8,
+    bottom: 8 + getPlayerBarInsetPx(),
+    left: 8,
+  };
+
+  function handleOpenChange(next: boolean) {
+    if (!next) onclose();
   }
 
-  function onKeydown(event: KeyboardEvent) {
-    if (event.key === "Escape") {
+  function runItem(item: ContextMenuItem) {
+    item.onclick();
+  }
+
+  // Reproduce the old backdrop behavior. Any contextmenu outside the menu
+  // closes it, even when a consumer stops propagation, so listen on capture.
+  $effect(() => {
+    function onContextMenu(event: MouseEvent) {
+      const target = event.target;
+      if (
+        target instanceof Element &&
+        target.closest(
+          "[data-context-menu-content], [data-context-menu-sub-content]",
+        )
+      ) {
+        return;
+      }
       event.preventDefault();
       onclose();
-      return;
     }
-    if (!menuEl) return;
-    const buttons = [
-      ...menuEl.querySelectorAll<HTMLButtonElement>(
-        "[role='menuitem']:not(:disabled)",
-      ),
-    ];
-    if (buttons.length === 0) return;
-    const current = buttons.indexOf(
-      document.activeElement as HTMLButtonElement,
-    );
-    if (event.key === "ArrowDown") {
-      event.preventDefault();
-      buttons[(current + 1) % buttons.length]?.focus();
-    } else if (event.key === "ArrowUp") {
-      event.preventDefault();
-      buttons[(current - 1 + buttons.length) % buttons.length]?.focus();
-    } else if (event.key === "Home") {
-      event.preventDefault();
-      buttons[0]?.focus();
-    } else if (event.key === "End") {
-      event.preventDefault();
-      buttons[buttons.length - 1]?.focus();
-    }
-  }
-
-  function runItem(item: ContextMenuEntry) {
-    if (!isContextMenuItem(item) || item.disabled) return;
-    item.onclick();
-    if (!item.keepOpen) onclose();
-  }
+    document.addEventListener("contextmenu", onContextMenu, true);
+    return () =>
+      document.removeEventListener("contextmenu", onContextMenu, true);
+  });
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-<div
-  class="context-menu-backdrop"
-  role="presentation"
-  onclick={onclose}
-  oncontextmenu={(event) => {
-    event.preventDefault();
-    onclose();
-  }}
-></div>
-<div
-  class="context-menu"
-  style:left="{x}px"
-  style:top="{y}px"
-  role="menu"
-  aria-label={label}
-  {@attach attachMenu}
->
-  {#each items as entry (entry.id)}
-    {#if isContextMenuItem(entry)}
-      <button
-        type="button"
-        class={[
-          "context-menu__item",
-          entry.danger && "context-menu__item--danger",
-        ]}
-        role="menuitem"
-        disabled={entry.disabled}
-        onclick={() => runItem(entry)}
-      >
-        {#if entry.icon}
-          <MdiIcon name={entry.icon} size={16} />
-        {/if}
-        {entry.label}
-      </button>
-    {:else}
-      <div class="context-menu__sep" role="separator"></div>
-    {/if}
-  {/each}
-</div>
+<ContextMenu.Root bind:open onOpenChange={handleOpenChange}>
+  <ContextMenu.Portal>
+    <ContextMenu.Content
+      class="context-menu"
+      aria-label={label}
+      customAnchor={anchor}
+      {collisionPadding}
+      side="right"
+      align="start"
+      sideOffset={0}
+      sticky="always"
+      preventScroll={false}
+    >
+      {#snippet child({ props })}
+        <div {...props}>
+          {#each items as entry (entry.id)}
+            {#if isContextMenuItem(entry)}
+              <ContextMenu.Item
+                class={[
+                  "context-menu__item",
+                  entry.danger && "context-menu__item--danger",
+                ]}
+                disabled={entry.disabled}
+                textValue={entry.label}
+                closeOnSelect={!entry.keepOpen}
+                onSelect={() => runItem(entry)}
+              >
+                {#snippet child({ props: itemProps })}
+                  <button
+                    type="button"
+                    {...itemProps}
+                    disabled={entry.disabled}
+                  >
+                    {#if entry.icon}
+                      <MdiIcon name={entry.icon} size={16} />
+                    {/if}
+                    {entry.label}
+                  </button>
+                {/snippet}
+              </ContextMenu.Item>
+            {:else}
+              <ContextMenu.Separator class="context-menu__sep">
+                {#snippet child({ props: sepProps })}
+                  <div {...sepProps}></div>
+                {/snippet}
+              </ContextMenu.Separator>
+            {/if}
+          {/each}
+        </div>
+      {/snippet}
+    </ContextMenu.Content>
+  </ContextMenu.Portal>
+</ContextMenu.Root>
 
 <style>
-  .context-menu-backdrop {
-    position: fixed;
-    inset: 0;
-    z-index: 90;
-  }
-
   .context-menu {
     position: fixed;
     z-index: 91;
