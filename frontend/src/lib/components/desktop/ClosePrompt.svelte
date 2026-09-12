@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import { APP_NAME } from "$lib/brand";
   import Toggle from "$lib/components/ui/Toggle.svelte";
@@ -43,69 +44,85 @@
     closePrompt.hide();
     await executeCloseAction(action);
   }
+
+  function getOpen() {
+    return closePrompt.open;
+  }
+
+  function setOpen(open: boolean) {
+    if (!open) cancel();
+  }
 </script>
 
-{#if closePrompt.open}
-  <button
-    type="button"
-    class="close-prompt__backdrop"
-    aria-label="Cancel close"
-    onclick={cancel}
-  ></button>
-  <div
-    class="close-prompt"
-    role="dialog"
-    aria-labelledby="close-prompt-title"
-    aria-describedby="close-prompt-description"
-  >
-    <header class="close-prompt__header">
-      <h2 id="close-prompt-title">Close {APP_NAME}?</h2>
-    </header>
-    <p id="close-prompt-description" class="close-prompt__description">
-      Choose whether to quit the application or keep it running.
-    </p>
-    <div class="close-prompt__actions">
-      <button
-        type="button"
-        class="close-prompt__option"
-        onclick={() => void choose("quit")}
-      >
-        <span class="close-prompt__option-title">Quit application</span>
-        <span class="close-prompt__option-description">
-          Stop playback and exit {APP_NAME} completely.
-        </span>
-      </button>
-      <button
-        type="button"
-        class="close-prompt__option"
-        onclick={() => void choose(backgroundAction)}
-      >
-        <span class="close-prompt__option-title">{backgroundLabel}</span>
-        <span class="close-prompt__option-description">
-          {backgroundDescription}
-        </span>
-      </button>
-    </div>
-    <div class="close-prompt__remember">
-      <div class="close-prompt__remember-copy">
-        <p class="close-prompt__remember-label">Remember my choice</p>
-        <p class="close-prompt__remember-description">
-          Use the same action next time without asking.
-        </p>
-      </div>
-      <Toggle
-        checked={rememberChoice}
-        ariaLabel="Remember my choice"
-        onchange={(checked) => {
-          rememberChoice = checked;
-        }}
-      />
-    </div>
-    <div class="close-prompt__footer">
-      <Button variant="ghost" onclick={cancel}>Cancel</Button>
-    </div>
-  </div>
-{/if}
+<Dialog.Root bind:open={getOpen, setOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="close-prompt__backdrop">
+      {#snippet child({ props })}
+        <div {...props}></div>
+      {/snippet}
+    </Dialog.Overlay>
+    <Dialog.Content class="close-prompt">
+      {#snippet child({ props })}
+        <div {...props}>
+          <header class="close-prompt__header">
+            <Dialog.Title>
+              {#snippet child({ props: titleProps })}
+                <h2 {...titleProps}>Close {APP_NAME}?</h2>
+              {/snippet}
+            </Dialog.Title>
+          </header>
+          <Dialog.Description class="close-prompt__description">
+            {#snippet child({ props: descriptionProps })}
+              <p {...descriptionProps}>
+                Choose whether to quit the application or keep it running.
+              </p>
+            {/snippet}
+          </Dialog.Description>
+          <div class="close-prompt__actions">
+            <button
+              type="button"
+              class="close-prompt__option"
+              onclick={() => void choose("quit")}
+            >
+              <span class="close-prompt__option-title">Quit application</span>
+              <span class="close-prompt__option-description">
+                Stop playback and exit {APP_NAME} completely.
+              </span>
+            </button>
+            <button
+              type="button"
+              class="close-prompt__option"
+              onclick={() => void choose(backgroundAction)}
+            >
+              <span class="close-prompt__option-title">{backgroundLabel}</span>
+              <span class="close-prompt__option-description">
+                {backgroundDescription}
+              </span>
+            </button>
+          </div>
+          <div class="close-prompt__remember">
+            <div class="close-prompt__remember-copy">
+              <p class="close-prompt__remember-label">Remember my choice</p>
+              <p class="close-prompt__remember-description">
+                Use the same action next time without asking.
+              </p>
+            </div>
+            <Toggle
+              checked={rememberChoice}
+              ariaLabel="Remember my choice"
+              onchange={(checked) => {
+                rememberChoice = checked;
+              }}
+            />
+          </div>
+          <div class="close-prompt__footer">
+            <Button variant="ghost" onclick={cancel}>Cancel</Button>
+          </div>
+        </div>
+      {/snippet}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
   .close-prompt__backdrop {

@@ -1,71 +1,76 @@
 <script lang="ts">
+  import { AlertDialog } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import { confirmDialog } from "$lib/ui/confirm.svelte";
-  import { focusInitial, trapFocus } from "$lib/ui/focus-trap";
 
   const options = $derived(confirmDialog.options);
 
-  let dialogEl = $state<HTMLDivElement | null>(null);
+  let contentEl = $state<HTMLElement | null>(null);
 
-  function onKeydown(event: KeyboardEvent) {
-    if (!confirmDialog.open) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      confirmDialog.cancel();
-    }
+  function getOpen() {
+    return confirmDialog.open;
   }
 
-  $effect(() => {
-    if (!confirmDialog.open || !options || !dialogEl) {
-      return;
-    }
+  function setOpen(open: boolean) {
+    // Dismissal through Escape or an outside click resolves as a cancel.
+    if (!open) confirmDialog.cancel();
+  }
 
-    const previouslyFocused = document.activeElement as HTMLElement | null;
-    const release = trapFocus(dialogEl);
+  function onOpenAutoFocus(event: Event) {
+    event.preventDefault();
     // Prefer Cancel so Enter does not immediately confirm a destructive action.
-    focusInitial(dialogEl, false);
-
-    return () => {
-      release();
-      previouslyFocused?.focus();
-    };
-  });
+    requestAnimationFrame(() => {
+      contentEl
+        ?.querySelector<HTMLElement>(".confirm__actions button")
+        ?.focus();
+    });
+  }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-{#if confirmDialog.open && options}
-  <button
-    type="button"
-    class="confirm__backdrop"
-    aria-label="Close dialog"
-    tabindex="-1"
-    onclick={() => confirmDialog.cancel()}
-  ></button>
-  <div
-    bind:this={dialogEl}
-    class="confirm"
-    role="alertdialog"
-    aria-modal="true"
-    aria-labelledby="confirm-title"
-    aria-describedby="confirm-message"
-  >
-    <h2 id="confirm-title" class="confirm__title">{options.title}</h2>
-    <p id="confirm-message" class="confirm__message">{options.message}</p>
-    <div class="confirm__actions">
-      <Button variant="surface" onclick={() => confirmDialog.cancel()}>
-        {options.cancelLabel ?? "Cancel"}
-      </Button>
-      <Button
-        variant="primary"
-        class={options.danger ? "confirm__danger" : ""}
-        onclick={() => confirmDialog.accept()}
-      >
-        {options.confirmLabel ?? "Confirm"}
-      </Button>
-    </div>
-  </div>
-{/if}
+<AlertDialog.Root bind:open={getOpen, setOpen}>
+  <AlertDialog.Portal>
+    <AlertDialog.Overlay class="confirm__backdrop">
+      {#snippet child({ props })}
+        <div {...props}></div>
+      {/snippet}
+    </AlertDialog.Overlay>
+    <AlertDialog.Content
+      class="confirm"
+      interactOutsideBehavior="close"
+      {onOpenAutoFocus}
+      bind:ref={contentEl}
+    >
+      {#snippet child({ props })}
+        <div {...props}>
+          {#if options}
+            <AlertDialog.Title class="confirm__title">
+              {#snippet child({ props: titleProps })}
+                <h2 {...titleProps}>{options.title}</h2>
+              {/snippet}
+            </AlertDialog.Title>
+            <AlertDialog.Description class="confirm__message">
+              {#snippet child({ props: descriptionProps })}
+                <p {...descriptionProps}>{options.message}</p>
+              {/snippet}
+            </AlertDialog.Description>
+            <div class="confirm__actions">
+              <Button variant="surface" onclick={() => confirmDialog.cancel()}>
+                {options.cancelLabel ?? "Cancel"}
+              </Button>
+              <Button
+                variant="primary"
+                class={options.danger ? "confirm__danger" : ""}
+                onclick={() => confirmDialog.accept()}
+              >
+                {options.confirmLabel ?? "Confirm"}
+              </Button>
+            </div>
+          {/if}
+        </div>
+      {/snippet}
+    </AlertDialog.Content>
+  </AlertDialog.Portal>
+</AlertDialog.Root>
 
 <style>
   .confirm__backdrop {

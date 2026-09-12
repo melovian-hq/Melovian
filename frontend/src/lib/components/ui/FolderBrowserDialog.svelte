@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
@@ -47,101 +48,108 @@
     void load(initialPath.trim());
   });
 
-  function onKeydown(event: KeyboardEvent) {
-    if (!open) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onclose?.();
-    }
+  function getOpen() {
+    return open;
+  }
+
+  function setOpen(next: boolean) {
+    if (!next) onclose?.();
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<Dialog.Root bind:open={getOpen, setOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="folder-browser__backdrop">
+      {#snippet child({ props })}
+        <div {...props}></div>
+      {/snippet}
+    </Dialog.Overlay>
+    <Dialog.Content class="folder-browser">
+      {#snippet child({ props })}
+        <div {...props}>
+          <header class="folder-browser__header">
+            <Dialog.Title>
+              {#snippet child({ props: titleProps })}
+                <h2 {...titleProps}>Choose folder</h2>
+              {/snippet}
+            </Dialog.Title>
+            <Dialog.Description
+              class="folder-browser__path"
+              title={currentPath}
+            >
+              {#snippet child({ props: descriptionProps })}
+                <p {...descriptionProps}>{currentPath || "Loading…"}</p>
+              {/snippet}
+            </Dialog.Description>
+          </header>
 
-{#if open}
-  <button
-    type="button"
-    class="folder-browser__backdrop"
-    aria-label="Close folder browser"
-    onclick={() => onclose?.()}
-  ></button>
-  <div
-    class="folder-browser"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="folder-browser-title"
-  >
-    <header class="folder-browser__header">
-      <h2 id="folder-browser-title">Choose folder</h2>
-      <p class="folder-browser__path" title={currentPath}>
-        {currentPath || "Loading…"}
-      </p>
-    </header>
+          <div class="folder-browser__toolbar">
+            <Button
+              type="button"
+              variant="surface"
+              size="sm"
+              disabled={loading || !parentPath}
+              onclick={() => void load(parentPath)}
+            >
+              <MdiIcon name="chevronUp" size={16} />
+              Up
+            </Button>
+            <Button
+              type="button"
+              variant="surface"
+              size="sm"
+              disabled={loading}
+              onclick={() => void load(currentPath || initialPath)}
+            >
+              <MdiIcon name="refresh" size={16} />
+              Refresh
+            </Button>
+          </div>
 
-    <div class="folder-browser__toolbar">
-      <Button
-        type="button"
-        variant="surface"
-        size="sm"
-        disabled={loading || !parentPath}
-        onclick={() => void load(parentPath)}
-      >
-        <MdiIcon name="chevronUp" size={16} />
-        Up
-      </Button>
-      <Button
-        type="button"
-        variant="surface"
-        size="sm"
-        disabled={loading}
-        onclick={() => void load(currentPath || initialPath)}
-      >
-        <MdiIcon name="refresh" size={16} />
-        Refresh
-      </Button>
-    </div>
+          <div class="folder-browser__body" role="listbox" aria-label="Folders">
+            {#if loading}
+              <div class="folder-browser__state"><Spinner /></div>
+            {:else if error}
+              <p class="folder-browser__error">{error}</p>
+            {:else if entries.length === 0}
+              <p class="folder-browser__empty">No subfolders here.</p>
+            {:else}
+              {#each entries as entry (entry.path)}
+                <button
+                  type="button"
+                  class="folder-browser__entry"
+                  role="option"
+                  aria-selected="false"
+                  onclick={() => void load(entry.path)}
+                >
+                  <MdiIcon name="folderOpen" size={18} />
+                  <span>{entry.name}</span>
+                </button>
+              {/each}
+            {/if}
+          </div>
 
-    <div class="folder-browser__body" role="listbox" aria-label="Folders">
-      {#if loading}
-        <div class="folder-browser__state"><Spinner /></div>
-      {:else if error}
-        <p class="folder-browser__error">{error}</p>
-      {:else if entries.length === 0}
-        <p class="folder-browser__empty">No subfolders here.</p>
-      {:else}
-        {#each entries as entry (entry.path)}
-          <button
-            type="button"
-            class="folder-browser__entry"
-            role="option"
-            aria-selected="false"
-            onclick={() => void load(entry.path)}
-          >
-            <MdiIcon name="folderOpen" size={18} />
-            <span>{entry.name}</span>
-          </button>
-        {/each}
-      {/if}
-    </div>
-
-    <footer class="folder-browser__footer">
-      <Button type="button" variant="surface" onclick={() => onclose?.()}>
-        Cancel
-      </Button>
-      <Button
-        type="button"
-        disabled={loading || !currentPath}
-        onclick={() => {
-          if (!currentPath) return;
-          onselect?.(currentPath);
-          onclose?.();
-        }}
-      >
-        Use this folder
-      </Button>
-    </footer>
-  </div>
-{/if}
+          <footer class="folder-browser__footer">
+            <Button type="button" variant="surface" onclick={() => onclose?.()}>
+              Cancel
+            </Button>
+            <Button
+              type="button"
+              disabled={loading || !currentPath}
+              onclick={() => {
+                if (!currentPath) return;
+                onselect?.(currentPath);
+                onclose?.();
+              }}
+            >
+              Use this folder
+            </Button>
+          </footer>
+        </div>
+      {/snippet}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
   .folder-browser__backdrop {

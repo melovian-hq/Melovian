@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import { homeHidden } from "$lib/music/home-hidden.svelte";
@@ -25,84 +26,89 @@
     homeHidden.clearAll();
   }
 
-  function onKeydown(event: KeyboardEvent) {
-    if (!open) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      close();
-    }
+  function getOpen() {
+    return open;
+  }
+
+  function setOpen(next: boolean) {
+    if (!next) close();
   }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
+<Dialog.Root bind:open={getOpen, setOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="home-customize__backdrop">
+      {#snippet child({ props })}
+        <div {...props}></div>
+      {/snippet}
+    </Dialog.Overlay>
+    <Dialog.Content class="home-customize">
+      {#snippet child({ props })}
+        <div {...props}>
+          <header class="home-customize__header">
+            <Dialog.Title>
+              {#snippet child({ props: titleProps })}
+                <h2 {...titleProps}>Customize home</h2>
+              {/snippet}
+            </Dialog.Title>
+            <Dialog.Close class="home-customize__close">
+              {#snippet child({ props: closeProps })}
+                <button {...closeProps} type="button" aria-label="Close">
+                  <MdiIcon name="x" size={18} />
+                </button>
+              {/snippet}
+            </Dialog.Close>
+          </header>
 
-{#if open}
-  <button
-    type="button"
-    class="home-customize__backdrop"
-    aria-label="Close customize home"
-    onclick={close}
-  ></button>
-  <div
-    class="home-customize"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="home-customize-title"
-  >
-    <header class="home-customize__header">
-      <h2 id="home-customize-title">Customize home</h2>
-      <button
-        type="button"
-        class="home-customize__close"
-        aria-label="Close"
-        onclick={close}
-      >
-        <MdiIcon name="x" size={18} />
-      </button>
-    </header>
+          <div class="home-customize__body">
+            <Dialog.Description>
+              {#snippet child({ props: descriptionProps })}
+                <p {...descriptionProps}>
+                  Right-click albums, mixes, playlists, and artists on home to
+                  hide them from your feed.
+                </p>
+              {/snippet}
+            </Dialog.Description>
 
-    <div class="home-customize__body">
-      <p>
-        Right-click albums, mixes, playlists, and artists on home to hide them
-        from your feed.
-      </p>
+            <dl class="home-customize__stats">
+              <div>
+                <dt>Hidden albums</dt>
+                <dd>{homeHidden.albums.size}</dd>
+              </div>
+              <div>
+                <dt>Hidden mixes</dt>
+                <dd>{homeHidden.mixes.size}</dd>
+              </div>
+              <div>
+                <dt>Hidden playlists</dt>
+                <dd>{homeHidden.playlists.size}</dd>
+              </div>
+              <div>
+                <dt>Hidden artists</dt>
+                <dd>{homeHidden.artists.size}</dd>
+              </div>
+            </dl>
 
-      <dl class="home-customize__stats">
-        <div>
-          <dt>Hidden albums</dt>
-          <dd>{homeHidden.albums.size}</dd>
+            {#if hiddenCount === 0}
+              <p class="home-customize__empty">Nothing hidden yet.</p>
+            {/if}
+          </div>
+
+          <footer class="home-customize__footer">
+            <Button
+              variant="surface"
+              disabled={hiddenCount === 0}
+              onclick={resetHidden}
+            >
+              Restore hidden items
+            </Button>
+            <Button onclick={close}>Done</Button>
+          </footer>
         </div>
-        <div>
-          <dt>Hidden mixes</dt>
-          <dd>{homeHidden.mixes.size}</dd>
-        </div>
-        <div>
-          <dt>Hidden playlists</dt>
-          <dd>{homeHidden.playlists.size}</dd>
-        </div>
-        <div>
-          <dt>Hidden artists</dt>
-          <dd>{homeHidden.artists.size}</dd>
-        </div>
-      </dl>
-
-      {#if hiddenCount === 0}
-        <p class="home-customize__empty">Nothing hidden yet.</p>
-      {/if}
-    </div>
-
-    <footer class="home-customize__footer">
-      <Button
-        variant="surface"
-        disabled={hiddenCount === 0}
-        onclick={resetHidden}
-      >
-        Restore hidden items
-      </Button>
-      <Button onclick={close}>Done</Button>
-    </footer>
-  </div>
-{/if}
+      {/snippet}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
   .home-customize__backdrop {

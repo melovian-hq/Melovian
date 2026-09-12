@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog, Select } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
@@ -37,6 +38,23 @@
   }
 
   let { open = false, onclose, oncreate }: Props = $props();
+
+  const FIELD_ITEMS = SMART_PLAYLIST_FIELDS.map((field) => ({
+    value: field.id,
+    label: field.label,
+  }));
+  const SORT_ITEMS = SMART_PLAYLIST_SORT_OPTIONS.map((option) => ({
+    value: option.id as string,
+    label: option.label,
+  }));
+  const PRESENCE_ITEMS = [
+    { value: "present", label: "Present" },
+    { value: "missing", label: "Missing" },
+  ];
+  const BOOLEAN_ITEMS = [
+    { value: "true", label: "Yes" },
+    { value: "false", label: "No" },
+  ];
 
   let draft = $state(createEmptySmartPlaylistDraft());
   let submitting = $state(false);
@@ -235,39 +253,91 @@
       {#each group.rules as rule, index (rule.id)}
         {@const path = rulePath(group.id, rule.id, index)}
         {@const field = getSmartField(rule.field)}
+        {@const operatorItems = operatorsForField(rule.field).map(
+          (operator) => ({
+            value: operator,
+            label: operatorLabel(operator),
+          }),
+        )}
         <div
           class="smart-rule"
           class:smart-rule--invalid={Boolean(errorByPath[path])}
         >
-          <select
-            class="smart-rule__field"
+          <Select.Root
+            type="single"
+            items={FIELD_ITEMS}
             value={rule.field}
-            onchange={(event) =>
-              onFieldChange(
-                group.id,
-                rule,
-                (event.currentTarget as HTMLSelectElement).value,
-              )}
+            onValueChange={(value) => onFieldChange(group.id, rule, value)}
           >
-            {#each SMART_PLAYLIST_FIELDS as option (option.id)}
-              <option value={option.id}>{option.label}</option>
-            {/each}
-          </select>
+            <Select.Trigger
+              class="smart-rule__field smart-select-trigger"
+              aria-label="Rule field"
+            >
+              <Select.Value />
+              <MdiIcon name="chevronDown" size={14} />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content
+                class="smart-creator__select-content"
+                sideOffset={4}
+              >
+                <Select.Viewport>
+                  {#each FIELD_ITEMS as option (option.value)}
+                    <Select.Item
+                      class="smart-creator__select-item"
+                      value={option.value}
+                      label={option.label}
+                    >
+                      {#snippet children({ selected })}
+                        {option.label}
+                        {#if selected}
+                          <MdiIcon name="check" size={14} />
+                        {/if}
+                      {/snippet}
+                    </Select.Item>
+                  {/each}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
 
-          <select
-            class="smart-rule__operator"
+          <Select.Root
+            type="single"
+            items={operatorItems}
             value={rule.operator}
-            onchange={(event) =>
-              onOperatorChange(
-                group.id,
-                rule,
-                (event.currentTarget as HTMLSelectElement).value,
-              )}
+            onValueChange={(value) => onOperatorChange(group.id, rule, value)}
           >
-            {#each operatorsForField(rule.field) as operator (operator)}
-              <option value={operator}>{operatorLabel(operator)}</option>
-            {/each}
-          </select>
+            <Select.Trigger
+              class="smart-rule__operator smart-select-trigger"
+              aria-label="Rule operator"
+            >
+              <Select.Value />
+              <MdiIcon name="chevronDown" size={14} />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content
+                class="smart-creator__select-content"
+                sideOffset={4}
+              >
+                <Select.Viewport>
+                  {#each operatorItems as option (option.value)}
+                    <Select.Item
+                      class="smart-creator__select-item"
+                      value={option.value}
+                      label={option.label}
+                    >
+                      {#snippet children({ selected })}
+                        {option.label}
+                        {#if selected}
+                          <MdiIcon name="check" size={14} />
+                        {/if}
+                      {/snippet}
+                    </Select.Item>
+                  {/each}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
 
           {#if rule.operator === "inTheRange"}
             {@const range = rangeValues(rule)}
@@ -299,32 +369,87 @@
               />
             </div>
           {:else if rule.operator === "isMissing" || rule.operator === "isPresent"}
-            <select
-              class="smart-rule__value"
+            <Select.Root
+              type="single"
+              items={PRESENCE_ITEMS}
               value={rule.value === true ? "present" : "missing"}
-              onchange={(event) =>
+              onValueChange={(value) =>
                 (draft = updateDraftRule(draft, group.id, rule.id, {
-                  value:
-                    (event.currentTarget as HTMLSelectElement).value ===
-                    "present",
+                  value: value === "present",
                 }))}
             >
-              <option value="present">Present</option>
-              <option value="missing">Missing</option>
-            </select>
+              <Select.Trigger
+                class="smart-rule__value smart-select-trigger"
+                aria-label="Rule value"
+              >
+                <Select.Value />
+                <MdiIcon name="chevronDown" size={14} />
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content
+                  class="smart-creator__select-content"
+                  sideOffset={4}
+                >
+                  <Select.Viewport>
+                    {#each PRESENCE_ITEMS as option (option.value)}
+                      <Select.Item
+                        class="smart-creator__select-item"
+                        value={option.value}
+                        label={option.label}
+                      >
+                        {#snippet children({ selected })}
+                          {option.label}
+                          {#if selected}
+                            <MdiIcon name="check" size={14} />
+                          {/if}
+                        {/snippet}
+                      </Select.Item>
+                    {/each}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
           {:else if field?.valueType === "boolean"}
-            <select
-              class="smart-rule__value"
+            <Select.Root
+              type="single"
+              items={BOOLEAN_ITEMS}
               value={rule.value === true ? "true" : "false"}
-              onchange={(event) =>
+              onValueChange={(value) =>
                 (draft = updateDraftRule(draft, group.id, rule.id, {
-                  value:
-                    (event.currentTarget as HTMLSelectElement).value === "true",
+                  value: value === "true",
                 }))}
             >
-              <option value="true">Yes</option>
-              <option value="false">No</option>
-            </select>
+              <Select.Trigger
+                class="smart-rule__value smart-select-trigger"
+                aria-label="Rule value"
+              >
+                <Select.Value />
+                <MdiIcon name="chevronDown" size={14} />
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content
+                  class="smart-creator__select-content"
+                  sideOffset={4}
+                >
+                  <Select.Viewport>
+                    {#each BOOLEAN_ITEMS as option (option.value)}
+                      <Select.Item
+                        class="smart-creator__select-item"
+                        value={option.value}
+                        label={option.label}
+                      >
+                        {#snippet children({ selected })}
+                          {option.label}
+                          {#if selected}
+                            <MdiIcon name="check" size={14} />
+                          {/if}
+                        {/snippet}
+                      </Select.Item>
+                    {/each}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
           {:else}
             <input
               class="smart-rule__value"
@@ -367,118 +492,155 @@
   </section>
 {/snippet}
 
-{#if open}
-  <button
-    type="button"
-    class="smart-creator__backdrop"
-    aria-label="Close smart playlist creator"
-    onclick={closeDialog}
-  ></button>
-  <div
-    class="smart-creator"
-    role="dialog"
-    aria-labelledby="smart-creator-title"
-    aria-modal="true"
-  >
-    <header class="smart-creator__header">
-      <div>
-        <h2 id="smart-creator-title">Smart playlist</h2>
-        <p>Build dynamic playlists with AND/OR rules from your library.</p>
-      </div>
-      <button
-        type="button"
-        class="smart-creator__close"
-        aria-label="Close"
-        onclick={closeDialog}
-      >
-        <MdiIcon name="x" size={18} />
-      </button>
-    </header>
+<Dialog.Root
+  {open}
+  onOpenChange={(next) => {
+    if (!next) closeDialog();
+  }}
+>
+  <Dialog.Portal>
+    <Dialog.Overlay class="smart-creator__backdrop" />
+    <Dialog.Content class="smart-creator">
+      <header class="smart-creator__header">
+        <div>
+          <Dialog.Title id="smart-creator-title">
+            {#snippet child({ props })}
+              <h2 {...props}>Smart playlist</h2>
+            {/snippet}
+          </Dialog.Title>
+          <Dialog.Description>
+            {#snippet child({ props })}
+              <p {...props}>
+                Build dynamic playlists with AND/OR rules from your library.
+              </p>
+            {/snippet}
+          </Dialog.Description>
+        </div>
+        <Dialog.Close
+          type="button"
+          class="smart-creator__close"
+          aria-label="Close"
+        >
+          <MdiIcon name="x" size={18} />
+        </Dialog.Close>
+      </header>
 
-    <div class="smart-creator__body">
-      <div class="smart-creator__grid">
+      <div class="smart-creator__body">
+        <div class="smart-creator__grid">
+          <label class="smart-field">
+            <span>Name</span>
+            <input
+              bind:value={draft.name}
+              placeholder="Evening jazz"
+              autocomplete="off"
+            />
+            {#if errorByPath.name}
+              <span class="smart-field__error">{errorByPath.name}</span>
+            {/if}
+          </label>
+
+          <label class="smart-field">
+            <span>Sort</span>
+            <Select.Root
+              type="single"
+              items={SORT_ITEMS}
+              bind:value={draft.sort}
+            >
+              <Select.Trigger
+                class="smart-field__select smart-select-trigger"
+                aria-label="Sort"
+              >
+                <Select.Value />
+                <MdiIcon name="chevronDown" size={14} />
+              </Select.Trigger>
+              <Select.Portal>
+                <Select.Content
+                  class="smart-creator__select-content"
+                  sideOffset={4}
+                >
+                  <Select.Viewport>
+                    {#each SORT_ITEMS as option (option.value)}
+                      <Select.Item
+                        class="smart-creator__select-item"
+                        value={option.value}
+                        label={option.label}
+                      >
+                        {#snippet children({ selected })}
+                          {option.label}
+                          {#if selected}
+                            <MdiIcon name="check" size={14} />
+                          {/if}
+                        {/snippet}
+                      </Select.Item>
+                    {/each}
+                  </Select.Viewport>
+                </Select.Content>
+              </Select.Portal>
+            </Select.Root>
+          </label>
+
+          <label class="smart-field">
+            <span>Track limit</span>
+            <input
+              type="number"
+              min="1"
+              value={draft.limit ?? ""}
+              oninput={(event) => {
+                const raw = (event.currentTarget as HTMLInputElement).value;
+                draft.limit = raw === "" ? null : Number(raw);
+                if (draft.limit !== null) draft.limitPercent = null;
+              }}
+            />
+            {#if errorByPath.limit}
+              <span class="smart-field__error">{errorByPath.limit}</span>
+            {/if}
+          </label>
+
+          <label class="smart-field smart-field--checkbox">
+            <input type="checkbox" bind:checked={draft.public} />
+            <span>Share publicly on server</span>
+          </label>
+        </div>
+
         <label class="smart-field">
-          <span>Name</span>
+          <span>Comment</span>
           <input
-            bind:value={draft.name}
-            placeholder="Evening jazz"
+            bind:value={draft.comment}
+            placeholder="Optional description"
             autocomplete="off"
           />
-          {#if errorByPath.name}
-            <span class="smart-field__error">{errorByPath.name}</span>
-          {/if}
         </label>
 
-        <label class="smart-field">
-          <span>Sort</span>
-          <select bind:value={draft.sort}>
-            {#each SMART_PLAYLIST_SORT_OPTIONS as option (option.id)}
-              <option value={option.id}>{option.label}</option>
-            {/each}
-          </select>
-        </label>
+        <div class="smart-creator__rules">
+          <h3>Rules</h3>
+          {@render groupEditor(draft.root, null, 0)}
+        </div>
 
-        <label class="smart-field">
-          <span>Track limit</span>
-          <input
-            type="number"
-            min="1"
-            value={draft.limit ?? ""}
-            oninput={(event) => {
-              const raw = (event.currentTarget as HTMLInputElement).value;
-              draft.limit = raw === "" ? null : Number(raw);
-              if (draft.limit !== null) draft.limitPercent = null;
-            }}
-          />
-          {#if errorByPath.limit}
-            <span class="smart-field__error">{errorByPath.limit}</span>
-          {/if}
-        </label>
-
-        <label class="smart-field smart-field--checkbox">
-          <input type="checkbox" bind:checked={draft.public} />
-          <span>Share publicly on server</span>
-        </label>
-      </div>
-
-      <label class="smart-field">
-        <span>Comment</span>
-        <input
-          bind:value={draft.comment}
-          placeholder="Optional description"
-          autocomplete="off"
-        />
-      </label>
-
-      <div class="smart-creator__rules">
-        <h3>Rules</h3>
-        {@render groupEditor(draft.root, null, 0)}
-      </div>
-
-      {#if submitError}
-        <p class="smart-creator__submit-error">{submitError}</p>
-      {/if}
-    </div>
-
-    <footer class="smart-creator__footer">
-      <Button variant="surface" onclick={closeDialog} disabled={submitting}>
-        Cancel
-      </Button>
-      <Button onclick={() => void submit()} disabled={submitting}>
-        {#if submitting}
-          <Spinner />
-          Creating...
-        {:else}
-          <MdiIcon name="plus" size={16} />
-          Create smart playlist
+        {#if submitError}
+          <p class="smart-creator__submit-error">{submitError}</p>
         {/if}
-      </Button>
-    </footer>
-  </div>
-{/if}
+      </div>
+
+      <footer class="smart-creator__footer">
+        <Button variant="surface" onclick={closeDialog} disabled={submitting}>
+          Cancel
+        </Button>
+        <Button onclick={() => void submit()} disabled={submitting}>
+          {#if submitting}
+            <Spinner />
+            Creating...
+          {:else}
+            <MdiIcon name="plus" size={16} />
+            Create smart playlist
+          {/if}
+        </Button>
+      </footer>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
-  .smart-creator__backdrop {
+  :global(.smart-creator__backdrop) {
     position: fixed;
     inset: 0;
     border: none;
@@ -487,7 +649,7 @@
     cursor: pointer;
   }
 
-  .smart-creator {
+  :global(.smart-creator) {
     position: fixed;
     top: 50%;
     left: 50%;
@@ -524,7 +686,7 @@
     font-size: 0.875rem;
   }
 
-  .smart-creator__close {
+  :global(.smart-creator__close) {
     border: none;
     background: transparent;
     color: var(--jb-text-muted);
@@ -533,7 +695,7 @@
     border-radius: var(--jb-radius-md);
   }
 
-  .smart-creator__close:hover {
+  :global(.smart-creator__close:hover) {
     color: var(--jb-text);
     background: var(--jb-surface-hover);
   }
@@ -559,7 +721,7 @@
   }
 
   .smart-field input,
-  .smart-field select {
+  :global(.smart-field__select) {
     width: 100%;
     padding: 0.55rem 0.7rem;
     border-radius: var(--jb-radius-md);
@@ -690,9 +852,9 @@
     border-color: color-mix(in srgb, var(--jb-danger) 35%, transparent);
   }
 
-  .smart-rule__field,
-  .smart-rule__operator,
-  .smart-rule__value,
+  :global(.smart-rule__field),
+  :global(.smart-rule__operator),
+  :global(.smart-rule__value),
   .smart-rule__range input {
     width: 100%;
     padding: 0.45rem 0.55rem;
@@ -702,6 +864,56 @@
     color: var(--jb-text);
     font: inherit;
     font-size: 0.8125rem;
+  }
+
+  :global(.smart-select-trigger) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: 0.35rem;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  :global(.smart-select-trigger svg) {
+    flex-shrink: 0;
+    color: var(--jb-text-subtle);
+  }
+
+  :global(.smart-creator__select-content) {
+    z-index: 100;
+    min-width: var(--bits-select-anchor-width);
+    padding: var(--jb-space-1);
+    border: 1px solid var(--jb-border);
+    border-radius: var(--jb-radius-md);
+    background: var(--jb-bg-elevated);
+    box-shadow: var(--jb-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  :global(.smart-creator__select-item) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--jb-space-2);
+    width: 100%;
+    padding: 0.45rem 0.55rem;
+    border-radius: var(--jb-radius-sm);
+    color: var(--jb-text);
+    font-size: 0.8125rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  :global(.smart-creator__select-item[data-highlighted]) {
+    background: var(--jb-surface-hover);
+  }
+
+  :global(.smart-creator__select-item[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .smart-rule__range {
@@ -750,7 +962,7 @@
   }
 
   @media (max-width: 480px) {
-    .smart-creator {
+    :global(.smart-creator) {
       width: calc(100vw - 0.75rem);
       max-height: 94dvh;
       border-radius: var(--jb-radius-lg);

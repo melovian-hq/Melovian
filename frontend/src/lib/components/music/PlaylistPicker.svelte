@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog } from "bits-ui";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import SourceIcon from "$lib/components/ui/SourceIcon.svelte";
   import { music } from "$lib/config/music.svelte";
@@ -65,102 +66,129 @@
       creatingServer = false;
     }
   }
+
+  function getOpen() {
+    return open;
+  }
+
+  function setOpen(next: boolean) {
+    if (!next) onclose?.();
+  }
 </script>
 
-{#if open}
-  <div
-    class="picker-backdrop"
-    onclick={() => onclose?.()}
-    role="presentation"
-  ></div>
-  <div class="picker" role="dialog" aria-label="Add to playlist">
-    <header class="picker__header">
-      <h3>Add to playlist</h3>
-      <p>{tracks.length} track{tracks.length === 1 ? "" : "s"} selected</p>
-    </header>
+<Dialog.Root bind:open={getOpen, setOpen}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="picker-backdrop">
+      {#snippet child({ props })}
+        <div {...props}></div>
+      {/snippet}
+    </Dialog.Overlay>
+    <Dialog.Content class="picker">
+      {#snippet child({ props })}
+        <div {...props}>
+          <header class="picker__header">
+            <Dialog.Title level={3}>
+              {#snippet child({ props: titleProps })}
+                <h3 {...titleProps}>Add to playlist</h3>
+              {/snippet}
+            </Dialog.Title>
+            <Dialog.Description>
+              {#snippet child({ props: descriptionProps })}
+                <p {...descriptionProps}>
+                  {tracks.length} track{tracks.length === 1 ? "" : "s"} selected
+                </p>
+              {/snippet}
+            </Dialog.Description>
+          </header>
 
-    {#if showServer}
-      <section class="picker__section">
-        <h4 class="picker__section-title">
-          <SourceIcon kind="server" size={16} />
-          Server playlists
-        </h4>
-        <form
-          class="picker__create"
-          onsubmit={(e) => {
-            e.preventDefault();
-            createServerAndAdd();
-          }}
-        >
-          <input
-            bind:value={newServerName}
-            placeholder="New server playlist"
-            autocomplete="off"
-          />
-          <button
-            type="submit"
-            disabled={creatingServer || !newServerName.trim()}
-          >
-            <MdiIcon name="plus" size={16} />
-            Create
-          </button>
-        </form>
-        <ul class="picker__list">
-          {#each music.serverPlaylists as pl (pl.id)}
-            <li>
-              <button type="button" onclick={() => addToServerPlaylist(pl.id)}>
-                <SourceIcon kind="server" size={18} />
-                <span>{pl.name}</span>
-                <span class="picker__count">{pl.songCount ?? 0}</span>
-              </button>
-            </li>
-          {:else}
-            <li class="picker__empty">No server playlists yet.</li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
+          {#if showServer}
+            <section class="picker__section">
+              <h4 class="picker__section-title">
+                <SourceIcon kind="server" size={16} />
+                Server playlists
+              </h4>
+              <form
+                class="picker__create"
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  createServerAndAdd();
+                }}
+              >
+                <input
+                  bind:value={newServerName}
+                  placeholder="New server playlist"
+                  autocomplete="off"
+                />
+                <button
+                  type="submit"
+                  disabled={creatingServer || !newServerName.trim()}
+                >
+                  <MdiIcon name="plus" size={16} />
+                  Create
+                </button>
+              </form>
+              <ul class="picker__list">
+                {#each music.serverPlaylists as pl (pl.id)}
+                  <li>
+                    <button
+                      type="button"
+                      onclick={() => addToServerPlaylist(pl.id)}
+                    >
+                      <SourceIcon kind="server" size={18} />
+                      <span>{pl.name}</span>
+                      <span class="picker__count">{pl.songCount ?? 0}</span>
+                    </button>
+                  </li>
+                {:else}
+                  <li class="picker__empty">No server playlists yet.</li>
+                {/each}
+              </ul>
+            </section>
+          {/if}
 
-    {#if showLocal}
-      <section class="picker__section">
-        <h4 class="picker__section-title">
-          <MdiIcon name="folderOpen" size={16} />
-          Local playlists
-        </h4>
-        <form
-          class="picker__create"
-          onsubmit={(e) => {
-            e.preventDefault();
-            createAndAdd();
-          }}
-        >
-          <input
-            bind:value={newName}
-            placeholder="New local playlist"
-            autocomplete="off"
-          />
-          <button type="submit" disabled={creating || !newName.trim()}>
-            <MdiIcon name="plus" size={16} />
-            Create
-          </button>
-        </form>
-        <ul class="picker__list">
-          {#each music.playlists as pl (pl.id)}
-            <li>
-              <button type="button" onclick={() => addToExisting(pl.id)}>
-                <MdiIcon name="folderOpen" size={18} />
-                <span>{pl.name}</span>
-                <span class="picker__count">{pl.trackCount}</span>
-              </button>
-            </li>
-          {:else}
-            <li class="picker__empty">No local playlists yet.</li>
-          {/each}
-        </ul>
-      </section>
-    {/if}
-  </div>
-{/if}
+          {#if showLocal}
+            <section class="picker__section">
+              <h4 class="picker__section-title">
+                <MdiIcon name="folderOpen" size={16} />
+                Local playlists
+              </h4>
+              <form
+                class="picker__create"
+                onsubmit={(e) => {
+                  e.preventDefault();
+                  createAndAdd();
+                }}
+              >
+                <input
+                  bind:value={newName}
+                  placeholder="New local playlist"
+                  autocomplete="off"
+                />
+                <button type="submit" disabled={creating || !newName.trim()}>
+                  <MdiIcon name="plus" size={16} />
+                  Create
+                </button>
+              </form>
+              <ul class="picker__list">
+                {#each music.playlists as pl (pl.id)}
+                  <li>
+                    <button type="button" onclick={() => addToExisting(pl.id)}>
+                      <MdiIcon name="folderOpen" size={18} />
+                      <span>{pl.name}</span>
+                      <span class="picker__count">{pl.trackCount}</span>
+                    </button>
+                  </li>
+                {:else}
+                  <li class="picker__empty">No local playlists yet.</li>
+                {/each}
+              </ul>
+            </section>
+          {/if}
+        </div>
+      {/snippet}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
   .picker-backdrop {

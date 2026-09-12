@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog, Select } from "bits-ui";
   import Button from "$lib/components/ui/Button.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
@@ -26,6 +27,16 @@
     kind,
     onclose,
   }: Props = $props();
+
+  const EXPIRES_OPTIONS: {
+    value: "none" | "1d" | "7d" | "30d";
+    label: string;
+  }[] = [
+    { value: "none", label: "None" },
+    { value: "1d", label: "1 day" },
+    { value: "7d", label: "7 days" },
+    { value: "30d", label: "30 days" },
+  ];
 
   let mode = $state<ShareAccessMode>("public");
   let password = $state("");
@@ -163,227 +174,252 @@
       );
     }
   }
-
-  function onKeydown(event: KeyboardEvent) {
-    if (!open) return;
-    if (event.key === "Escape") {
-      event.preventDefault();
-      onclose?.();
-    }
-  }
 </script>
 
-<svelte:window onkeydown={onKeydown} />
-
-{#if open}
-  <button
-    type="button"
-    class="share-dialog__backdrop"
-    aria-label="Close share dialog"
-    onclick={() => onclose?.()}
-  ></button>
-  <div
-    class="share-dialog"
-    role="dialog"
-    aria-modal="true"
-    aria-labelledby="share-dialog-title"
-  >
-    <header class="share-dialog__header">
-      <div>
-        <h2 id="share-dialog-title">Share playlist</h2>
-        <p class="share-dialog__subtitle" title={playlistName}>
-          {playlistName}
-        </p>
-      </div>
-      <button
-        type="button"
-        class="share-dialog__close"
-        aria-label="Close"
-        onclick={() => onclose?.()}
-      >
-        <MdiIcon name="x" size={18} />
-      </button>
-    </header>
-
-    <div class="share-dialog__body">
-      <fieldset class="share-dialog__modes">
-        <legend>Access</legend>
-        <label class="share-dialog__mode">
-          <input type="radio" bind:group={mode} value="public" />
-          <span>
-            <MdiIcon name="link" size={16} />
-            Public
-          </span>
-        </label>
-        <label class="share-dialog__mode">
-          <input type="radio" bind:group={mode} value="password" />
-          <span>
-            <MdiIcon name="lock" size={16} />
-            Password
-          </span>
-        </label>
-        <label
-          class="share-dialog__mode"
-          class:share-dialog__mode--disabled={restrictedDisabled}
-          title={restrictedDisabled ? "Sign-in accounts required" : undefined}
+<Dialog.Root
+  {open}
+  onOpenChange={(next) => {
+    if (!next) onclose?.();
+  }}
+>
+  <Dialog.Portal>
+    <Dialog.Overlay class="share-dialog__backdrop" />
+    <Dialog.Content class="share-dialog">
+      <header class="share-dialog__header">
+        <div>
+          <Dialog.Title id="share-dialog-title">
+            {#snippet child({ props })}
+              <h2 {...props}>Share playlist</h2>
+            {/snippet}
+          </Dialog.Title>
+          <Dialog.Description>
+            {#snippet child({ props })}
+              <p {...props} class="share-dialog__subtitle" title={playlistName}>
+                {playlistName}
+              </p>
+            {/snippet}
+          </Dialog.Description>
+        </div>
+        <Dialog.Close
+          type="button"
+          class="share-dialog__close"
+          aria-label="Close"
         >
-          <input
-            type="radio"
-            bind:group={mode}
-            value="restricted"
-            disabled={restrictedDisabled}
-          />
-          <span>
-            <MdiIcon name="accountMultiple" size={16} />
-            Restricted
-          </span>
-        </label>
-        {#if restrictedDisabled}
-          <p class="share-dialog__hint">Sign-in accounts required</p>
-        {/if}
-      </fieldset>
+          <MdiIcon name="x" size={18} />
+        </Dialog.Close>
+      </header>
 
-      {#if mode === "password"}
-        <label class="share-dialog__field">
-          <span>Password</span>
-          <Input
-            type="password"
-            bind:value={password}
-            autocomplete="new-password"
-            placeholder="Share password"
-          />
-        </label>
-      {/if}
-
-      {#if mode === "restricted" && !restrictedDisabled}
-        <div class="share-dialog__field">
-          <span>Allowed usernames</span>
-          <form
-            class="share-dialog__username-row"
-            onsubmit={(event) => {
-              event.preventDefault();
-              addUsername();
-            }}
+      <div class="share-dialog__body">
+        <fieldset class="share-dialog__modes">
+          <legend>Access</legend>
+          <label class="share-dialog__mode">
+            <input type="radio" bind:group={mode} value="public" />
+            <span>
+              <MdiIcon name="link" size={16} />
+              Public
+            </span>
+          </label>
+          <label class="share-dialog__mode">
+            <input type="radio" bind:group={mode} value="password" />
+            <span>
+              <MdiIcon name="lock" size={16} />
+              Password
+            </span>
+          </label>
+          <label
+            class="share-dialog__mode"
+            class:share-dialog__mode--disabled={restrictedDisabled}
+            title={restrictedDisabled ? "Sign-in accounts required" : undefined}
           >
-            <Input
-              bind:value={usernameDraft}
-              placeholder="username"
-              autocomplete="off"
+            <input
+              type="radio"
+              bind:group={mode}
+              value="restricted"
+              disabled={restrictedDisabled}
             />
-            <Button type="submit" variant="surface" size="sm">Add</Button>
-          </form>
-          {#if usernames.length > 0}
-            <ul class="share-dialog__chips">
-              {#each usernames as name (name)}
+            <span>
+              <MdiIcon name="accountMultiple" size={16} />
+              Restricted
+            </span>
+          </label>
+          {#if restrictedDisabled}
+            <p class="share-dialog__hint">Sign-in accounts required</p>
+          {/if}
+        </fieldset>
+
+        {#if mode === "password"}
+          <label class="share-dialog__field">
+            <span>Password</span>
+            <Input
+              type="password"
+              bind:value={password}
+              autocomplete="new-password"
+              placeholder="Share password"
+            />
+          </label>
+        {/if}
+
+        {#if mode === "restricted" && !restrictedDisabled}
+          <div class="share-dialog__field">
+            <span>Allowed usernames</span>
+            <form
+              class="share-dialog__username-row"
+              onsubmit={(event) => {
+                event.preventDefault();
+                addUsername();
+              }}
+            >
+              <Input
+                bind:value={usernameDraft}
+                placeholder="username"
+                autocomplete="off"
+              />
+              <Button type="submit" variant="surface" size="sm">Add</Button>
+            </form>
+            {#if usernames.length > 0}
+              <ul class="share-dialog__chips">
+                {#each usernames as name (name)}
+                  <li>
+                    <span>{name}</span>
+                    <button
+                      type="button"
+                      aria-label="Remove {name}"
+                      onclick={() => removeUsername(name)}
+                    >
+                      <MdiIcon name="x" size={14} />
+                    </button>
+                  </li>
+                {/each}
+              </ul>
+            {/if}
+          </div>
+        {/if}
+
+        <label class="share-dialog__field">
+          <span>Expires</span>
+          <Select.Root
+            type="single"
+            items={EXPIRES_OPTIONS}
+            value={expiresChoice}
+            onValueChange={(value) =>
+              (expiresChoice =
+                value as (typeof EXPIRES_OPTIONS)[number]["value"])}
+          >
+            <Select.Trigger class="share-dialog__select" aria-label="Expires">
+              <Select.Value />
+              <MdiIcon name="chevronDown" size={16} />
+            </Select.Trigger>
+            <Select.Portal>
+              <Select.Content
+                class="share-dialog__select-content"
+                sideOffset={4}
+              >
+                <Select.Viewport>
+                  {#each EXPIRES_OPTIONS as option (option.value)}
+                    <Select.Item
+                      class="share-dialog__select-item"
+                      value={option.value}
+                      label={option.label}
+                    >
+                      {#snippet children({ selected })}
+                        {option.label}
+                        {#if selected}
+                          <MdiIcon name="check" size={14} />
+                        {/if}
+                      {/snippet}
+                    </Select.Item>
+                  {/each}
+                </Select.Viewport>
+              </Select.Content>
+            </Select.Portal>
+          </Select.Root>
+        </label>
+
+        <div class="share-dialog__actions">
+          <Button
+            type="button"
+            disabled={creating || (mode === "restricted" && restrictedDisabled)}
+            onclick={() => void createShare()}
+          >
+            <MdiIcon name="share" size={16} />
+            {creating ? "Creating…" : "Create share"}
+          </Button>
+        </div>
+
+        {#if createdShare}
+          <div class="share-dialog__created">
+            <p class="share-dialog__created-label">Share link</p>
+            <div class="share-dialog__url-row">
+              <code class="share-dialog__url">{createdShare.url}</code>
+              <Button
+                type="button"
+                variant="surface"
+                size="sm"
+                onclick={() => {
+                  if (createdShare) void copyUrl(createdShare.url);
+                }}
+              >
+                Copy
+              </Button>
+            </div>
+          </div>
+        {/if}
+
+        <section class="share-dialog__existing">
+          <h3>Existing shares</h3>
+          {#if loadingShares}
+            <div class="share-dialog__state"><Spinner /></div>
+          {:else if existingShares.length === 0}
+            <p class="share-dialog__empty">No shares for this playlist yet.</p>
+          {:else}
+            <ul class="share-dialog__list">
+              {#each existingShares as share (share.id)}
                 <li>
-                  <span>{name}</span>
-                  <button
-                    type="button"
-                    aria-label="Remove {name}"
-                    onclick={() => removeUsername(name)}
-                  >
-                    <MdiIcon name="x" size={14} />
-                  </button>
+                  <div class="share-dialog__list-main">
+                    <span class="share-dialog__list-mode"
+                      >{share.accessMode}</span
+                    >
+                    <code class="share-dialog__url" title={share.url}
+                      >{share.url}</code
+                    >
+                  </div>
+                  <div class="share-dialog__list-actions">
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onclick={() => void copyUrl(share.url)}
+                    >
+                      Copy
+                    </Button>
+                    <Button
+                      type="button"
+                      variant="ghost"
+                      size="sm"
+                      onclick={() => void revokeShare(share.id)}
+                    >
+                      <MdiIcon name="trash2" size={14} />
+                      Revoke
+                    </Button>
+                  </div>
                 </li>
               {/each}
             </ul>
           {/if}
-        </div>
-      {/if}
-
-      <label class="share-dialog__field">
-        <span>Expires</span>
-        <select bind:value={expiresChoice} class="share-dialog__select">
-          <option value="none">None</option>
-          <option value="1d">1 day</option>
-          <option value="7d">7 days</option>
-          <option value="30d">30 days</option>
-        </select>
-      </label>
-
-      <div class="share-dialog__actions">
-        <Button
-          type="button"
-          disabled={creating || (mode === "restricted" && restrictedDisabled)}
-          onclick={() => void createShare()}
-        >
-          <MdiIcon name="share" size={16} />
-          {creating ? "Creating…" : "Create share"}
-        </Button>
+        </section>
       </div>
 
-      {#if createdShare}
-        <div class="share-dialog__created">
-          <p class="share-dialog__created-label">Share link</p>
-          <div class="share-dialog__url-row">
-            <code class="share-dialog__url">{createdShare.url}</code>
-            <Button
-              type="button"
-              variant="surface"
-              size="sm"
-              onclick={() => {
-                if (createdShare) void copyUrl(createdShare.url);
-              }}
-            >
-              Copy
-            </Button>
-          </div>
-        </div>
-      {/if}
-
-      <section class="share-dialog__existing">
-        <h3>Existing shares</h3>
-        {#if loadingShares}
-          <div class="share-dialog__state"><Spinner /></div>
-        {:else if existingShares.length === 0}
-          <p class="share-dialog__empty">No shares for this playlist yet.</p>
-        {:else}
-          <ul class="share-dialog__list">
-            {#each existingShares as share (share.id)}
-              <li>
-                <div class="share-dialog__list-main">
-                  <span class="share-dialog__list-mode">{share.accessMode}</span
-                  >
-                  <code class="share-dialog__url" title={share.url}
-                    >{share.url}</code
-                  >
-                </div>
-                <div class="share-dialog__list-actions">
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onclick={() => void copyUrl(share.url)}
-                  >
-                    Copy
-                  </Button>
-                  <Button
-                    type="button"
-                    variant="ghost"
-                    size="sm"
-                    onclick={() => void revokeShare(share.id)}
-                  >
-                    <MdiIcon name="trash2" size={14} />
-                    Revoke
-                  </Button>
-                </div>
-              </li>
-            {/each}
-          </ul>
-        {/if}
-      </section>
-    </div>
-
-    <footer class="share-dialog__footer">
-      <Button type="button" variant="surface" onclick={() => onclose?.()}>
-        Close
-      </Button>
-    </footer>
-  </div>
-{/if}
+      <footer class="share-dialog__footer">
+        <Button type="button" variant="surface" onclick={() => onclose?.()}>
+          Close
+        </Button>
+      </footer>
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
-  .share-dialog__backdrop {
+  :global(.share-dialog__backdrop) {
     position: fixed;
     inset: 0;
     z-index: 80;
@@ -392,7 +428,7 @@
     cursor: pointer;
   }
 
-  .share-dialog {
+  :global(.share-dialog) {
     position: fixed;
     z-index: 81;
     top: 50%;
@@ -430,7 +466,7 @@
     word-break: break-word;
   }
 
-  .share-dialog__close {
+  :global(.share-dialog__close) {
     display: grid;
     place-items: center;
     width: 2rem;
@@ -442,7 +478,7 @@
     cursor: pointer;
   }
 
-  .share-dialog__close:hover {
+  :global(.share-dialog__close:hover) {
     background: var(--jb-surface-hover);
     color: var(--jb-text);
   }
@@ -559,13 +595,55 @@
     padding: 0;
   }
 
-  .share-dialog__select {
+  :global(.share-dialog__select) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--jb-space-2);
     width: 100%;
     padding: var(--jb-space-3);
     border: 1px solid var(--jb-border);
     border-radius: var(--jb-radius-md);
     background: var(--jb-surface);
     color: var(--jb-text);
+    text-align: left;
+    cursor: pointer;
+  }
+
+  :global(.share-dialog__select-content) {
+    z-index: 100;
+    min-width: var(--bits-select-anchor-width);
+    padding: var(--jb-space-1);
+    border: 1px solid var(--jb-border);
+    border-radius: var(--jb-radius-md);
+    background: var(--jb-bg-elevated);
+    box-shadow: var(--jb-shadow-lg);
+    display: flex;
+    flex-direction: column;
+    gap: 0.125rem;
+  }
+
+  :global(.share-dialog__select-item) {
+    display: flex;
+    align-items: center;
+    justify-content: space-between;
+    gap: var(--jb-space-2);
+    width: 100%;
+    padding: 0.55rem 0.75rem;
+    border-radius: var(--jb-radius-sm);
+    color: var(--jb-text);
+    font-size: 0.875rem;
+    cursor: pointer;
+    user-select: none;
+  }
+
+  :global(.share-dialog__select-item[data-highlighted]) {
+    background: var(--jb-surface-hover);
+  }
+
+  :global(.share-dialog__select-item[data-disabled]) {
+    opacity: 0.5;
+    cursor: not-allowed;
   }
 
   .share-dialog__actions {

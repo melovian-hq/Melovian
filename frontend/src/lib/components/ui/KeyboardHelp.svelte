@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { Dialog } from "bits-ui";
   import { keyboardHelp } from "$lib/ui/keyboard-help.svelte";
 
   const shortcuts = [
@@ -15,38 +16,41 @@
   ];
 </script>
 
-{#if keyboardHelp.open}
-  <button
-    type="button"
-    class="keyboard-help__backdrop"
-    aria-label="Close keyboard shortcuts"
-    onclick={() => keyboardHelp.close()}
-  ></button>
-  <div
-    class="keyboard-help"
-    role="dialog"
-    aria-labelledby="keyboard-help-title"
-  >
-    <header class="keyboard-help__header">
-      <h2 id="keyboard-help-title">Keyboard shortcuts</h2>
-      <button
-        type="button"
-        class="keyboard-help__close"
-        onclick={() => keyboardHelp.close()}
-      >
-        Close
-      </button>
-    </header>
-    <dl class="keyboard-help__list">
-      {#each shortcuts as item (item.keys)}
-        <div class="keyboard-help__row">
-          <dt><kbd>{item.keys}</kbd></dt>
-          <dd>{item.action}</dd>
+<Dialog.Root bind:open={keyboardHelp.open}>
+  <Dialog.Portal>
+    <Dialog.Overlay class="keyboard-help__backdrop">
+      {#snippet child({ props })}
+        <div {...props}></div>
+      {/snippet}
+    </Dialog.Overlay>
+    <Dialog.Content class="keyboard-help">
+      {#snippet child({ props })}
+        <div {...props}>
+          <header class="keyboard-help__header">
+            <Dialog.Title>
+              {#snippet child({ props: titleProps })}
+                <h2 {...titleProps}>Keyboard shortcuts</h2>
+              {/snippet}
+            </Dialog.Title>
+            <Dialog.Close class="keyboard-help__close">
+              {#snippet child({ props: closeProps })}
+                <button {...closeProps} type="button">Close</button>
+              {/snippet}
+            </Dialog.Close>
+          </header>
+          <dl class="keyboard-help__list">
+            {#each shortcuts as item (item.keys)}
+              <div class="keyboard-help__row">
+                <dt><kbd>{item.keys}</kbd></dt>
+                <dd>{item.action}</dd>
+              </div>
+            {/each}
+          </dl>
         </div>
-      {/each}
-    </dl>
-  </div>
-{/if}
+      {/snippet}
+    </Dialog.Content>
+  </Dialog.Portal>
+</Dialog.Root>
 
 <style>
   .keyboard-help__backdrop {
