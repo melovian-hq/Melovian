@@ -6,6 +6,7 @@ package store
 import (
 	"crypto/rand"
 	"crypto/sha256"
+	"crypto/subtle"
 	"database/sql"
 	"encoding/hex"
 	"errors"
@@ -120,12 +121,16 @@ func (s *AuthStore) CreateUser(username, password string) (AuthUser, error) {
 	if err != nil {
 		return AuthUser{}, err
 	}
+	apiSecret, err := randomToken()
+	if err != nil {
+		return AuthUser{}, err
+	}
 
 	id := newInstanceID()
 	now := nowUnix()
 	_, err = s.db.exec(
 		`INSERT INTO melovian_users (id, username, password_hash, subsonic_api_secret, created_at) VALUES (?, ?, ?, ?, ?)`,
-		id, name, hash, password, now,
+		id, name, hash, apiSecret, now,
 	)
 	if err != nil {
 		return AuthUser{}, err
@@ -158,6 +163,9 @@ func (s *AuthStore) Authenticate(username, password string) (AuthUser, error) {
 	ok, err := VerifyPassword(hash, password)
 	if err != nil || !ok {
 		return AuthUser{}, fmt.Errorf("invalid credentials")
+	}
+	if err := s.migrateSubsonicSecret(user.ID, password); err != nil {
+		return AuthUser{}, err
 	}
 	if NeedsRehash(hash) {
 		if newHash, hashErr := HashPassword(password); hashErr == nil {
@@ -382,9 +390,15 @@ func (s *AuthStore) ChangePassword(userID, currentPassword, newPassword string) 
 	if err != nil {
 		return err
 	}
+	// Rotating the API secret on password change revokes Subsonic clients
+	// that still hold the old credential.
+	apiSecret, err := randomToken()
+	if err != nil {
+		return err
+	}
 	_, err = s.db.exec(
 		`UPDATE melovian_users SET password_hash = ?, subsonic_api_secret = ? WHERE id = ?`,
-		newHash, newPassword, userID,
+		newHash, apiSecret, userID,
 	)
 	return err
 }
@@ -461,6 +475,82 @@ func (s *AuthStore) SubsonicAPISecret(username string) (string, error) {
 		return "", fmt.Errorf("subsonic api secret not configured")
 	}
 	return secret, nil
+}
+
+// SubsonicAPISecretForUser returns the Subsonic API key for a user id.
+func (s *AuthStore) SubsonicAPISecretForUser(userID string) (string, error) {
+	row := s.db.queryRow(
+		`SELECT subsonic_api_secret FROM melovian_users WHERE id = ?`,
+		userID,
+	)
+	var secret string
+	if err := row.Scan(&secret); err != nil {
+		return "", err
+	}
+	if strings.TrimSpace(secret) == "" {
+		return "", fmt.Errorf("subsonic api secret not configured")
+	}
+	return secret, nil
+}
+
+// RegenerateSubsonicAPISecret replaces the stored API key with a fresh random
+// value and returns it. Existing Subsonic clients must be reconfigured.
+func (s *AuthStore) RegenerateSubsonicAPISecret(userID string) (string, error) {
+	secret, err := randomToken()
+	if err != nil {
+		return "", err
+	}
+	res, err := s.db.exec(
+		`UPDATE melovian_users SET subsonic_api_secret = ? WHERE id = ?`,
+		secret, userID,
+	)
+	if err != nil {
+		return "", err
+	}
+	if n, err := res.RowsAffected(); err == nil && n == 0 {
+		return "", sql.ErrNoRows
+	}
+	return secret, nil
+}
+
+// AuthenticateSubsonic verifies credentials for Subsonic clients. It accepts
+// the account password or the per-user API key stored in subsonic_api_secret.
+func (s *AuthStore) AuthenticateSubsonic(username, password string) (AuthUser, error) {
+	if user, err := s.Authenticate(username, password); err == nil {
+		return user, nil
+	}
+	secret, err := s.SubsonicAPISecret(username)
+	if err != nil || subtle.ConstantTimeCompare([]byte(secret), []byte(password)) != 1 {
+		return AuthUser{}, fmt.Errorf("invalid credentials")
+	}
+	return s.GetUserByUsername(username)
+}
+
+// migrateSubsonicSecret replaces a stored plaintext account password with a
+// random API key. Older rows kept the login password in subsonic_api_secret
+// so token auth could verify md5(password + salt). When the plaintext is
+// available at login we can detect that legacy value and swap it out.
+func (s *AuthStore) migrateSubsonicSecret(userID, password string) error {
+	row := s.db.queryRow(
+		`SELECT subsonic_api_secret FROM melovian_users WHERE id = ?`,
+		userID,
+	)
+	var stored string
+	if err := row.Scan(&stored); err != nil {
+		return err
+	}
+	if stored == "" || subtle.ConstantTimeCompare([]byte(stored), []byte(password)) != 1 {
+		return nil
+	}
+	secret, err := randomToken()
+	if err != nil {
+		return err
+	}
+	_, err = s.db.exec(
+		`UPDATE melovian_users SET subsonic_api_secret = ? WHERE id = ?`,
+		secret, userID,
+	)
+	return err
 }
 
 func (s *AuthStore) DeleteUser(userID, password string) error {

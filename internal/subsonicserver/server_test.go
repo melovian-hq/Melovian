@@ -7,6 +7,7 @@ import (
 	"context"
 	"crypto/md5" //#nosec G501 -- Subsonic token auth requires MD5 per protocol spec
 	"encoding/hex"
+	"errors"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -62,6 +63,70 @@ func TestVerifyToken(t *testing.T) {
 	token := hex.EncodeToString(sum[:])
 	if !VerifyToken(password, token, salt) {
 		t.Fatal("expected token verification to pass")
+	}
+	if !VerifyToken(password, strings.ToUpper(token), salt) {
+		t.Fatal("uppercase hex token must verify")
+	}
+	if VerifyToken(password, token, "othersalt") {
+		t.Fatal("token for a different salt must fail")
+	}
+	if VerifyToken(password, strings.Repeat("0", len(token)), salt) {
+		t.Fatal("wrong token must fail")
+	}
+	if VerifyToken(password, token+"00", salt) {
+		t.Fatal("overlong token must fail")
+	}
+	if VerifyToken(password, "nothex!!", salt) {
+		t.Fatal("malformed token must fail")
+	}
+}
+
+func TestReadOnlyBlocksMutatingEndpoints(t *testing.T) {
+	server := New(stubProvider{}, openAuth{}, true)
+	server.SetReadOnly(true)
+
+	for _, endpoint := range []string{"star", "scrobble", "createPlaylist", "jukeboxControl"} {
+		req := httptest.NewRequest(http.MethodGet, "/rest/"+endpoint+".view?f=json", nil)
+		rec := httptest.NewRecorder()
+		server.ServeHTTP(rec, req)
+		if !strings.Contains(rec.Body.String(), "read-only") {
+			t.Fatalf("expected read-only error for %s, got %s", endpoint, rec.Body.String())
+		}
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/rest/ping.view?f=json", nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if !strings.Contains(rec.Body.String(), `"status":"ok"`) {
+		t.Fatalf("ping must stay available in read-only mode, got %s", rec.Body.String())
+	}
+}
+
+var errBadCreds = errors.New("invalid credentials")
+
+type passwordAuth struct{ password string }
+
+func (a passwordAuth) AuthRequired() bool { return true }
+func (a passwordAuth) Authenticate(_ string, password string) (string, error) {
+	if password == a.password {
+		return "user-1", nil
+	}
+	return "", errBadCreds
+}
+
+func (a passwordAuth) AuthenticateToken(string, string, string) (string, error) {
+	return "", errBadCreds
+}
+
+func TestPasswordParamEncHex(t *testing.T) {
+	server := New(stubProvider{}, passwordAuth{password: "päss word"}, true)
+
+	enc := "enc:" + hex.EncodeToString([]byte("päss word"))
+	req := httptest.NewRequest(http.MethodGet, "/rest/ping.view?f=json&u=u&p="+enc, nil)
+	rec := httptest.NewRecorder()
+	server.ServeHTTP(rec, req)
+	if !strings.Contains(rec.Body.String(), `"status":"ok"`) {
+		t.Fatalf("enc: password should authenticate, got %s", rec.Body.String())
 	}
 }
 

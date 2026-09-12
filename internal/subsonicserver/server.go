@@ -6,6 +6,7 @@ package subsonicserver
 import (
 	"context"
 	"crypto/md5" //#nosec G501 -- Subsonic token auth requires MD5 per protocol spec
+	"crypto/subtle"
 	"encoding/hex"
 	"net/http"
 	"strings"
@@ -42,6 +43,7 @@ type Server struct {
 	provider CatalogProvider
 	auth     AuthChecker
 	enabled  bool
+	readOnly bool
 }
 
 func New(provider CatalogProvider, auth AuthChecker, enabled bool) *Server {
@@ -50,6 +52,12 @@ func New(provider CatalogProvider, auth AuthChecker, enabled bool) *Server {
 		auth:     auth,
 		enabled:  enabled,
 	}
+}
+
+// SetReadOnly rejects state-changing endpoints while keeping browse and
+// stream endpoints available. Used by demo mode.
+func (s *Server) SetReadOnly(readOnly bool) {
+	s.readOnly = readOnly
 }
 
 func (s *Server) Enabled() bool {
@@ -69,6 +77,11 @@ func (s *Server) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	endpoint := restEndpoint(r.URL.Path)
 	if endpoint == "" {
 		http.NotFound(w, r)
+		return
+	}
+
+	if s.readOnly && mutatingEndpoints[endpoint] {
+		writeError(w, r, 50, "server is read-only")
 		return
 	}
 
@@ -160,7 +173,7 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, b
 		writeError(w, r, 10, "missing authentication")
 		return "", false
 	}
-	password := query.Get("p")
+	password := decodePasswordParam(query.Get("p"))
 	token := query.Get("t")
 	salt := query.Get("s")
 	if password != "" {
@@ -183,7 +196,43 @@ func (s *Server) authenticate(w http.ResponseWriter, r *http.Request) (string, b
 	return "", false
 }
 
+// mutatingEndpoints are the /rest/ calls that change server state. Demo and
+// read-only deployments reject them while keeping browse/stream endpoints.
+var mutatingEndpoints = map[string]bool{
+	"star":                       true,
+	"unstar":                     true,
+	"setRating":                  true,
+	"scrobble":                   true,
+	"createPlaylist":             true,
+	"updatePlaylist":             true,
+	"deletePlaylist":             true,
+	"createShare":                true,
+	"updateShare":                true,
+	"deleteShare":                true,
+	"jukeboxControl":             true,
+	"createInternetRadioStation": true,
+	"updateInternetRadioStation": true,
+	"deleteInternetRadioStation": true,
+}
+
+// decodePasswordParam handles the Subsonic "p" parameter, which may be the
+// raw password or hex encoded as "enc:<hex>".
+func decodePasswordParam(raw string) string {
+	if rest, ok := strings.CutPrefix(raw, "enc:"); ok {
+		if decoded, err := hex.DecodeString(rest); err == nil {
+			return string(decoded)
+		}
+		return ""
+	}
+	return raw
+}
+
 func VerifyToken(password, token, salt string) bool {
 	sum := md5.Sum([]byte(password + salt)) //#nosec G401 -- Subsonic API mandated token = md5(password + salt)
-	return strings.EqualFold(hex.EncodeToString(sum[:]), token)
+	want := hex.EncodeToString(sum[:])
+	token = strings.ToLower(strings.TrimSpace(token))
+	if len(token) != len(want) {
+		return false
+	}
+	return subtle.ConstantTimeCompare([]byte(token), []byte(want)) == 1
 }
