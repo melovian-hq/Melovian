@@ -15,7 +15,7 @@ Only the branch and tags that match the current `0.1.x` line receive patches. Th
 
 Do not open a public issue for a security problem that could expose credentials, media libraries, or remote code execution.
 
-1. Report privately through your project forge (private issue or security contact), or contact Quad4 Software maintainers directly.
+1. Report privately through [GitHub Security Advisories](https://github.com/melovian-hq/Melovian/security/advisories/new), or contact Quad4 Software maintainers directly.
 2. Include the Melovian version or git commit, how you run it (desktop, `melovian-server`, or Docker), and steps to reproduce.
 3. If you have a patch, attach it. Do not publish the patch until a fix is released or the maintainers say it is safe to disclose.
 

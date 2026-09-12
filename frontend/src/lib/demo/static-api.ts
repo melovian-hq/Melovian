@@ -709,7 +709,10 @@ export async function installStaticDemoApi(): Promise<void> {
       return await handleApi(verb, path, url);
     } catch (err) {
       console.error("static demo API error", path, err);
-      return jsonResponse({ error: "demo_error", message: String(err) }, 500);
+      return jsonResponse(
+        { error: "demo_error", message: "Demo API request failed" },
+        500,
+      );
     }
   };
 

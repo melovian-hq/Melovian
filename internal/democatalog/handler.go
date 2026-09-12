@@ -12,6 +12,10 @@ import (
 	"time"
 )
 
+// maxDemoResults bounds result capacity so a caller-supplied count cannot
+// trigger a huge allocation.
+const maxDemoResults = 500
+
 // Handler serves Subsonic REST JSON for the fake catalog under /api/subsonic.
 func Handler() http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -246,6 +250,9 @@ func serveRandomSongs(w http.ResponseWriter, c *Catalog, size int) {
 	if size <= 0 {
 		size = 20
 	}
+	if size > maxDemoResults {
+		size = maxDemoResults
+	}
 	songs := c.Songs
 	if size > len(songs) {
 		size = len(songs)
@@ -364,6 +371,12 @@ func serveSimilar(w http.ResponseWriter, c *Catalog, id string, count int) {
 	if !ok {
 		writeErr(w, 70, "song not found")
 		return
+	}
+	if count <= 0 {
+		count = 20
+	}
+	if count > maxDemoResults {
+		count = maxDemoResults
 	}
 	out := make([]map[string]any, 0, count)
 	for _, s := range c.Songs {

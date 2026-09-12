@@ -34,14 +34,36 @@ func (s *Store) ResolveRoot(dataDir, configuredDir string) string {
 	return filepath.Join(dataDir, "lyrics")
 }
 
-func (s *Store) trackPath(root, instanceID, trackID string) string {
+// instanceDir joins instanceID under root. The id must be a single path
+// segment so a crafted value cannot escape the lyrics cache directory.
+func instanceDir(root, instanceID string) (string, error) {
+	instanceID = strings.TrimSpace(instanceID)
+	if instanceID == "" {
+		return filepath.Clean(root), nil
+	}
+	if instanceID == "." || instanceID == ".." ||
+		strings.ContainsAny(instanceID, `/\`) ||
+		strings.ContainsRune(instanceID, 0) {
+		return "", fmt.Errorf("invalid instance id")
+	}
+	return filepath.Join(root, instanceID), nil
+}
+
+func (s *Store) trackPath(root, instanceID, trackID string) (string, error) {
+	dir, err := instanceDir(root, instanceID)
+	if err != nil {
+		return "", err
+	}
 	sum := sha256.Sum256([]byte(trackID))
 	name := hex.EncodeToString(sum[:]) + ".json"
-	return filepath.Join(root, instanceID, name)
+	return filepath.Join(dir, name), nil
 }
 
 func (s *Store) Load(root, instanceID, trackID string) (*Document, error) {
-	path := s.trackPath(root, instanceID, trackID)
+	path, err := s.trackPath(root, instanceID, trackID)
+	if err != nil {
+		return nil, err
+	}
 	data, err := os.ReadFile(path) //#nosec G304 -- path derived from hashed track id within lyrics cache dir
 	if err != nil {
 		return nil, err
@@ -58,7 +80,10 @@ func (s *Store) Save(root, instanceID, trackID string, doc *Document) error {
 	if err != nil {
 		return err
 	}
-	dir := filepath.Join(root, instanceID)
+	dir, err := instanceDir(root, instanceID)
+	if err != nil {
+		return err
+	}
 	if err := os.MkdirAll(dir, 0o750); err != nil {
 		return err
 	}
@@ -66,7 +91,10 @@ func (s *Store) Save(root, instanceID, trackID string, doc *Document) error {
 	if err != nil {
 		return err
 	}
-	path := s.trackPath(root, instanceID, trackID)
+	path, err := s.trackPath(root, instanceID, trackID)
+	if err != nil {
+		return err
+	}
 	// Unique temp name avoids concurrent Save races on path+".tmp".
 	tmp, err := os.CreateTemp(dir, filepath.Base(path)+".*.tmp")
 	if err != nil {
@@ -90,8 +118,11 @@ func (s *Store) Save(root, instanceID, trackID string, doc *Document) error {
 }
 
 func (s *Store) Delete(root, instanceID, trackID string) error {
-	path := s.trackPath(root, instanceID, trackID)
-	err := os.Remove(path)
+	path, err := s.trackPath(root, instanceID, trackID)
+	if err != nil {
+		return err
+	}
+	err = os.Remove(path)
 	if err != nil && !os.IsNotExist(err) {
 		return err
 	}
@@ -106,7 +137,10 @@ func (s *Store) ClearInstance(root, instanceID string) error {
 		// nested instance directory.
 		return clearRootLevelLyricsFiles(root)
 	}
-	dir := filepath.Join(root, instanceID)
+	dir, err := instanceDir(root, instanceID)
+	if err != nil {
+		return err
+	}
 	if _, err := os.Stat(dir); os.IsNotExist(err) {
 		return nil
 	}
@@ -134,7 +168,10 @@ func clearRootLevelLyricsFiles(root string) error {
 }
 
 func (s *Store) Stats(root, instanceID string) (count int, bytes int64, err error) {
-	dir := filepath.Join(root, instanceID)
+	dir, err := instanceDir(root, instanceID)
+	if err != nil {
+		return 0, 0, err
+	}
 	entries, err := os.ReadDir(dir)
 	if err != nil {
 		if os.IsNotExist(err) {

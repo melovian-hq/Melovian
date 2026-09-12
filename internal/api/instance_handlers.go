@@ -12,6 +12,7 @@ import (
 	"time"
 
 	"melovian/internal/httputil"
+	"melovian/internal/melog"
 	"melovian/internal/store"
 	"melovian/internal/subsonic"
 )
@@ -101,7 +102,7 @@ func (s *Server) handleTestInstance(w http.ResponseWriter, r *http.Request) {
 	client := subsonic.NewClient(req.ServerURL, req.Username, req.Password)
 	serverName, version, err := client.Ping()
 	if err != nil {
-		slog.Warn("instance connection test failed", "url", req.ServerURL, "err", err)
+		slog.Warn("instance connection test failed", "url", melog.Sanitize(req.ServerURL), "err", err)
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{
 			"connected": false,
 			"error":     err.Error(),

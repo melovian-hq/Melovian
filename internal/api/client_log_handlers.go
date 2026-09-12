@@ -114,17 +114,17 @@ func (s *Server) logClientEntry(entry melog.ClientLogEntry, requestID string) {
 		level = slog.LevelError
 	}
 	attrs := []any{
-		"client_source", entry.Source,
-		"client_url", entry.URL,
-		"client_time", entry.Time,
-		"message", entry.Message,
+		"client_source", melog.Sanitize(entry.Source),
+		"client_url", melog.Sanitize(entry.URL),
+		"client_time", melog.Sanitize(entry.Time),
+		"message", melog.Sanitize(entry.Message),
 	}
 	if requestID != "" {
-		attrs = append(attrs, "request_id", requestID)
+		attrs = append(attrs, "request_id", melog.Sanitize(requestID))
 	}
 	melog.Default().Log(context.TODO(), level, "client log", attrs...)
 	if entry.Stack != "" && level >= slog.LevelWarn {
-		stackAttrs := []any{"stack", entry.Stack}
+		stackAttrs := []any{"stack", melog.Sanitize(entry.Stack)}
 		if requestID != "" {
 			stackAttrs = append(stackAttrs, "request_id", requestID)
 		}

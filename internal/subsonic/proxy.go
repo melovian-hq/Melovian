@@ -15,6 +15,7 @@ import (
 	"melovian/internal/cache"
 	"melovian/internal/democatalog"
 	"melovian/internal/httputil"
+	"melovian/internal/melog"
 )
 
 type ClientResolver func(context.Context) *Client
@@ -104,10 +105,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := httputil.DoWithRetry(r.Context(), p.httpClient, upstreamReq)
 	if err != nil {
-		slog.Warn("subsonic upstream request failed", //#nosec G706 -- path is request URL path for diagnostics
+		slog.Warn("subsonic upstream request failed",
 			"request_id", httputil.RequestIDFromContext(r.Context()),
 			"method", r.Method,
-			"path", path,
+			"path", melog.Sanitize(path),
 			"err", err,
 		)
 		http.Error(w, "upstream error: "+err.Error(), http.StatusBadGateway)
@@ -118,10 +119,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	if !p.enabled || !ShouldCacheRequest(r.Method, path) || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if resp.StatusCode >= 400 {
-			slog.Warn("subsonic upstream error response", //#nosec G706 -- path is request URL path for diagnostics
+			slog.Warn("subsonic upstream error response",
 				"request_id", httputil.RequestIDFromContext(r.Context()),
 				"method", r.Method,
-				"path", path,
+				"path", melog.Sanitize(path),
 				"status", resp.StatusCode,
 			)
 		}

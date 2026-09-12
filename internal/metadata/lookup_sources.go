@@ -30,6 +30,10 @@ func (q LookupQuery) term() string {
 // LookupSourceIDs lists the metadata catalog sources accepted by Lookup.
 var LookupSourceIDs = []string{"itunes", "musicbrainz", "deezer", "theaudiodb", "all"}
 
+// maxLookupCap bounds the result capacity so a caller-supplied limit cannot
+// trigger a huge allocation.
+const maxLookupCap = 500
+
 // Lookup queries one or more metadata catalogs. An empty source falls back to
 // iTunes so existing callers keep working. "all" fans out to every provider
 // and merges the results.
@@ -89,7 +93,11 @@ func lookupAll(ctx context.Context, q LookupQuery, limit int) ([]LookupMatch, er
 	}
 	wg.Wait()
 
-	out := make([]LookupMatch, 0, limit)
+	capHint := limit
+	if capHint < 0 || capHint > maxLookupCap {
+		capHint = maxLookupCap
+	}
+	out := make([]LookupMatch, 0, capHint)
 	seen := map[string]bool{}
 	var firstErr error
 	for _, res := range results {

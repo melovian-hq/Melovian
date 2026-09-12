@@ -2,7 +2,7 @@
 # SPDX-License-Identifier: Apache-2.0
 # syntax=docker/dockerfile:1
 
-FROM golang:1.26-alpine AS backend
+FROM golang:1.26-alpine@sha256:ce864e7223ac17b1775e6fd0b4c0db580c2eb50e7953a427916379e4b92a1628 AS backend
 WORKDIR /src
 ARG VERSION=dev
 RUN apk add --no-cache ca-certificates
@@ -15,7 +15,7 @@ RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -tags server -trimpath \
   -ldflags="-s -w -X melovian/internal/compat.Version=${VERSION}" \
   -o /out/melovian .
 
-FROM alpine:3.23
+FROM alpine:3.23@sha256:fd791d74b68913cbb027c6546007b3f0d3bc45125f797758156952bc2d6daf40
 ARG VERSION=dev
 ARG REVISION=unknown
 ARG CREATED=

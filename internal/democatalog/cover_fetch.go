@@ -11,6 +11,7 @@ import (
 	"sync"
 	"time"
 
+	"melovian/internal/melog"
 	"melovian/internal/metadata"
 )
 
@@ -56,6 +57,7 @@ func serveCover(w http.ResponseWriter, id string, size int) {
 }
 
 func fetchCatalogArtwork(ctx context.Context, id string) ([]byte, string, bool) {
+	id = melog.Sanitize(id)
 	artist, album := coverQuery(id)
 	if artist == "" && album == "" {
 		return nil, "", false
@@ -66,7 +68,7 @@ func fetchCatalogArtwork(ctx context.Context, id string) ([]byte, string, bool) 
 	if album != "" {
 		artworkURL, err = metadata.LookupAlbumArtworkURL(ctx, artist, album)
 		if err != nil {
-			slog.Debug("demo cover itunes album lookup failed", "id", id, "err", err) //#nosec G706 -- id is demo catalog key
+			slog.Debug("demo cover itunes album lookup failed", "id", id, "err", err)
 		}
 	}
 	if artworkURL == "" && album != "" {
@@ -75,14 +77,14 @@ func fetchCatalogArtwork(ctx context.Context, id string) ([]byte, string, bool) 
 		if songs := Get().AlbumSongs(id); len(songs) > 0 {
 			artworkURL, err = metadata.LookupSongArtworkURL(ctx, artist, songs[0].Title, album)
 			if err != nil {
-				slog.Debug("demo cover itunes song lookup failed", "id", id, "err", err) //#nosec G706 -- id is demo catalog key
+				slog.Debug("demo cover itunes song lookup failed", "id", id, "err", err)
 			}
 		}
 	}
 	if artworkURL == "" && artist != "" {
 		artworkURL, err = metadata.LookupArtistArtworkURL(ctx, artist)
 		if err != nil {
-			slog.Debug("demo cover itunes artist lookup failed", "id", id, "err", err) //#nosec G706 -- id is demo catalog key
+			slog.Debug("demo cover itunes artist lookup failed", "id", id, "err", err)
 		}
 	}
 	if artworkURL == "" {
@@ -91,7 +93,7 @@ func fetchCatalogArtwork(ctx context.Context, id string) ([]byte, string, bool) 
 
 	body, contentType, err := metadata.FetchArtwork(ctx, artworkURL)
 	if err != nil || len(body) == 0 {
-		slog.Debug("demo cover fetch failed", "id", id, "err", err) //#nosec G706 -- id is demo catalog key
+		slog.Debug("demo cover fetch failed", "id", id, "err", err)
 		return nil, "", false
 	}
 	if contentType == "" || !strings.HasPrefix(contentType, "image/") {

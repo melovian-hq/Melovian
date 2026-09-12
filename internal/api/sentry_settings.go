@@ -14,6 +14,7 @@ import (
 
 	"melovian/internal/appconfig"
 	"melovian/internal/httputil"
+	"melovian/internal/melog"
 	"melovian/internal/observability"
 	"melovian/internal/store"
 )
@@ -67,8 +68,8 @@ func (s *Server) refreshSentryRuntime(stored appconfig.StoredSentrySettings) err
 	}
 	if effective.Enabled() {
 		slog.Info("sentry runtime updated",
-			"environment", effective.Environment,
-			"release", effective.Release,
+			"environment", melog.Sanitize(effective.Environment),
+			"release", melog.Sanitize(effective.Release),
 		)
 	}
 	return nil

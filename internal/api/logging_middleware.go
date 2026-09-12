@@ -59,7 +59,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		level := httpStatusLogLevel(rec.status)
 
 		// Health checks and static assets are noisy at the default server log level.
-		path := metricPath(r.URL.Path)
+		path := melog.Sanitize(metricPath(r.URL.Path))
 		if level == slog.LevelDebug && (path == "/health" || strings.HasPrefix(path, "/assets/")) {
 			return
 		}
@@ -70,7 +70,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 			"status", rec.status,
 			"bytes", rec.bytes,
 			"duration_ms", time.Since(start).Milliseconds(),
-			"remote", r.RemoteAddr,
+			"remote", melog.Sanitize(r.RemoteAddr),
 		}
 		if requestID := httputil.RequestIDFromContext(r.Context()); requestID != "" {
 			attrs = append(attrs, "request_id", requestID)
@@ -114,7 +114,7 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 				attrs := []any{
 					"panic", recovered,
 					"method", r.Method,
-					"path", r.URL.Path,
+					"path", melog.Sanitize(r.URL.Path),
 					"crash_file", path,
 					"dump_err", dumpErr,
 				}

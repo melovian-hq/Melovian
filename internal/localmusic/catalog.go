@@ -12,6 +12,10 @@ import (
 	"melovian/internal/store"
 )
 
+// maxSearchLimit bounds result capacity so a caller-supplied limit cannot
+// trigger a huge allocation.
+const maxSearchLimit = 500
+
 type Artist struct {
 	ID         string
 	Name       string
@@ -363,6 +367,9 @@ func (c Catalog) Search(query string, limit int) ([]Artist, []Album, []Song) {
 	}
 	if limit <= 0 {
 		limit = 20
+	}
+	if limit > maxSearchLimit {
+		limit = maxSearchLimit
 	}
 
 	var artists []Artist

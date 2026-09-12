@@ -19,6 +19,10 @@ import (
 	"melovian/internal/store"
 )
 
+// maxSmartPlaylistLimit bounds result capacity so a caller-supplied limit
+// cannot trigger a huge allocation.
+const maxSmartPlaylistLimit = 2000
+
 func (s *Server) registerSmartPlaylistRoutes() {
 	s.mux.HandleFunc("GET /api/music/smart-playlists/support", s.handleSmartPlaylistSupport)
 	s.mux.HandleFunc("POST /api/music/smart-playlists", s.handleCreateSmartPlaylist)
@@ -263,6 +267,9 @@ func (s *Server) handlePreviewSmartPlaylist(w http.ResponseWriter, r *http.Reque
 	limit := payload.Limit
 	if limit <= 0 {
 		limit = 200
+	}
+	if limit > maxSmartPlaylistLimit {
+		limit = maxSmartPlaylistLimit
 	}
 	progressUserID := ResolveProgressUserID(r.Context())
 	favorites, _ := s.listen.ListFavorites(progressUserID, 5000)

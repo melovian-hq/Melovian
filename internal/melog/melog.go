@@ -64,6 +64,13 @@ func (m *multiHandler) WithGroup(name string) slog.Handler {
 	return &multiHandler{handlers: next}
 }
 
+// Sanitize strips CR and LF from a value before it is written to a
+// line-oriented log so a user-controlled string cannot forge log lines.
+func Sanitize(s string) string {
+	s = strings.ReplaceAll(s, "\r", "")
+	return strings.ReplaceAll(s, "\n", "")
+}
+
 func ParseLevel(raw string) slog.Level {
 	switch strings.ToLower(strings.TrimSpace(raw)) {
 	case "debug":

@@ -29,7 +29,10 @@ func TestStoreDeleteRemovesCachedTrack(t *testing.T) {
 	if _, err := store.Load(root, instanceID, trackID); err == nil {
 		t.Fatal("expected miss after delete")
 	}
-	path := store.trackPath(root, instanceID, trackID)
+	path, err := store.trackPath(root, instanceID, trackID)
+	if err != nil {
+		t.Fatalf("trackPath: %v", err)
+	}
 	if filepath.Base(path) == "" {
 		t.Fatal("unexpected empty path")
 	}
