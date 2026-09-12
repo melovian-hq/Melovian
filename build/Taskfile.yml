@@ -85,7 +85,7 @@ tasks:
       - echo "{{.VERSION}}" > frontend/.build-version
     vars:
       VERSION:
-        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"'
 
   build:frontend:
     label: build:frontend (DEV={{.DEV}} RUNNER={{.PACKAGE_MANAGER}} VERSION={{.VERSION}})
@@ -119,7 +119,7 @@ tasks:
       VITE_APP_VERSION: '{{.VERSION}}'
     vars:
       VERSION:
-        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"'
 
   frontend:run:
     summary: Run a frontend script with selected runner
@@ -582,7 +582,7 @@ tasks:
     vars:
       BUILD_FLAGS: "{{.BUILD_FLAGS}}"
       VERSION:
-        sh: 'git describe --tags --always --dirty 2>/dev/null || echo 0.1.0'
+        sh: 'git describe --tags --always --dirty 2>/dev/null || cat VERSION'
 
   build:server:cross:
     summary: Cross-compiles server binaries for all release OS/arch targets
@@ -605,7 +605,7 @@ tasks:
       APP_NAME: '{{.APP_NAME}}'
     vars:
       VERSION:
-        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"'
 
   package:frontend:
     summary: Zips frontend/dist for release as melovian-{version}-frontend.zip
@@ -619,7 +619,7 @@ tasks:
     cmds:
       - |
         set -euo pipefail
-        VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"
+        VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"
         ROOT="$(pwd)"
         mkdir -p "{{.BIN_DIR}}"
         ARCHIVE="${ROOT}/{{.BIN_DIR}}/{{.APP_NAME}}-${VERSION}-frontend.zip"
@@ -630,7 +630,7 @@ tasks:
       VERSION: '{{.VERSION}}'
     vars:
       VERSION:
-        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"'
+        sh: 'echo "${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"'
 
   run:server:
     summary: Builds and runs the application in server mode

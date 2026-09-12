@@ -10,7 +10,7 @@ set -euo pipefail
 ROOT="$(cd "$(dirname "${BASH_SOURCE[0]}")/.." && pwd)"
 cd "$ROOT"
 
-VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"
+VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"
 BUILDDATE="${BUILDDATE:-$(date -u +%Y-%m-%dT%H:%M:%SZ)}"
 OUT="${OUT:-bin/melovian-server}"
 GOOS="${GOOS:-linux}"

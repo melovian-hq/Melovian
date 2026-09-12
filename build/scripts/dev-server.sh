@@ -11,7 +11,7 @@ VITE_PORT="${WAILS_VITE_PORT:-9245}"
 API_URL="${MELOVIAN_API_URL:-http://${LISTEN}}"
 BIN="${ROOT}/bin/melovian-server"
 SERVER_PID=""
-VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || echo 0.1.0)}"
+VERSION="${VERSION:-$(git describe --tags --always --dirty 2>/dev/null || cat VERSION)}"
 
 cleanup() {
   if [ -n "${SERVER_PID}" ] && kill -0 "${SERVER_PID}" 2>/dev/null; then

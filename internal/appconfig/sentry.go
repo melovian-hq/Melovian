@@ -8,9 +8,13 @@ import (
 	"fmt"
 	"os"
 	"strings"
+
+	"melovian/internal/brand"
+	"melovian/internal/compat"
 )
 
-const defaultSentryRelease = "melovian@0.1.0"
+// defaultSentryRelease follows the build version so crash reports group by release.
+var defaultSentryRelease = brand.Slug + "@" + compat.Version
 
 const SettingSentryServer = "sentry_server_settings"
 

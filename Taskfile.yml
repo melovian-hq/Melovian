@@ -149,6 +149,12 @@ tasks:
     cmds:
       - task: common:go:vendor
 
+  version:sync:
+    desc: Sync ./VERSION into every stamped file
+    summary: Reads ./VERSION and rewrites the version stamp in code and packaging files
+    cmds:
+      - bash scripts/version-sync.sh
+
   generate:bindings:
     desc: Regenerate Wails TypeScript bindings
     summary: Regenerates frontend/bindings from Go services
