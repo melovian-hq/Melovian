@@ -8,7 +8,26 @@ mpv_lib="${APPDIR}/usr/lib/libmpv.so.2"
 if [[ -f "$mpv_lib" ]]; then
     export LD_PRELOAD="${mpv_lib}${LD_PRELOAD:+:${LD_PRELOAD}}"
 fi
-export GDK_BACKEND="${GDK_BACKEND:-x11}"
+# Wayland sessions often do not export XAUTHORITY, and forcing the x11
+# backend then fails XWayland auth with "Authorization required, but no
+# authorization protocol specified". Prefer Wayland there, x11 elsewhere.
+if [[ -z "${GDK_BACKEND:-}" ]]; then
+    if [[ "${XDG_SESSION_TYPE:-}" == "wayland" || -n "${WAYLAND_DISPLAY:-}" ]]; then
+        export GDK_BACKEND="wayland,x11"
+    else
+        export GDK_BACKEND="x11"
+    fi
+fi
+# Some sessions never export XAUTHORITY at all. Restore the default xauth
+# file when it exists so X11/XWayland connections can authenticate.
+if [[ -z "${XAUTHORITY:-}" && -f "${HOME}/.Xauthority" ]]; then
+    export XAUTHORITY="${HOME}/.Xauthority"
+fi
+# The X auth cookie belongs to the desktop user. Running via sudo or as
+# another user fails with "Authorization required" for the same reason.
+if [[ "${EUID}" -eq 0 ]]; then
+    echo "warning: running as root cannot authenticate to the desktop display server; run as your normal user" >&2
+fi
 export WEBKIT_DISABLE_DMABUF_RENDERER="${WEBKIT_DISABLE_DMABUF_RENDERER:-1}"
 
 exec "${APPDIR}/usr/bin/melovian" "$@"
