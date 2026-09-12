@@ -8,6 +8,7 @@ import (
 	"errors"
 	"log/slog"
 	"net/http"
+	"net/url"
 	"strings"
 	"time"
 
@@ -36,6 +37,22 @@ type instanceRequest struct {
 	ServerName string `json:"serverName"`
 }
 
+// validateInstanceServerURL rejects non HTTP(S) upstreams and URLs that embed
+// basic auth credentials, which would otherwise be stored and logged.
+func validateInstanceServerURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Host == "" {
+		return errors.New("server url is not valid")
+	}
+	if u.Scheme != "http" && u.Scheme != "https" {
+		return errors.New("server url must use http or https")
+	}
+	if u.User != nil {
+		return errors.New("credentials in the server url are not allowed, use the username and password fields")
+	}
+	return nil
+}
+
 func (s *Server) handleListInstances(w http.ResponseWriter, r *http.Request) {
 	userID := UserIDFromContext(r.Context())
 	items, err := s.instances.ListForUser(userID)
@@ -54,6 +71,10 @@ func (s *Server) handleListInstances(w http.ResponseWriter, r *http.Request) {
 func (s *Server) handleCreateInstance(w http.ResponseWriter, r *http.Request) {
 	var req instanceRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
+		http.Error(w, err.Error(), http.StatusBadRequest)
+		return
+	}
+	if err := validateInstanceServerURL(req.ServerURL); err != nil {
 		http.Error(w, err.Error(), http.StatusBadRequest)
 		return
 	}
@@ -98,11 +119,18 @@ func (s *Server) handleTestInstance(w http.ResponseWriter, r *http.Request) {
 		})
 		return
 	}
+	if err := validateInstanceServerURL(req.ServerURL); err != nil {
+		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{
+			"connected": false,
+			"error":     err.Error(),
+		})
+		return
+	}
 
 	client := subsonic.NewClient(req.ServerURL, req.Username, req.Password)
 	serverName, version, err := client.Ping()
 	if err != nil {
-		slog.Warn("instance connection test failed", "url", melog.Sanitize(req.ServerURL), "err", err)
+		slog.Warn("instance connection test failed", "url", melog.Sanitize(httputil.RedactURLUserinfo(req.ServerURL)), "err", err)
 		httputil.WriteJSON(w, http.StatusBadRequest, map[string]any{
 			"connected": false,
 			"error":     err.Error(),
@@ -218,6 +246,12 @@ func (s *Server) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	serverURL := strings.TrimSpace(req.ServerURL)
+	if serverURL != "" {
+		if err := validateInstanceServerURL(serverURL); err != nil {
+			http.Error(w, err.Error(), http.StatusBadRequest)
+			return
+		}
+	}
 	username := strings.TrimSpace(req.Username)
 	password := req.Password
 	if serverURL != "" && username != "" && password != "" {

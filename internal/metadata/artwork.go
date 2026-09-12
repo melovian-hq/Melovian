@@ -13,6 +13,8 @@ import (
 	"strconv"
 	"strings"
 	"unicode"
+
+	"melovian/internal/httputil"
 )
 
 // LookupAlbumArtworkURL finds an iTunes artwork URL for an album.
@@ -112,19 +114,40 @@ func LookupArtistArtworkURL(ctx context.Context, artist string) (string, error) 
 }
 
 // FetchArtwork downloads an artwork URL and returns body plus content type.
+// The URL comes from third party metadata APIs, so the scheme is restricted
+// and redirects are bounded to keep a hostile response from aiming the fetch
+// at internal or non HTTP targets.
 func FetchArtwork(ctx context.Context, artworkURL string) ([]byte, string, error) {
 	artworkURL = strings.TrimSpace(artworkURL)
 	if artworkURL == "" {
 		return nil, "", fmt.Errorf("empty artwork url")
 	}
+	u, err := url.Parse(artworkURL)
+	if err != nil {
+		return nil, "", fmt.Errorf("invalid artwork url")
+	}
+	if u.Scheme != "https" && u.Scheme != "http" {
+		return nil, "", fmt.Errorf("invalid artwork url scheme")
+	}
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, artworkURL, nil)
 	if err != nil {
 		return nil, "", err
 	}
-	client := &http.Client{Timeout: lookupTimeout}
+	client := &http.Client{
+		Timeout: lookupTimeout,
+		CheckRedirect: func(req *http.Request, via []*http.Request) error {
+			if len(via) >= 5 {
+				return fmt.Errorf("too many redirects")
+			}
+			if req.URL.Scheme != "https" && req.URL.Scheme != "http" {
+				return fmt.Errorf("redirect to disallowed scheme")
+			}
+			return nil
+		},
+	}
 	resp, err := client.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, "", httputil.SanitizeErrorURL(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	if resp.StatusCode != http.StatusOK {

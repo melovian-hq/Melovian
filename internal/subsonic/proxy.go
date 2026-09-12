@@ -105,6 +105,9 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	resp, err := httputil.DoWithRetry(r.Context(), p.httpClient, upstreamReq)
 	if err != nil {
+		// Transport errors embed the full request URL, including the auth
+		// token query parameters. Strip them before logging or responding.
+		err = httputil.SanitizeErrorURL(err)
 		slog.Warn("subsonic upstream request failed",
 			"request_id", httputil.RequestIDFromContext(r.Context()),
 			"method", r.Method,

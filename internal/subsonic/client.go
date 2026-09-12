@@ -136,7 +136,7 @@ func (s *Client) Ping() (serverName, version string, err error) {
 
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return "", "", err
+		return "", "", httputil.SanitizeErrorURL(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 
@@ -221,7 +221,7 @@ func (s *Client) getJSON(endpoint string, query url.Values) ([]byte, error) {
 	}
 	resp, err := s.client.Do(req)
 	if err != nil {
-		return nil, err
+		return nil, httputil.SanitizeErrorURL(err)
 	}
 	defer func() { _ = resp.Body.Close() }()
 	body, err := httputil.ReadLimited(resp.Body, 4<<20)
@@ -389,7 +389,7 @@ func (s *Client) Stream(id string) (body io.ReadCloser, contentType string, err 
 	}
 	resp, err := s.stream.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, "", httputil.SanitizeErrorURL(err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		defer func() { _ = resp.Body.Close() }()
@@ -414,7 +414,7 @@ func (s *Client) CoverArt(id string, size int) (body io.ReadCloser, contentType 
 	}
 	resp, err := s.stream.Do(req)
 	if err != nil {
-		return nil, "", err
+		return nil, "", httputil.SanitizeErrorURL(err)
 	}
 	if resp.StatusCode != http.StatusOK {
 		defer func() { _ = resp.Body.Close() }()

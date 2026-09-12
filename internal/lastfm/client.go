@@ -5,7 +5,7 @@ package lastfm
 
 import (
 	"context"
-	"crypto/md5"
+	"crypto/md5" //#nosec G501 -- Last.fm API signatures require MD5 per protocol spec
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -15,6 +15,8 @@ import (
 	"sort"
 	"strings"
 	"time"
+
+	"melovian/internal/httputil"
 )
 
 const DefaultBaseURL = "https://ws.audioscrobbler.com/2.0/"
@@ -67,7 +69,7 @@ func sign(params url.Values, secret string) string {
 		}
 	}
 	sb.WriteString(secret)
-	sum := md5.Sum([]byte(sb.String()))
+	sum := md5.Sum([]byte(sb.String())) //#nosec G401 -- Last.fm API mandated signature = md5(sorted params + secret)
 	return hex.EncodeToString(sum[:])
 }
 
@@ -85,6 +87,8 @@ func (c *Client) do(ctx context.Context, params url.Values, apiSecret string) er
 		signed[k] = v
 	}
 	signed.Set("api_sig", sign(signed, apiSecret))
+	// The signed URL carries api_key, sk, and api_sig. Never put it in an
+	// error string; these errors reach API responses and logs.
 	u := c.base() + "?" + signed.Encode() + "&format=json"
 	req, err := http.NewRequestWithContext(ctx, http.MethodGet, u, nil)
 	if err != nil {
@@ -92,18 +96,18 @@ func (c *Client) do(ctx context.Context, params url.Values, apiSecret string) er
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return err
+		return httputil.SanitizeErrorURL(err)
 	}
 	defer resp.Body.Close()
 	var body lastFMResponse
 	if err := json.NewDecoder(io.LimitReader(resp.Body, 64<<10)).Decode(&body); err != nil {
-		return fmt.Errorf("last.fm %s: %d", u, resp.StatusCode)
+		return fmt.Errorf("last.fm request failed: status %d", resp.StatusCode)
 	}
 	if body.Error != 0 {
 		return fmt.Errorf("last.fm error %d: %s", body.Error, body.Message)
 	}
 	if resp.StatusCode >= 400 {
-		return fmt.Errorf("last.fm %s: %d", u, resp.StatusCode)
+		return fmt.Errorf("last.fm request failed: status %d", resp.StatusCode)
 	}
 	return nil
 }
@@ -127,7 +131,7 @@ func (c *Client) ValidateToken(ctx context.Context, apiKey, apiSecret, sessionKe
 	}
 	resp, err := c.HTTP.Do(req)
 	if err != nil {
-		return "", err
+		return "", httputil.SanitizeErrorURL(err)
 	}
 	defer resp.Body.Close()
 	var body lastFMResponse
