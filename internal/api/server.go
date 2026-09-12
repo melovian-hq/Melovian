@@ -5,27 +5,35 @@ package api
 
 import (
 	"context"
-	"database/sql"
 	"errors"
 	"log/slog"
 	"maps"
 	"net"
 	"net/http"
-	"os"
 	"strings"
-	"sync"
-	"time"
 
+	"melovian/internal/api/apishared"
+	"melovian/internal/api/auth"
+	downloadsapi "melovian/internal/api/downloads"
+	extapi "melovian/internal/api/extensions"
+	instancesapi "melovian/internal/api/instances"
+	"melovian/internal/api/library"
+	"melovian/internal/api/music"
+	"melovian/internal/api/notify"
+	"melovian/internal/api/realtime"
+	"melovian/internal/api/sharing"
+	"melovian/internal/api/system"
+	"melovian/internal/api/videos"
 	"melovian/internal/appconfig"
 	"melovian/internal/cache"
 	"melovian/internal/compat"
+	"melovian/internal/consts"
 	"melovian/internal/democatalog"
 	"melovian/internal/dlna"
 	"melovian/internal/extensions"
 	"melovian/internal/httputil"
 	"melovian/internal/jukebox"
 	"melovian/internal/localmusic"
-	"melovian/internal/metaloader"
 	"melovian/internal/observability"
 	"melovian/internal/store"
 	"melovian/internal/subsonic"
@@ -35,67 +43,68 @@ import (
 )
 
 type Server struct {
-	cfg                appconfig.Config
-	instances          *store.InstanceStore
-	localLibraries     *store.LocalLibraryStore
-	localTracks        *store.LocalTrackStore
-	auth               *store.AuthStore
-	listen             *store.ListenStore
-	preferences        *store.PreferencesStore
-	downloads          *store.DownloadStore
-	videoLinks         *store.TrackVideoLinkStore
-	videoClient        *video.Client
-	videoSettingsCache sync.Map
-	subsonic           *subsonic.Client
-	clientCache        map[string]*subsonic.Client
-	mux                *http.ServeMux
-	server             *http.Server
-	listenAddr         string
-	cache              *cache.ResponseCache
-	downloadSem        chan struct{}
-	downloadLocks      sync.Map
-	mu                 sync.RWMutex
-	catalogCache       *localmusic.CatalogCache
-	coverCache         *localmusic.CoverCache
-	libraryScanner     *metaloader.Scanner
-	libraryWatcher     *metaloader.LibraryWatcher
-	events             *EventHub
-	devices            *DeviceRegistry
-	subsonicServer     *subsonicserver.Server
-	shares             *store.ShareStore
-	notifications      *store.NotificationStore
-	jukebox            *jukebox.Controller
-	dlna               *dlna.Server
-	oidcOnce           sync.Once
-	oidcInitErr        error
-	oidcRuntimeValue   *oidcRuntime
-	sentryCfg          appconfig.SentryConfig
-	db                 *store.DB
-	upd                updateState
-	setupMu            sync.Mutex
-	authLimiter        *rateLimiter
-	shareLimiter       *rateLimiter
-	clientLogLimiter   *rateLimiter
+	cfg              appconfig.Config
+	instances        *store.InstanceStore
+	localLibraries   *store.LocalLibraryStore
+	localTracks      *store.LocalTrackStore
+	auth             *store.AuthStore
+	listen           *store.ListenStore
+	preferences      *store.PreferencesStore
+	downloads        *store.DownloadStore
+	videoLinks       *store.TrackVideoLinkStore
+	resolver         *apishared.Resolver
+	mux              *http.ServeMux
+	server           *http.Server
+	listenAddr       string
+	cache            *cache.ResponseCache
+	downloadSem      chan struct{}
+	catalogCache     *localmusic.CatalogCache
+	coverCache       *localmusic.CoverCache
+	events           *realtime.EventHub
+	devices          *realtime.DeviceRegistry
+	realtimeH        *realtime.Handler
+	libraryH         *library.Handler
+	downloadsH       *downloadsapi.Handler
+	videosH          *videos.Handler
+	sharingH         *sharing.Handler
+	systemH          *system.Handler
+	instancesH       *instancesapi.Handler
+	lyricsH          *music.LyricsHandler
+	notifyH          *notify.Handler
+	authH            *auth.Handler
+	subsonicServer   *subsonicserver.Server
+	shares           *store.ShareStore
+	notifications    *store.NotificationStore
+	jukebox          *jukebox.Controller
+	dlna             *dlna.Server
+	db               *store.DB
+	authLimiter      *apishared.RateLimiter
+	shareLimiter     *apishared.RateLimiter
+	clientLogLimiter *apishared.RateLimiter
 }
 
 func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	ConfigureCORSOrigins(cfg.CORSOrigins)
 	instances := store.NewInstanceStore(db)
+	preferences := store.NewPreferencesStore(db)
 	if cipher, err := store.LoadSecretCipher(cfg.DataDir); err != nil {
 		slog.Error("instance credential encryption unavailable", "err", err)
 	} else if cipher != nil {
 		instances.SetCipher(cipher)
+		preferences.SetCipher(cipher)
 		if err := instances.MigratePasswords(); err != nil {
 			slog.Error("instance password migration failed", "err", err)
+		}
+		if err := preferences.EnsureSecretCipher(cfg.DataDir); err != nil {
+			slog.Error("preference secret migration failed", "err", err)
 		}
 	}
 	localLibraries := store.NewLocalLibraryStore(db)
 	localTracks := store.NewLocalTrackStore(db)
 	listen := store.NewListenStore(db)
-	preferences := store.NewPreferencesStore(db)
 	downloads := store.NewDownloadStore(db)
 	responseCache := cache.NewResponseCache()
-	events := NewEventHub()
+	events := realtime.NewEventHub()
 
 	s := &Server{
 		cfg:              cfg,
@@ -108,24 +117,22 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 		preferences:      preferences,
 		downloads:        downloads,
 		videoLinks:       store.NewTrackVideoLinkStore(db),
-		videoClient:      video.NewClient(),
 		mux:              http.NewServeMux(),
 		cache:            responseCache,
-		clientCache:      make(map[string]*subsonic.Client),
+		resolver:         apishared.NewResolver(instances),
 		downloadSem:      make(chan struct{}, 3),
 		catalogCache:     localmusic.NewCatalogCache(),
 		coverCache:       localmusic.NewCoverCache(),
-		libraryScanner:   metaloader.NewScanner(localLibraries, localTracks),
 		events:           events,
-		devices:          NewDeviceRegistry(events),
+		devices:          realtime.NewDeviceRegistry(events),
 		shares:           store.NewShareStore(db),
 		notifications:    store.NewNotificationStore(db),
 		jukebox:          jukebox.NewController(),
-		authLimiter:      newRateLimiter(10, 5*time.Minute),
-		shareLimiter:     newRateLimiter(10, 5*time.Minute),
-		clientLogLimiter: newRateLimiter(60, time.Minute),
+		authLimiter:      apishared.NewRateLimiter(consts.AuthRateLimit, consts.AuthRateWindow),
+		shareLimiter:     apishared.NewRateLimiter(consts.ShareRateLimit, consts.ShareRateWindow),
+		clientLogLimiter: apishared.NewRateLimiter(consts.ClientLogRateLimit, consts.ClientLogRateWindow),
 	}
-	s.devices.lookupUsername = func(userID string) string {
+	s.devices.SetUsernameLookup(func(userID string) string {
 		if userID == "" || s.auth == nil {
 			return ""
 		}
@@ -134,298 +141,127 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 			return ""
 		}
 		return u.Username
-	}
+	})
 	s.dlna = dlna.New(
 		cfg.DLNAServerEffective(),
 		cfg.DLNAHost,
 		cfg.DLNAPort,
-		s.publicBaseURL(),
+		apishared.PublicBaseURL(s.cfg),
 		s.dlnaCatalogAdapter(),
 	)
 	s.subsonicServer = s.newSubsonicServer()
-	s.libraryScanner.SetProgressHook(s.emitScanProgress)
-	if watcher, err := metaloader.NewLibraryWatcher(s.libraryScanner, s.handleLibraryWatchUpdate); err != nil {
-		slog.Warn("local library file watching unavailable", "err", err)
-	} else {
-		s.libraryWatcher = watcher
-		if s.localLibraryEnabled() {
-			if libs, listErr := localLibraries.List(); listErr == nil {
-				for _, lib := range libs {
-					s.watchLocalLibrary(lib)
-				}
-			}
-		}
-	}
-	_ = s.reloadActiveSubsonic()
+	_ = s.resolver.ReloadActive()
 	if err := extensions.InstallBundled(cfg.DataDir); err != nil {
 		slog.Error("failed to install bundled extensions", "err", err)
 	}
-	if err := s.initSentryFromStore(); err != nil {
-		slog.Error("sentry init failed", "err", err)
-	}
 
-	musicSvc := NewMusicService(listen, preferences, cfg.DataDir, httputil.NewRetryHTTPClient())
+	musicSvc := music.NewMusicService(listen, preferences, cfg.DataDir, httputil.NewRetryHTTPClient())
 	musicSvc.Register(s.mux)
 
 	s.mux.HandleFunc("GET /api/config", s.handleGetConfig)
-	s.registerAuthRoutes()
-	s.registerOIDCRoutes()
-	s.registerMetricsRoutes()
-	s.registerDebugRoutes()
-	s.registerClientLogRoutes()
-	s.registerSentrySettingsRoutes()
-	s.registerInstanceRoutes()
-	s.registerSourceRoutes()
-	s.registerWSRoutes()
-	s.registerLocalLibraryRoutes()
-	s.registerFilesystemRoutes()
-	s.registerLocalMusicRoutes()
-	s.registerLocalMetadataRoutes()
-	s.registerVideoRoutes()
-	s.registerExtensionRoutes()
-	s.registerSubsonicRoutes()
-	s.registerDownloadRoutes()
-	s.registerMediaDownloadRoutes()
-	s.registerLyricsRoutes()
-	s.registerSmartPlaylistRoutes()
-	s.registerShareRoutes()
-	s.registerNotificationRoutes()
-	s.registerPartyRoutes()
-	s.registerJukeboxRoutes()
-	s.registerUpdateRoutes()
+	s.authH = auth.New(s.auth, s.cfg, s.authLimiter)
+	s.authH.Register(s.mux)
+	s.systemH = system.New(system.Deps{
+		Config:           s.cfg,
+		DB:               s.db,
+		Preferences:      s.preferences,
+		Cache:            s.cache,
+		CatalogCache:     s.catalogCache,
+		CoverCache:       s.coverCache,
+		Events:           s.events,
+		DownloadSem:      s.downloadSem,
+		Resolver:         s.resolver,
+		ClientLogLimiter: s.clientLogLimiter,
+		Jukebox:          s.jukebox,
+		LocalTracks:      s.localTracks,
+		ServerFn:         func() *http.Server { return s.server },
+	})
+	s.systemH.Register(s.mux)
+	if err := s.systemH.InitSentryFromStore(); err != nil {
+		slog.Error("sentry init failed", "err", err)
+	}
+	s.instancesH = instancesapi.New(s.instances, s.localLibraries, s.preferences, s.resolver, s.cfg)
+	s.instancesH.Register(s.mux)
+	s.notifyH = notify.New(s.notifications, s.events, s.cfg)
+	s.notifyH.Register(s.mux)
+	s.realtimeH = realtime.New(s.auth, s.events, s.devices, s.notifyH.Notify)
+	s.realtimeH.Register(s.mux)
+	s.libraryH = library.New(library.Deps{
+		Config:       &s.cfg,
+		Instances:    s.instances,
+		Preferences:  s.preferences,
+		Listen:       s.listen,
+		Libraries:    s.localLibraries,
+		Tracks:       s.localTracks,
+		CatalogCache: s.catalogCache,
+		CoverCache:   s.coverCache,
+		Events:       s.events,
+		Resolver:     s.resolver,
+	})
+	s.libraryH.Register(s.mux)
+	s.videosH = videos.New(s.preferences, s.videoLinks, video.NewClient(), s.localLibraries, s.localTracks, s.libraryH)
+	s.videosH.Register(s.mux)
+	extensionsH := extapi.New(s.cfg)
+	extensionsH.Register(s.mux)
+	music.NewProxyHandler(s.cfg, s.instances, s.localLibraries, s.localTracks, s.preferences, s.resolver, s.cache).Register(s.mux)
+	s.downloadsH = downloadsapi.New(downloadsapi.Deps{
+		Config:      s.cfg,
+		Downloads:   s.downloads,
+		Preferences: s.preferences,
+		Listen:      s.listen,
+		Libraries:   s.localLibraries,
+		Tracks:      s.localTracks,
+		Resolver:    s.resolver,
+		Library:     s.libraryH,
+		DownloadSem: s.downloadSem,
+	})
+	s.downloadsH.Register(s.mux)
+	s.lyricsH = music.NewLyricsHandler(s.cfg, s.preferences, s.resolver)
+	s.lyricsH.Register(s.mux)
+	s.sharingH = sharing.New(sharing.Deps{
+		Config:      s.cfg,
+		Auth:        s.auth,
+		Shares:      s.shares,
+		Instances:   s.instances,
+		Libraries:   s.localLibraries,
+		Tracks:      s.localTracks,
+		Listen:      s.listen,
+		Preferences: s.preferences,
+		Resolver:    s.resolver,
+		Devices:     s.devices,
+		Limiter:     s.shareLimiter,
+		Library:     s.libraryH,
+		Notify:      s.notifyH.Notify,
+	})
+	s.sharingH.Register(s.mux)
 
 	handler := s.buildAPIHandler()
 	s.server = &http.Server{
 		Addr:              cfg.ListenAddr,
 		Handler:           handler,
-		ReadHeaderTimeout: 15 * time.Second,
+		ReadHeaderTimeout: consts.UpstreamTimeout,
 	}
 
 	return s
 }
 
 func (s *Server) ResolveInstanceID(r *http.Request) (string, error) {
-	headerValue := instanceIDFromRequest(r)
-	userID := UserIDFromContext(r.Context())
-
-	if headerValue != "" {
-		if _, err := s.instances.GetForUser(userID, headerValue); err != nil {
-			if errors.Is(err, sql.ErrNoRows) {
-				return "", errors.New("unknown instance id")
-			}
-			return "", err
-		}
-		return headerValue, nil
-	}
-
-	activeID, err := s.instances.GetActiveIDForUser(userID)
-	if err != nil {
-		return "", err
-	}
-	if activeID == "" {
-		return "", nil
-	}
-	if _, err := s.instances.GetForUser(userID, activeID); err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			_ = s.instances.ClearActiveForUser(userID)
-			return "", nil
-		}
-		return "", err
-	}
-	return activeID, nil
+	return s.resolver.ResolveInstanceID(r)
 }
 
+// reloadActiveSubsonic is kept for tests that exercise instance switching.
 func (s *Server) reloadActiveSubsonic() error {
-	inst, err := s.instances.GetActive()
-	if err != nil {
-		if errors.Is(err, sql.ErrNoRows) {
-			s.mu.Lock()
-			s.subsonic = subsonic.NewClient("", "", "")
-			s.mu.Unlock()
-			slog.Debug("no active subsonic instance configured")
-			return nil
-		}
-		return err
-	}
-
-	client := subsonic.NewClient(inst.ServerURL, inst.Username, inst.Password)
-	s.mu.Lock()
-	s.subsonic = client
-	s.clientCache[inst.ID] = client
-	s.mu.Unlock()
-	slog.Info("active subsonic instance loaded",
-		"instance_id", inst.ID,
-		"url", httputil.RedactURLUserinfo(inst.ServerURL),
-		"name", inst.Name,
-	)
-	return nil
+	return s.resolver.ReloadActive()
 }
 
-func (s *Server) cachedClient(instanceID, serverURL, username, password string) *subsonic.Client {
-	s.mu.RLock()
-	if client, ok := s.clientCache[instanceID]; ok {
-		s.mu.RUnlock()
-		return client
-	}
-	s.mu.RUnlock()
-
-	client := subsonic.NewClient(serverURL, username, password)
-	s.mu.Lock()
-	s.clientCache[instanceID] = client
-	s.mu.Unlock()
-	return client
-}
-
+// subsonicForContext is kept for tests that exercise instance isolation.
 func (s *Server) subsonicForContext(ctx context.Context) *subsonic.Client {
-	instanceID := InstanceIDFromContext(ctx)
-	userID := UserIDFromContext(ctx)
-	if instanceID == "" {
-		if userID != "" {
-			return subsonic.NewClient("", "", "")
-		}
-		s.mu.RLock()
-		client := s.subsonic
-		s.mu.RUnlock()
-		return client
-	}
-
-	activeID, _ := s.instances.GetActiveID()
-	s.mu.RLock()
-	if userID == "" && activeID == instanceID && s.subsonic != nil && s.subsonic.Enabled() {
-		client := s.subsonic
-		s.mu.RUnlock()
-		return client
-	}
-	s.mu.RUnlock()
-
-	inst, err := s.instances.GetForUser(userID, instanceID)
-	if err != nil {
-		return subsonic.NewClient("", "", "")
-	}
-	return s.cachedClient(instanceID, inst.ServerURL, inst.Username, inst.Password)
+	return s.resolver.ForContext(ctx)
 }
 
-func (s *Server) registerSubsonicRoutes() {
-	s.mux.HandleFunc("GET /api/music/status", func(w http.ResponseWriter, r *http.Request) {
-		userID := UserIDFromContext(r.Context())
-		mode := s.sourceViewModeForUser(userID)
-		instanceID, _ := s.instances.GetActiveIDForUser(userID)
-		localLib, localErr := s.localLibraries.GetActiveForUser(userID)
-
-		if store.IsUnifiedSourceView(mode) && instanceID != "" && localErr == nil {
-			httputil.WriteJSON(w, http.StatusOK, map[string]any{
-				"enabled":    true,
-				"connected":  true,
-				"serverName": "All sources",
-				"version":    "unified",
-				"source":     "unified",
-			})
-			return
-		}
-
-		if store.IsLocalSourceView(mode) && localErr == nil {
-			httputil.WriteJSON(w, http.StatusOK, map[string]any{
-				"enabled":    true,
-				"connected":  true,
-				"serverName": localLib.Name,
-				"version":    "local",
-				"source":     "local",
-			})
-			return
-		}
-
-		if instanceID != "" || store.IsSubsonicSourceView(mode) {
-			client := s.subsonicForContext(r.Context())
-			subsonic.StatusHandler(client, s.cache, s.cfg.CacheEnabled, ResolveProgressUserID)(w, r)
-			return
-		}
-
-		if localErr == nil {
-			httputil.WriteJSON(w, http.StatusOK, map[string]any{
-				"enabled":    true,
-				"connected":  true,
-				"serverName": localLib.Name,
-				"version":    "local",
-				"source":     "local",
-			})
-			return
-		}
-		client := s.subsonicForContext(r.Context())
-		subsonic.StatusHandler(client, s.cache, s.cfg.CacheEnabled, ResolveProgressUserID)(w, r)
-	})
-	s.mux.HandleFunc("GET /api/music/library-stats", func(w http.ResponseWriter, r *http.Request) {
-		userID := UserIDFromContext(r.Context())
-		mode := s.sourceViewModeForUser(userID)
-		instanceID, _ := s.instances.GetActiveIDForUser(userID)
-		localLib, localErr := s.localLibraries.GetActiveForUser(userID)
-
-		if store.IsUnifiedSourceView(mode) && instanceID != "" && localErr == nil {
-			client := s.subsonicForContext(r.Context())
-			remote, remoteErr := client.LibraryStats()
-			if remoteErr != nil {
-				httputil.WriteError(w, http.StatusBadGateway, "bad_gateway", "failed to load library stats")
-				return
-			}
-			artistCount, albumCount, countErr := s.localTracks.CountDistinctArtistsAlbums(localLib.ID)
-			if countErr != nil {
-				httputil.WriteInternalError(w, r, "count library stats", countErr)
-				return
-			}
-			httputil.WriteJSON(w, http.StatusOK, map[string]any{
-				"songCount":   remote.SongCount + localLib.TrackCount,
-				"albumCount":  remote.AlbumCount + albumCount,
-				"artistCount": remote.ArtistCount + artistCount,
-				"folderCount": remote.FolderCount + 1,
-				"scanning":    remote.Scanning || localLib.ScanStatus == "scanning",
-				"lastScan":    remote.LastScan,
-			})
-			return
-		}
-
-		if store.IsLocalSourceView(mode) && localErr == nil {
-			artistCount, albumCount, countErr := s.localTracks.CountDistinctArtistsAlbums(localLib.ID)
-			if countErr != nil {
-				httputil.WriteInternalError(w, r, "count library stats", countErr)
-				return
-			}
-			httputil.WriteJSON(w, http.StatusOK, map[string]any{
-				"songCount":   localLib.TrackCount,
-				"albumCount":  albumCount,
-				"artistCount": artistCount,
-				"folderCount": 1,
-				"scanning":    localLib.ScanStatus == "scanning",
-			})
-			return
-		}
-
-		if instanceID != "" || store.IsSubsonicSourceView(mode) {
-			client := s.subsonicForContext(r.Context())
-			subsonic.LibraryStatsHandler(client, s.cache, s.cfg.CacheEnabled, ResolveProgressUserID)(w, r)
-			return
-		}
-
-		if localErr == nil {
-			artistCount, albumCount, countErr := s.localTracks.CountDistinctArtistsAlbums(localLib.ID)
-			if countErr != nil {
-				httputil.WriteInternalError(w, r, "count library stats", countErr)
-				return
-			}
-			httputil.WriteJSON(w, http.StatusOK, map[string]any{
-				"songCount":   localLib.TrackCount,
-				"albumCount":  albumCount,
-				"artistCount": artistCount,
-				"folderCount": 1,
-				"scanning":    localLib.ScanStatus == "scanning",
-			})
-			return
-		}
-		httputil.WriteError(w, http.StatusServiceUnavailable, "service_unavailable", "no music source configured")
-	})
-	s.mux.HandleFunc("POST /api/music/library/refresh", s.handleRefreshLibraryCache)
-
-	proxy := subsonic.NewProxy(s.subsonicForContext, s.cache, s.cfg.CacheEnabled, ResolveProgressUserID)
-	s.mux.Handle("/api/subsonic/", proxy)
-	s.mux.Handle("/api/subsonic", proxy)
+// writeSession is kept for tests that exercise session cookies.
+func (s *Server) writeSession(w http.ResponseWriter, r *http.Request, userID string) error {
+	return s.authH.WriteSession(w, r, userID)
 }
 
 func (s *Server) Start() error {
@@ -455,8 +291,8 @@ func (s *Server) ListenAddr() string {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
-	if s.libraryWatcher != nil {
-		s.libraryWatcher.Close()
+	if s.libraryH != nil {
+		s.libraryH.Close()
 	}
 	if s.dlna != nil {
 		_ = s.dlna.Stop(ctx)
@@ -478,7 +314,7 @@ func (s *Server) buildAPIHandler() http.Handler {
 	inner = RequestIDMiddleware(inner)
 	inner = LoggingMiddleware(inner)
 	inner = RecoverMiddleware(inner)
-	inner = MetricsMiddleware(inner)
+	inner = system.MetricsMiddleware(inner)
 	api := observability.HTTPMiddleware()(inner)
 	return CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/rest/") {
@@ -494,7 +330,7 @@ func (s *Server) buildAPIHandler() http.Handler {
 				})
 				return
 			}
-			s.handlePublicShare(w, r)
+			s.sharingH.HandlePublicShare(w, r)
 			return
 		}
 		api.ServeHTTP(w, r)
@@ -510,18 +346,6 @@ func demoShareMethodAllowed(r *http.Request) bool {
 	default:
 		return false
 	}
-}
-
-func (s *Server) handleRefreshLibraryCache(w http.ResponseWriter, r *http.Request) {
-	if r.Method != http.MethodPost {
-		httputil.WriteError(w, http.StatusMethodNotAllowed, "method_not_allowed", "method not allowed")
-		return
-	}
-
-	scope := ResolveProgressUserID(r.Context())
-	prefix := scope + "|"
-	removed := s.cache.InvalidatePrefix(prefix)
-	httputil.WriteJSON(w, http.StatusOK, map[string]any{"invalidated": removed})
 }
 
 func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
@@ -570,20 +394,20 @@ func (s *Server) handleGetConfig(w http.ResponseWriter, r *http.Request) {
 		payload["localLibrary"].(map[string]any)["defaultPath"] = libCfg.DefaultPath
 	}
 	maps.Copy(payload, compat.ConfigFields())
-	if sentryPayload := s.clientSentryPayload(r); sentryPayload != nil {
+	if sentryPayload := s.systemH.ClientSentryPayload(r); sentryPayload != nil {
 		payload["sentry"] = sentryPayload
 	}
 	httputil.WriteJSON(w, http.StatusOK, payload)
 }
 
 func (s *Server) configRequestAuthed(r *http.Request) bool {
-	if userID := UserIDFromContext(r.Context()); userID != "" {
+	if userID := apishared.UserIDFromContext(r.Context()); userID != "" {
 		return true
 	}
 	if s.auth == nil {
 		return false
 	}
-	token := sessionTokenFromRequest(r)
+	token := apishared.SessionTokenFromRequest(r)
 	if token == "" {
 		return false
 	}
@@ -592,7 +416,7 @@ func (s *Server) configRequestAuthed(r *http.Request) bool {
 }
 
 func frontendDevServerEnabled() bool {
-	return os.Getenv("FRONTEND_DEVSERVER_URL") != ""
+	return appconfig.FrontendDevServerEnabled()
 }
 
 func isStaticAssetPath(path string) bool {

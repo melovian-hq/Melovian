@@ -248,7 +248,7 @@ func TestAuthLoginRateLimited(t *testing.T) {
 	setupUser(t, handler, "admin", "password123")
 
 	var lastCode int
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		body := bytes.NewBufferString(`{"username":"admin","password":"bad"}`)
 		req := httptest.NewRequest(http.MethodPost, "/api/auth/login", body)
 		rec := httptest.NewRecorder()
@@ -277,7 +277,7 @@ func TestShareUnlockRateLimited(t *testing.T) {
 	}
 
 	var lastCode int
-	for i := 0; i < 12; i++ {
+	for range 12 {
 		req := httptest.NewRequest(http.MethodPost, "/s/"+share.Token+"/unlock", strings.NewReader(`{"password":"nope"}`))
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
@@ -293,7 +293,7 @@ func TestClientLogRateLimited(t *testing.T) {
 	handler := srv.Handler()
 
 	var lastCode int
-	for i := 0; i < 65; i++ {
+	for range 65 {
 		req := httptest.NewRequest(http.MethodPost, "/api/client-log", strings.NewReader(`{"level":"info","message":"x"}`))
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)

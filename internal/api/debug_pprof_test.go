@@ -62,7 +62,10 @@ func TestDebugMemoryReportsCacheFields(t *testing.T) {
 		t.Fatalf("status=%d", rec.Code)
 	}
 
-	var payload memorySnapshot
+	var payload struct {
+		DebugPprof bool     `json:"debugPprof"`
+		Notes      []string `json:"notes"`
+	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode: %v", err)
 	}

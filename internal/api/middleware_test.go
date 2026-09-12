@@ -5,6 +5,7 @@ package api
 
 import (
 	"context"
+	"melovian/internal/api/apishared"
 	"testing"
 )
 
@@ -25,13 +26,13 @@ func TestResolveProgressUserID(t *testing.T) {
 		t.Run(tc.name, func(t *testing.T) {
 			ctx := context.Background()
 			if tc.userID != "" {
-				ctx = context.WithValue(ctx, userContextKey, tc.userID)
+				ctx = apishared.WithUserID(ctx, tc.userID)
 			}
 			if tc.instanceID != "" {
-				ctx = context.WithValue(ctx, instanceContextKey, tc.instanceID)
+				ctx = apishared.WithInstanceID(ctx, tc.instanceID)
 			}
-			if got := ResolveProgressUserID(ctx); got != tc.want {
-				t.Fatalf("ResolveProgressUserID() = %q, want %q", got, tc.want)
+			if got := apishared.ResolveProgressUserID(ctx); got != tc.want {
+				t.Fatalf("apishared.ResolveProgressUserID() = %q, want %q", got, tc.want)
 			}
 		})
 	}

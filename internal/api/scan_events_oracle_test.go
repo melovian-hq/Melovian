@@ -6,6 +6,7 @@ package api
 import (
 	"testing"
 
+	"melovian/internal/api/realtime"
 	"melovian/internal/metaloader"
 	"melovian/internal/store"
 )
@@ -28,20 +29,20 @@ func TestEmitScanProgressStaysOnOwningUser(t *testing.T) {
 		t.Fatalf("CreateForUser: %v", err)
 	}
 
-	aliceC := &wsClient{userID: alice.ID, send: make(chan []byte, 4)}
-	bobC := &wsClient{userID: bob.ID, send: make(chan []byte, 4)}
-	srv.events.register(aliceC)
-	srv.events.register(bobC)
+	aliceC := realtime.NewWSClient(alice.ID, 4)
+	bobC := realtime.NewWSClient(bob.ID, 4)
+	srv.events.Register(aliceC)
+	srv.events.Register(bobC)
 
 	srv.emitScanProgress(lib.ID, metaloader.ScanProgress{Processed: 3, Phase: "scanning"})
 
 	select {
-	case <-aliceC.send:
+	case <-aliceC.Send:
 	default:
 		t.Fatal("owner missed scan progress")
 	}
 	select {
-	case <-bobC.send:
+	case <-bobC.Send:
 		t.Fatal("other user received scan progress")
 	default:
 	}

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"melovian/internal/api/music"
 	"melovian/internal/store"
 )
 
@@ -66,7 +67,7 @@ func TestLyricsSettingsDefaultsAndCacheClear(t *testing.T) {
 }
 
 func TestMergeLyricsSettingsAddsMissingBuiltins(t *testing.T) {
-	settings, err := mergeLyricsSettings([]byte(`{"providers":[{"id":"custom-1","custom":true,"enabled":true,"url":"https://example.com?a={artist}"}]}`), "/data")
+	settings, err := music.MergeLyricsSettings([]byte(`{"providers":[{"id":"custom-1","custom":true,"enabled":true,"url":"https://example.com?a={artist}"}]}`), "/data")
 	if err != nil {
 		t.Fatalf("mergeLyricsSettings: %v", err)
 	}
@@ -77,12 +78,12 @@ func TestMergeLyricsSettingsAddsMissingBuiltins(t *testing.T) {
 
 func TestLyricsRootRejectsRelativeEscape(t *testing.T) {
 	srv, _ := newTestServer(t)
-	escaped := srv.lyricsRoot(LyricsSettings{StorageDir: "../../tmp/pwned"})
-	want := defaultLyricsStorageDir(srv.cfg.DataDir)
+	escaped := srv.lyricsRoot(music.LyricsSettings{StorageDir: "../../tmp/pwned"})
+	want := music.DefaultLyricsStorageDir(srv.cfg.DataDir)
 	if escaped != want {
 		t.Fatalf("escaped relative dir = %q, want default %q", escaped, want)
 	}
-	nested := srv.lyricsRoot(LyricsSettings{StorageDir: "custom/cache"})
+	nested := srv.lyricsRoot(music.LyricsSettings{StorageDir: "custom/cache"})
 	if nested != filepath.Join(srv.cfg.DataDir, "custom", "cache") {
 		t.Fatalf("nested relative dir = %q", nested)
 	}
@@ -91,7 +92,7 @@ func TestLyricsRootRejectsRelativeEscape(t *testing.T) {
 func TestLyricsRootKeepsAbsoluteCustomDir(t *testing.T) {
 	srv, _ := newTestServer(t)
 	custom := filepath.Join(t.TempDir(), "lyrics-cache")
-	got := srv.lyricsRoot(LyricsSettings{StorageDir: custom})
+	got := srv.lyricsRoot(music.LyricsSettings{StorageDir: custom})
 	if got != filepath.Clean(custom) {
 		t.Fatalf("absolute custom dir = %q, want %q", got, filepath.Clean(custom))
 	}

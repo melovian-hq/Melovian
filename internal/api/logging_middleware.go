@@ -13,6 +13,7 @@ import (
 	"strings"
 	"time"
 
+	"melovian/internal/api/apishared"
 	"melovian/internal/httputil"
 	"melovian/internal/melog"
 	"melovian/internal/observability"
@@ -39,11 +40,11 @@ func (r *responseRecorder) Write(b []byte) (int, error) {
 }
 
 func (r *responseRecorder) Hijack() (net.Conn, *bufio.ReadWriter, error) {
-	return delegateHijack(r.ResponseWriter)
+	return apishared.DelegateHijack(r.ResponseWriter)
 }
 
 func (r *responseRecorder) Flush() {
-	_ = delegateFlush(r.ResponseWriter)
+	_ = apishared.DelegateFlush(r.ResponseWriter)
 }
 
 func (r *responseRecorder) Unwrap() http.ResponseWriter {
@@ -59,7 +60,7 @@ func LoggingMiddleware(next http.Handler) http.Handler {
 		level := httpStatusLogLevel(rec.status)
 
 		// Health checks and static assets are noisy at the default server log level.
-		path := melog.Sanitize(metricPath(r.URL.Path))
+		path := melog.Sanitize(apishared.MetricPath(r.URL.Path))
 		if level == slog.LevelDebug && (path == "/health" || strings.HasPrefix(path, "/assets/")) {
 			return
 		}
@@ -125,7 +126,7 @@ func RecoverMiddleware(next http.Handler) http.Handler {
 				tags := map[string]string{
 					"kind":   "http-panic",
 					"method": r.Method,
-					"path":   metricPath(r.URL.Path),
+					"path":   apishared.MetricPath(r.URL.Path),
 				}
 				if requestID != "" {
 					tags["request_id"] = requestID

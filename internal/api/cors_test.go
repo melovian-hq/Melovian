@@ -4,6 +4,7 @@
 package api
 
 import (
+	"melovian/internal/api/apishared"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -55,7 +56,7 @@ func TestSessionCookieSameSiteNoneForMobileOrigin(t *testing.T) {
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
 	req.Header.Set("Origin", "https://wails.localhost")
 	req.Header.Set("X-Forwarded-Proto", "https")
-	setHTTPOnlyCookie(rec, req, "melovian_session", "tok", "/", 3600, time.Time{})
+	apishared.SetHTTPOnlyCookie(rec, req, "melovian_session", "tok", "/", 3600, time.Time{})
 	setCookie := rec.Header().Get("Set-Cookie")
 	if !strings.Contains(setCookie, "SameSite=None") {
 		t.Fatalf("Set-Cookie missing SameSite=None: %q", setCookie)
@@ -70,7 +71,7 @@ func TestSessionCookieLaxOnHTTPEvenWithMobileOrigin(t *testing.T) {
 	rec := httptest.NewRecorder()
 	req := httptest.NewRequest(http.MethodPost, "/api/auth/login", nil)
 	req.Header.Set("Origin", "https://wails.localhost")
-	setHTTPOnlyCookie(rec, req, "melovian_session", "tok", "/", 3600, time.Time{})
+	apishared.SetHTTPOnlyCookie(rec, req, "melovian_session", "tok", "/", 3600, time.Time{})
 	setCookie := rec.Header().Get("Set-Cookie")
 	if strings.Contains(setCookie, "SameSite=None") {
 		t.Fatalf("HTTP responses must not force SameSite=None: %q", setCookie)

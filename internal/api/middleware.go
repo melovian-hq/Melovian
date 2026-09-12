@@ -4,65 +4,12 @@
 package api
 
 import (
-	"context"
-	"fmt"
-	"melovian/internal/httputil"
 	"net/http"
-	"strings"
 
+	"melovian/internal/api/apishared"
+	"melovian/internal/httputil"
 	"melovian/internal/store"
 )
-
-type ctxKey int
-
-const (
-	deviceContextKey ctxKey = iota
-	instanceContextKey
-	userContextKey
-)
-
-func UserIDFromContext(ctx context.Context) string {
-	if v, ok := ctx.Value(userContextKey).(string); ok {
-		return v
-	}
-	return ""
-}
-
-func InstanceIDFromContext(ctx context.Context) string {
-	if v, ok := ctx.Value(instanceContextKey).(string); ok {
-		return v
-	}
-	return ""
-}
-
-func DeviceIDFromContext(ctx context.Context) string {
-	if v, ok := ctx.Value(deviceContextKey).(string); ok {
-		return v
-	}
-	return ""
-}
-
-func ResolveProgressUserID(ctx context.Context) string {
-	userID := UserIDFromContext(ctx)
-	instanceID := InstanceIDFromContext(ctx)
-	if userID != "" && instanceID != "" {
-		return fmt.Sprintf("user:%s:instance:%s", userID, instanceID)
-	}
-	if userID != "" {
-		return fmt.Sprintf("user:%s", userID)
-	}
-	if instanceID != "" {
-		return fmt.Sprintf("instance:%s", instanceID)
-	}
-	return "local"
-}
-
-func instanceIDFromRequest(r *http.Request) string {
-	if id := strings.TrimSpace(r.Header.Get("X-Instance-Id")); id != "" {
-		return id
-	}
-	return strings.TrimSpace(r.URL.Query().Get("_instance"))
-}
 
 type InstanceResolver interface {
 	ResolveInstanceID(r *http.Request) (string, error)
@@ -70,26 +17,25 @@ type InstanceResolver interface {
 
 func AuthMiddleware(auth *store.AuthStore, demo bool, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		if demo || auth == nil || !auth.Enabled() || isPublicAPIPath(r.URL.Path) {
+		if demo || auth == nil || !auth.Enabled() || apishared.IsPublicAPIPath(r.URL.Path) {
 			next.ServeHTTP(w, r)
 			return
 		}
 
-		token := sessionTokenFromRequest(r)
+		token := apishared.SessionTokenFromRequest(r)
 		userID, err := auth.UserIDFromToken(token)
 		if err != nil {
 			httputil.WriteError(w, http.StatusUnauthorized, "unauthorized", "unauthorized")
 			return
 		}
 
-		ctx := context.WithValue(r.Context(), userContextKey, userID)
-		next.ServeHTTP(w, r.WithContext(ctx))
+		next.ServeHTTP(w, r.WithContext(apishared.WithUserID(r.Context(), userID)))
 	})
 }
 
 func Middleware(resolver InstanceResolver, next http.Handler) http.Handler {
 	return http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
-		ctx := context.WithValue(r.Context(), deviceContextKey, r.Header.Get("X-Device-Id"))
+		ctx := apishared.WithDeviceID(r.Context(), r.Header.Get("X-Device-Id"))
 		if r.URL.Path == "/api/ws" {
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
@@ -99,7 +45,7 @@ func Middleware(resolver InstanceResolver, next http.Handler) http.Handler {
 			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 			return
 		}
-		ctx = context.WithValue(ctx, instanceContextKey, instanceID)
+		ctx = apishared.WithInstanceID(ctx, instanceID)
 		next.ServeHTTP(w, r.WithContext(ctx))
 	})
 }

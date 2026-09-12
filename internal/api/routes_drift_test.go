@@ -5,6 +5,7 @@ package api
 
 import (
 	"encoding/json"
+	"io/fs"
 	"net/http"
 	"net/http/httptest"
 	"os"
@@ -47,20 +48,29 @@ func loadAPIRouteManifest(t *testing.T) apiRouteManifest {
 func collectRoutesFromGoSource(t *testing.T) []apiRoute {
 	t.Helper()
 	dir := "."
-	entries, err := os.ReadDir(dir)
+
+	var files []string
+	err := filepath.WalkDir(dir, func(path string, d fs.DirEntry, walkErr error) error {
+		if walkErr != nil {
+			return walkErr
+		}
+		if d.IsDir() || !strings.HasSuffix(d.Name(), ".go") || strings.HasSuffix(d.Name(), "_test.go") {
+			return nil
+		}
+		files = append(files, path)
+		return nil
+	})
 	if err != nil {
-		t.Fatalf("read api dir: %v", err)
+		t.Fatalf("walk api dir: %v", err)
 	}
+	sort.Strings(files)
 
 	var routes []apiRoute
 	seen := make(map[string]struct{})
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".go") || strings.HasSuffix(entry.Name(), "_test.go") {
-			continue
-		}
-		content, readErr := os.ReadFile(filepath.Join(dir, entry.Name()))
+	for _, file := range files {
+		content, readErr := os.ReadFile(file)
 		if readErr != nil {
-			t.Fatalf("read %s: %v", entry.Name(), readErr)
+			t.Fatalf("read %s: %v", file, readErr)
 		}
 		source := string(content)
 		for _, match := range routeRegistrationRE.FindAllStringSubmatch(source, -1) {

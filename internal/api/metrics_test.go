@@ -4,6 +4,7 @@
 package api
 
 import (
+	"melovian/internal/api/apishared"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -29,7 +30,7 @@ func TestMetricsEndpoint(t *testing.T) {
 }
 
 func TestMetricsPathPublic(t *testing.T) {
-	if !isPublicAPIPath("/metrics") {
+	if !apishared.IsPublicAPIPath("/metrics") {
 		t.Fatal("expected /metrics to be public")
 	}
 	if !isAPIPath("/metrics") {

@@ -11,6 +11,7 @@ import (
 	"strings"
 	"testing"
 
+	"melovian/internal/api/apishared"
 	"melovian/internal/melog"
 )
 
@@ -79,9 +80,9 @@ func TestNormalizePublicBaseURL(t *testing.T) {
 		{"", ""},
 	}
 	for _, tc := range cases {
-		got := normalizePublicBaseURL(tc.in)
+		got := apishared.NormalizePublicBaseURL(tc.in)
 		if got != tc.want {
-			t.Fatalf("normalizePublicBaseURL(%q)=%q want %q", tc.in, got, tc.want)
+			t.Fatalf("apishared.NormalizePublicBaseURL(%q)=%q want %q", tc.in, got, tc.want)
 		}
 	}
 }

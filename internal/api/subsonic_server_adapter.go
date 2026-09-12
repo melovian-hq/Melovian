@@ -9,6 +9,7 @@ import (
 	"errors"
 	"time"
 
+	"melovian/internal/api/apishared"
 	"melovian/internal/localmusic"
 	"melovian/internal/store"
 	"melovian/internal/subsonicserver"
@@ -17,7 +18,7 @@ import (
 type subsonicAuthAdapter struct {
 	auth    *store.AuthStore
 	cfg     bool
-	limiter *rateLimiter
+	limiter *apishared.RateLimiter
 }
 
 func (a subsonicAuthAdapter) AuthRequired() bool {
@@ -62,18 +63,18 @@ func (a subsonicAuthAdapter) AuthenticateToken(username, token, salt string) (st
 }
 
 func (a subsonicAuthAdapter) limited(username string) bool {
-	return a.limiter != nil && a.limiter.blocked("rest|"+username)
+	return a.limiter != nil && a.limiter.Blocked("rest|"+username)
 }
 
 func (a subsonicAuthAdapter) recordFailure(username string) {
 	if a.limiter != nil {
-		a.limiter.record("rest|" + username)
+		a.limiter.Record("rest|" + username)
 	}
 }
 
 func (a subsonicAuthAdapter) resetFailures(username string) {
 	if a.limiter != nil {
-		a.limiter.reset("rest|" + username)
+		a.limiter.Reset("rest|" + username)
 	}
 }
 
@@ -243,29 +244,6 @@ func (a subsonicProviderAdapter) ListGenres(ctx context.Context, melovianUserID 
 	return out, nil
 }
 
-func (s *Server) libraryIDsForUser(userID string) ([]string, error) {
-	multi, err := s.preferences.GetMultiLocalLibrary(userID)
-	if err != nil {
-		return nil, err
-	}
-	if multi {
-		libs, err := s.localLibraries.ListForUser(userID)
-		if err != nil {
-			return nil, err
-		}
-		ids := make([]string, len(libs))
-		for i, lib := range libs {
-			ids[i] = lib.ID
-		}
-		return ids, nil
-	}
-	lib, err := s.localLibraries.GetActiveForUser(userID)
-	if err != nil {
-		return nil, err
-	}
-	return []string{lib.ID}, nil
-}
-
 func (s *Server) newSubsonicServer() *subsonicserver.Server {
 	srv := subsonicserver.New(
 		subsonicProviderAdapter{server: s},
@@ -274,65 +252,4 @@ func (s *Server) newSubsonicServer() *subsonicserver.Server {
 	)
 	srv.SetReadOnly(s.cfg.DemoModeEffective())
 	return srv
-}
-
-func (s *Server) localCatalogForUser(userID string) (localmusic.Catalog, error) {
-	multi, err := s.preferences.GetMultiLocalLibrary(userID)
-	if err != nil {
-		return localmusic.Catalog{}, err
-	}
-	if multi {
-		return s.mergedLocalCatalog(userID)
-	}
-	lib, err := s.localLibraries.GetActiveForUser(userID)
-	if err != nil {
-		return localmusic.Catalog{}, err
-	}
-	version := localmusic.CatalogVersion(lib)
-	if catalog, ok := s.catalogCache.Get(lib.ID, version); ok {
-		return catalog, nil
-	}
-	catalog, err := localmusic.LoadCatalog(s.localTracks, lib.ID)
-	if err != nil {
-		return localmusic.Catalog{}, err
-	}
-	s.catalogCache.Set(lib.ID, version, catalog)
-	return catalog, nil
-}
-
-func (s *Server) mergedLocalCatalog(userID string) (localmusic.Catalog, error) {
-	cacheKey := "merged:" + userID
-	libs, err := s.localLibraries.ListForUser(userID)
-	if err != nil {
-		return localmusic.Catalog{}, err
-	}
-	if len(libs) == 0 {
-		return localmusic.Catalog{}, sql.ErrNoRows
-	}
-	var version uint64
-	for _, lib := range libs {
-		version ^= localmusic.CatalogVersion(lib)
-	}
-	if catalog, ok := s.catalogCache.Get(cacheKey, version); ok {
-		return catalog, nil
-	}
-	var tracks []store.CatalogTrack
-	for _, lib := range libs {
-		items, listErr := s.localTracks.ListForCatalog(lib.ID)
-		if listErr != nil {
-			return localmusic.Catalog{}, listErr
-		}
-		tracks = append(tracks, items...)
-	}
-	catalog := localmusic.BuildCatalog(tracks)
-	s.catalogCache.Set(cacheKey, version, catalog)
-	return catalog, nil
-}
-
-func (s *Server) coverBytesForTrack(lib store.LocalLibrary, track store.LocalTrack) ([]byte, string, error) {
-	data, mime, ok := s.coverBytesFromTrackFile(lib, track.ID)
-	if !ok {
-		return nil, "", sql.ErrNoRows
-	}
-	return data, mime, nil
 }

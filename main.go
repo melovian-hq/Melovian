@@ -151,6 +151,7 @@ func main() {
 	slog.Info("application run loop ended")
 	services.ShutdownMediaService(mediaSvc)
 	audioSvc.Shutdown()
+	updateSvc.Shutdown()
 	slog.Info("shutdown complete")
 	if err != nil {
 		slog.Error("application exited with error", "err", err)

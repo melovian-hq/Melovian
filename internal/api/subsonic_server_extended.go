@@ -9,6 +9,7 @@ import (
 	"strings"
 	"time"
 
+	"melovian/internal/api/apishared"
 	"melovian/internal/dlna"
 	"melovian/internal/jukebox"
 	"melovian/internal/store"
@@ -133,7 +134,7 @@ func (a subsonicProviderAdapter) ListShares(ctx context.Context, melovianUserID 
 	if err != nil {
 		return nil, err
 	}
-	base := a.server.publicBaseURL()
+	base := apishared.PublicBaseURL(a.server.cfg)
 	out := make([]subsonicserver.ShareSummary, len(items))
 	for i, item := range items {
 		out[i] = shareSummary(item, base)
@@ -156,7 +157,7 @@ func (a subsonicProviderAdapter) CreateShare(ctx context.Context, melovianUserID
 	if err != nil {
 		return subsonicserver.ShareSummary{}, err
 	}
-	return shareSummary(share, a.server.publicBaseURL()), nil
+	return shareSummary(share, apishared.PublicBaseURL(a.server.cfg)), nil
 }
 
 func (a subsonicProviderAdapter) DeleteShare(ctx context.Context, melovianUserID, shareID string) error {

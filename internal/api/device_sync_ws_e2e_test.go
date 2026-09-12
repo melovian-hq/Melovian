@@ -6,6 +6,7 @@ package api
 import (
 	"context"
 	"encoding/json"
+	"melovian/internal/api/realtime"
 	"net/http"
 	"net/http/httptest"
 	"strings"
@@ -25,7 +26,7 @@ func TestDevicesRESTSmoke(t *testing.T) {
 		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
 	}
 	var payload struct {
-		Devices []DeviceInfo `json:"devices"`
+		Devices []realtime.DeviceInfo `json:"devices"`
 	}
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatalf("decode: %v", err)
@@ -63,7 +64,7 @@ func TestDeviceSyncWebSocketE2E(t *testing.T) {
 		}
 	}
 
-	readEvent := func(conn *websocket.Conn, wantType string, timeout time.Duration) Event {
+	readEvent := func(conn *websocket.Conn, wantType string, timeout time.Duration) realtime.Event {
 		t.Helper()
 		deadline := time.Now().Add(timeout)
 		for time.Now().Before(deadline) {
@@ -73,7 +74,7 @@ func TestDeviceSyncWebSocketE2E(t *testing.T) {
 			if err != nil {
 				continue
 			}
-			var ev Event
+			var ev realtime.Event
 			if err := json.Unmarshal(data, &ev); err != nil {
 				continue
 			}
@@ -82,27 +83,27 @@ func TestDeviceSyncWebSocketE2E(t *testing.T) {
 			}
 		}
 		t.Fatalf("timed out waiting for %s", wantType)
-		return Event{}
+		return realtime.Event{}
 	}
 
 	a := dial("e2e-a")
 	b := dial("e2e-b")
 
-	send(a, CmdDeviceRegister, map[string]any{
+	send(a, realtime.CmdDeviceRegister, map[string]any{
 		"deviceId":  "e2e-a",
 		"name":      "Device A",
 		"userAgent": "Linux",
 	})
-	_ = readEvent(a, EventDevicesUpdated, 3*time.Second)
+	_ = readEvent(a, realtime.EventDevicesUpdated, 3*time.Second)
 
-	send(b, CmdDeviceRegister, map[string]any{
+	send(b, realtime.CmdDeviceRegister, map[string]any{
 		"deviceId":  "e2e-b",
 		"name":      "Device B",
 		"userAgent": "Windows",
 	})
-	_ = readEvent(b, EventDevicesUpdated, 3*time.Second)
+	_ = readEvent(b, realtime.EventDevicesUpdated, 3*time.Second)
 
-	send(a, CmdPlaybackState, PlaybackSnapshot{
+	send(a, realtime.CmdPlaybackState, realtime.PlaybackSnapshot{
 		TrackID:    "song-1",
 		PositionMs: 15000,
 		Paused:     false,
@@ -128,11 +129,11 @@ func TestDeviceSyncWebSocketE2E(t *testing.T) {
 		time.Sleep(5 * time.Millisecond)
 	}
 
-	send(b, CmdPlaybackTakeOver, map[string]any{})
+	send(b, realtime.CmdPlaybackTakeOver, map[string]any{})
 	deadline = time.Now().Add(3 * time.Second)
 	gotTakeOver := false
 	for time.Now().Before(deadline) {
-		ev := readEvent(b, EventPlaybackCommand, time.Until(deadline))
+		ev := readEvent(b, realtime.EventPlaybackCommand, time.Until(deadline))
 		payload, _ := json.Marshal(ev.Payload)
 		var cmd map[string]any
 		_ = json.Unmarshal(payload, &cmd)
@@ -145,8 +146,8 @@ func TestDeviceSyncWebSocketE2E(t *testing.T) {
 		t.Fatal("expected take_over for B")
 	}
 
-	send(a, CmdSessionCreate, map[string]any{})
-	sess := readEvent(a, EventSessionUpdated, 3*time.Second)
+	send(a, realtime.CmdSessionCreate, map[string]any{})
+	sess := readEvent(a, realtime.EventSessionUpdated, 3*time.Second)
 	sessPayload, _ := json.Marshal(sess.Payload)
 	var session map[string]any
 	_ = json.Unmarshal(sessPayload, &session)
@@ -155,8 +156,8 @@ func TestDeviceSyncWebSocketE2E(t *testing.T) {
 		t.Fatal("expected sessionId from create")
 	}
 
-	send(b, CmdSessionJoin, map[string]any{"sessionId": sessionID})
-	join := readEvent(b, EventSessionUpdated, 3*time.Second)
+	send(b, realtime.CmdSessionJoin, map[string]any{"sessionId": sessionID})
+	join := readEvent(b, realtime.EventSessionUpdated, 3*time.Second)
 	joinPayload, _ := json.Marshal(join.Payload)
 	var joined map[string]any
 	_ = json.Unmarshal(joinPayload, &joined)

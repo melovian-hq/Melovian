@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"melovian/internal/api/apishared"
 	"melovian/internal/store"
 )
 
@@ -39,7 +40,7 @@ func TestSubsonicForContextDoesNotLeakGlobalClient(t *testing.T) {
 		t.Fatalf("reloadActiveSubsonic: %v", err)
 	}
 
-	bobCtx := context.WithValue(context.Background(), userContextKey, bob.ID)
+	bobCtx := apishared.WithUserID(context.Background(), bob.ID)
 	client := srv.subsonicForContext(bobCtx)
 	if client.Enabled() {
 		t.Fatal("authenticated user without an instance must not inherit the global Subsonic client")

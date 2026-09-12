@@ -80,7 +80,7 @@ func (h *CombinedHandler) serveShell(w http.ResponseWriter, r *http.Request, pag
 	setStaticAssetCacheHeaders(w, "/")
 	w.Header().Set("Content-Type", "text/html; charset=utf-8")
 	w.WriteHeader(http.StatusOK)
-	_, _ = w.Write(body)
+	_, _ = w.Write(body) //#nosec G705 -- seo.Inject escapes all injected values
 	return true
 }
 
