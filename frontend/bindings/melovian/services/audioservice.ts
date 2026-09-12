@@ -3,6 +3,10 @@
 
 /**
  * AudioService exposes native playback to the frontend when libmpv or libvlc is available.
+ * 
+ * Lock order is opMu then mu. opMu serializes player operations while mu
+ * guards the backend, standby, and config fields. Code holding mu must
+ * never acquire opMu.
  * @module
  */
 
@@ -23,6 +27,8 @@ import * as $models from "./models.js";
 /**
  * ActivatePrepared swaps the standby player into the primary slot.
  * When crossfadeSec > 0, volumes are ramped between the two players.
+ * The timed fade runs without opMu so other playback ops stay responsive;
+ * the final swap re-locks and is dropped if teardown ran during the fade.
  */
 export function ActivatePrepared(crossfadeSec: number): $CancellablePromise<void> {
     return $Call.ByID(953013766, crossfadeSec);

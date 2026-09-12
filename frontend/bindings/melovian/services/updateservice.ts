@@ -78,5 +78,12 @@ export function SetAutoUpdate(enabled: boolean): $CancellablePromise<void> {
     return $Call.ByID(1943001131, enabled);
 }
 
+/**
+ * Shutdown cancels background update work and waits for it to drain.
+ */
+export function Shutdown(): $CancellablePromise<void> {
+    return $Call.ByID(262203665);
+}
+
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
