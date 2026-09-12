@@ -137,6 +137,7 @@ export type { PersonalMix, PlayerLayout } from "./music/types";
 
 export { CONTINUOUS_MODE_LABELS };
 export type { ContinuousMode };
+export type { MusicStore };
 
 class MusicStore {
   config = $state(createDefaultSubsonicConfig());
