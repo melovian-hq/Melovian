@@ -2,7 +2,6 @@
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import { tasks, type BackgroundTask } from "$lib/tasks/tasks.svelte";
-  import "$lib/settings/settings-page.css";
 
   const items = $derived.by(() => {
     void tasks.items;
@@ -129,7 +128,7 @@
     gap: var(--jb-space-3);
     padding: var(--jb-space-3) 0;
     border-bottom: 1px solid
-      color-mix(in srgb, var(--jb-border, currentColor) 40%, transparent);
+      color-mix(in srgb, var(--jb-border) 40%, transparent);
   }
 
   .tasks-panel__item:last-child {
@@ -178,7 +177,7 @@
   }
 
   .tasks-panel__badge--error {
-    background: color-mix(in srgb, var(--jb-danger, #c44) 16%, transparent);
-    color: var(--jb-danger, #c44);
+    background: color-mix(in srgb, var(--jb-danger) 16%, transparent);
+    color: var(--jb-danger);
   }
 </style>

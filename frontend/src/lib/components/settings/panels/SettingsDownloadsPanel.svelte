@@ -1,10 +1,12 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
+  import { useDebounce } from "runed";
   import { apiHeaders } from "$lib/core/http/client";
   import { DOWNLOADS_ZIP_BASENAME } from "$lib/brand";
   import { music } from "$lib/config/music.svelte";
@@ -19,6 +21,10 @@
   import { downloadFromUrl } from "$lib/utils/download";
   import { toast } from "$lib/ui/toast.svelte";
   import { confirmDialog } from "$lib/ui/confirm.svelte";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
 
   let cacheSettings = $state<CacheSettings>(
@@ -26,7 +32,7 @@
   );
   let cacheUsedBytes = $state(music.cacheUsedBytes);
   let cacheTrackCount = $state(music.cacheTrackCount);
-  let cacheSaving = $state(false);
+  const cacheStatus = createSaveStatus();
   let cacheClearing = $state(false);
   let cacheExporting = $state(false);
   let cacheRevealing = $state(false);
@@ -51,6 +57,7 @@
       ...cacheSettings,
       strategy: value as CacheStrategy,
     };
+    void applyCacheSettings();
   }
 
   function cacheLimitGb(): number {
@@ -64,20 +71,23 @@
       ...cacheSettings,
       limitBytes: Math.round(value * 1024 * 1024 * 1024),
     };
+    queueCacheSave();
   }
 
   async function applyCacheSettings() {
-    cacheSaving = true;
-    try {
-      await music.updateCacheSettings(cacheSettings);
-      toast.success("Download settings saved");
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save cache settings",
-      );
-    } finally {
-      cacheSaving = false;
-    }
+    await saveWithStatus(
+      cacheStatus,
+      (err) =>
+        err instanceof Error ? err.message : "Could not save download settings",
+      () => music.updateCacheSettings(cacheSettings),
+      (message) => toast.error(message),
+    );
+  }
+
+  const debouncedCacheSave = useDebounce(() => applyCacheSettings(), 500);
+
+  function queueCacheSave() {
+    void debouncedCacheSave().catch(() => {});
   }
 
   async function clearCache() {
@@ -136,12 +146,16 @@
   title="Downloads and cache"
   description="Save tracks on this device for smoother playback when the connection drops."
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={cacheStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Download and cache songs"
     description="Keep downloaded tracks available for offline playback."
     checked={cacheSettings.enabled}
     onchange={(checked) => {
       cacheSettings = { ...cacheSettings, enabled: checked };
+      void applyCacheSettings();
     }}
   />
 
@@ -184,9 +198,6 @@
   {/if}
 
   {#snippet footer()}
-    <Button disabled={cacheSaving} onclick={() => void applyCacheSettings()}>
-      Save download settings
-    </Button>
     <Button
       variant="ghost"
       disabled={cacheRevealing}

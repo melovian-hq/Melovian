@@ -213,9 +213,11 @@
 </section>
 
 <style>
+  /* The wrapper must not become a grid item itself: display contents lets the
+     cards flow into the page layout grid at wide breakpoints and keeps the
+     sibling separators below it. */
   .servers-panel {
-    display: flex;
-    flex-direction: column;
+    display: contents;
   }
 
   .servers-panel__toolbar {

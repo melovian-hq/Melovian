@@ -1,11 +1,12 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import { APP_NAME } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
-  import ThemeToggle from "$lib/components/ui/ThemeToggle.svelte";
+
   import ThemeCustomization from "$lib/components/settings/ThemeCustomization.svelte";
   import AccountSecurity from "$lib/components/settings/AccountSecurity.svelte";
   import SentrySettings from "$lib/components/settings/SentrySettings.svelte";
@@ -27,7 +28,12 @@
   import { mergeMetadataEnhancementSettings } from "$lib/music/metadata-enhancement-settings";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { toast } from "$lib/ui/toast.svelte";
+  import { createSaveStatus } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
+
+  const appearanceStatus = createSaveStatus();
+  const libraryStatus = createSaveStatus();
+  const metadataStatus = createSaveStatus();
 
   let dataDir = $state("");
   let loading = $state(true);
@@ -54,14 +60,42 @@
   });
 
   function saveMetadataEnhancementSettings() {
-    music.updateMetadataEnhancementSettings(metadataEnhancementSettings);
-    toast.success("Metadata enhancement settings saved");
+    metadataStatus.begin();
+    try {
+      music.updateMetadataEnhancementSettings(metadataEnhancementSettings);
+      metadataStatus.saved();
+    } catch {
+      metadataStatus.failed("Could not save metadata enhancement settings");
+      toast.error("Could not save metadata enhancement settings");
+    }
   }
 
   function resetMetadataEnhancementSettings() {
     metadataEnhancementSettings = mergeMetadataEnhancementSettings(null);
-    music.updateMetadataEnhancementSettings(metadataEnhancementSettings);
-    toast.success("Metadata enhancement settings reset");
+    saveMetadataEnhancementSettings();
+  }
+
+  function saveMixDisplayStyle(value: MixDisplayStyle) {
+    appearanceStatus.begin();
+    try {
+      mixDisplayStyle = value;
+      saveMixDisplay(value);
+      appearanceStatus.saved();
+    } catch {
+      appearanceStatus.failed("Could not save layout settings");
+      toast.error("Could not save layout settings");
+    }
+  }
+
+  function saveHideUnknownMetadata(hide: boolean) {
+    libraryStatus.begin();
+    try {
+      music.setHideUnknownMetadata(hide);
+      libraryStatus.saved();
+    } catch {
+      libraryStatus.failed("Could not save library settings");
+      toast.error("Could not save library settings");
+    }
   }
 
   async function handleLogout() {
@@ -80,8 +114,11 @@
     <p class="settings-page__account">
       Signed in as <strong>{auth.user.username}</strong>
     </p>
-    <Button variant="ghost" onclick={() => void handleLogout()}>Sign out</Button
-    >
+    {#snippet footer()}
+      <Button variant="ghost" onclick={() => void handleLogout()}>
+        Sign out
+      </Button>
+    {/snippet}
   </SettingsCard>
   <AccountSecurity />
 {/if}
@@ -90,7 +127,9 @@
   title="Appearance"
   description="Choose light, dark, or system theme for this device."
 >
-  <ThemeToggle embedded />
+  {#snippet status()}
+    <SettingsSaveStatus status={appearanceStatus} />
+  {/snippet}
   <ThemeCustomization />
   <Field
     label="Made for you layout"
@@ -99,10 +138,7 @@
     <Select
       value={mixDisplayStyle}
       options={mixDisplayOptions}
-      onchange={(value) => {
-        mixDisplayStyle = value;
-        saveMixDisplay(value);
-      }}
+      onchange={saveMixDisplayStyle}
     />
   </Field>
 </SettingsCard>
@@ -111,11 +147,14 @@
   title="Library"
   description="Control which albums, artists, and tracks show up in browse views."
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={libraryStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Hide unknown artists and albums"
     description="Hide items tagged Unknown Artist or Unknown Album on home, albums, artists, search, favorites, genres, and history."
     checked={music.hideUnknownMetadata}
-    onchange={(hide) => music.setHideUnknownMetadata(hide)}
+    onchange={saveHideUnknownMetadata}
   />
 </SettingsCard>
 
@@ -124,6 +163,9 @@
     title="Metadata enhancement"
     description="Fill in missing artist photos, album art, and track artwork from iTunes when your library does not provide them. Matches are verified by name before use."
   >
+    {#snippet status()}
+      <SettingsSaveStatus status={metadataStatus} />
+    {/snippet}
     <SettingsToggleRow
       label="Prefer Navidrome / Subsonic artist artwork"
       description="Use artist images from your music server instead of iTunes. Turn off to allow external artist photos when the server has none."
@@ -187,9 +229,11 @@
         saveMetadataEnhancementSettings();
       }}
     />
-    <Button variant="ghost" onclick={resetMetadataEnhancementSettings}>
-      Reset defaults
-    </Button>
+    {#snippet footer()}
+      <Button variant="ghost" onclick={resetMetadataEnhancementSettings}>
+        Reset defaults
+      </Button>
+    {/snippet}
   </SettingsCard>
 {/if}
 
@@ -200,7 +244,7 @@
   description="Local database and preferences path on this device."
 >
   {#if loading}
-    <div class="settings-page__loading">
+    <div class="settings-loading">
       <Spinner />
     </div>
   {:else}
@@ -212,11 +256,3 @@
 
 <DesktopIntegrationSettings />
 <GraphicsSettings />
-
-<style>
-  .settings-page__loading {
-    display: grid;
-    place-content: center;
-    min-height: 3rem;
-  }
-</style>

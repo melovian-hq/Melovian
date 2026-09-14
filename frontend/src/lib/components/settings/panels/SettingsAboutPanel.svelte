@@ -9,9 +9,11 @@
   import { ApiPaths } from "$lib/core/http/api-paths";
   import { parseJson } from "$lib/core/http/parse";
   import { updateStatusSchema } from "$lib/settings/schemas";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import { toast } from "$lib/ui/toast.svelte";
+  import { createSaveStatus } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
 
   type UpdateStatus = {
@@ -42,6 +44,8 @@
       latestVersion?: string;
     };
   };
+
+  const updateStatus = createSaveStatus();
 
   let buildDate = $state("");
   let dataDir = $state("");
@@ -160,6 +164,7 @@
 
   async function setAutoUpdate(checked: boolean): Promise<void> {
     const channel = upd?.channel === "prerelease" ? "prerelease" : "stable";
+    updateStatus.begin();
     try {
       const r = await fetchWithRetry(ApiPaths.updateSettings, {
         method: "PUT",
@@ -168,19 +173,20 @@
       });
       if (r.ok) {
         upd = { ...upd, autoUpdate: checked } as UpdateStatus;
-        toast.success(
-          checked ? "Automatic updates enabled" : "Automatic updates disabled",
-        );
+        updateStatus.saved();
       } else {
+        updateStatus.failed("Could not save update settings");
         toast.error("Could not save update settings");
       }
     } catch {
+      updateStatus.failed("Could not save update settings");
       toast.error("Could not save update settings");
     }
   }
 
   async function setChannel(prerelease: boolean): Promise<void> {
     const channel = prerelease ? "prerelease" : "stable";
+    updateStatus.begin();
     try {
       const r = await fetchWithRetry(ApiPaths.updateSettings, {
         method: "PUT",
@@ -190,8 +196,15 @@
           channel,
         }),
       });
-      if (r.ok) upd = { ...upd, channel } as UpdateStatus;
+      if (r.ok) {
+        upd = { ...upd, channel } as UpdateStatus;
+        updateStatus.saved();
+      } else {
+        updateStatus.failed("Could not save update settings");
+        toast.error("Could not save update settings");
+      }
     } catch {
+      updateStatus.failed("Could not save update settings");
       toast.error("Could not save update settings");
     }
   }
@@ -211,7 +224,7 @@
   description={`Client and server identity for this ${APP_NAME} install.`}
 >
   {#if loading}
-    <div class="about-panel__loading">
+    <div class="settings-loading">
       <Spinner />
     </div>
   {:else}
@@ -261,6 +274,9 @@
   title="Updates"
   description={`${APP_NAME} checks the signed release feed for new versions.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={updateStatus} />
+  {/snippet}
   {#if upd}
     <div class="about-panel__row">
       <dt>Update status</dt>
@@ -301,32 +317,6 @@
       </div>
     {/if}
 
-    <div class="update-panel__actions">
-      <Button
-        variant="ghost"
-        disabled={updBusy || upd.checking || upd.applying}
-        onclick={() => void checkForUpdates()}
-      >
-        Check for updates
-      </Button>
-      {#if upd.latestVersion && !upd.upToDate && !updReady}
-        {#if upd.canApply || upd.desktop}
-          <Button
-            disabled={updBusy || upd.applying}
-            onclick={() => void applyUpdate()}
-          >
-            Download and install
-          </Button>
-        {:else if upd.releaseUrl}
-          <Button onclick={() => window.open(upd?.releaseUrl, "_blank")}>
-            Download release
-          </Button>
-        {/if}
-      {:else if updReady && upd.desktop}
-        <Button onclick={() => void restartToApply()}>Restart to apply</Button>
-      {/if}
-    </div>
-
     {#if upd.inContainer}
       <p class="update-panel__hint">
         This install runs in a container. Update by pulling a new image.
@@ -362,15 +352,34 @@
       Update status is not available from this server.
     </p>
   {/if}
+  {#snippet footer()}
+    <Button
+      variant="ghost"
+      disabled={!upd || updBusy || upd.checking || upd.applying}
+      onclick={() => void checkForUpdates()}
+    >
+      Check for updates
+    </Button>
+    {#if upd?.latestVersion && !upd.upToDate && !updReady}
+      {#if upd.canApply || upd.desktop}
+        <Button
+          disabled={updBusy || upd.applying}
+          onclick={() => void applyUpdate()}
+        >
+          Download and install
+        </Button>
+      {:else if upd.releaseUrl}
+        <Button onclick={() => window.open(upd?.releaseUrl, "_blank")}>
+          Download release
+        </Button>
+      {/if}
+    {:else if updReady && upd?.desktop}
+      <Button onclick={() => void restartToApply()}>Restart to apply</Button>
+    {/if}
+  {/snippet}
 </SettingsCard>
 
 <style>
-  .about-panel__loading {
-    display: grid;
-    place-content: center;
-    min-height: 6rem;
-  }
-
   .about-panel {
     margin: 0;
     display: grid;
@@ -404,28 +413,22 @@
     line-height: 1.45;
   }
 
-  .update-panel__actions {
-    display: flex;
-    gap: var(--jb-space-2);
-    margin-top: var(--jb-space-3);
-  }
-
   .update-panel__progress {
     height: 0.375rem;
     margin-top: var(--jb-space-2);
     border-radius: 999px;
-    background: var(--jb-surface-2, rgba(255, 255, 255, 0.08));
+    background: var(--jb-surface-2);
     overflow: hidden;
   }
 
   .update-panel__bar {
     height: 100%;
-    background: var(--jb-accent, #4f8cff);
+    background: var(--jb-accent);
     transition: width 0.25s ease;
   }
 
   .update-panel__error {
-    color: var(--jb-danger, #e5534b);
+    color: var(--jb-danger);
   }
 
   .update-panel__hint {

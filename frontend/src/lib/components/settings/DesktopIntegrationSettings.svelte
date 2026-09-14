@@ -1,6 +1,7 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import { APP_NAME } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
@@ -14,9 +15,24 @@
     setTaskbarIntegrationEnabled,
   } from "$lib/desktop/window-close";
   import { setNativeTitleBarEnabled } from "$lib/desktop/window-chrome";
+  import { toast } from "$lib/ui/toast.svelte";
+  import { createSaveStatus } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
 
+  const desktopStatus = createSaveStatus();
+
   let desktopIntegration = $state(loadDesktopIntegrationSettings());
+
+  function applyDesktopIntegration(save: () => void) {
+    desktopStatus.begin();
+    try {
+      save();
+      desktopStatus.saved();
+    } catch {
+      desktopStatus.failed("Could not save desktop integration settings");
+      toast.error("Could not save desktop integration settings");
+    }
+  }
 
   const closeBehaviorOptions = $derived<
     { value: CloseBehavior; label: string }[]
@@ -37,6 +53,9 @@
     title="Desktop integration"
     description="Media keys and system player integration on supported platforms."
   >
+    {#snippet status()}
+      <SettingsSaveStatus status={desktopStatus} />
+    {/snippet}
     <p class="settings-page__meta">
       On Linux, {APP_NAME} registers an MPRIS media player for system media keys,
       volume OSD, and desktop environment controls. Windows and macOS use native media
@@ -51,7 +70,7 @@
           ...desktopIntegration,
           nativeTitleBar: enabled,
         };
-        setNativeTitleBarEnabled(enabled);
+        applyDesktopIntegration(() => setNativeTitleBarEnabled(enabled));
       }}
     />
     <SettingsToggleRow
@@ -63,7 +82,7 @@
           ...desktopIntegration,
           taskbarEnabled: enabled,
         };
-        setTaskbarIntegrationEnabled(enabled);
+        applyDesktopIntegration(() => setTaskbarIntegrationEnabled(enabled));
       }}
     />
     <Field
@@ -80,7 +99,7 @@
             ...desktopIntegration,
             closeBehavior,
           };
-          setCloseBehavior(closeBehavior);
+          applyDesktopIntegration(() => setCloseBehavior(closeBehavior));
         }}
       />
     </Field>

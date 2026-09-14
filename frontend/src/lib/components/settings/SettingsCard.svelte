@@ -5,6 +5,7 @@
     id?: string;
     class?: string;
     children?: import("svelte").Snippet;
+    status?: import("svelte").Snippet;
     footer?: import("svelte").Snippet;
   }
 
@@ -14,16 +15,20 @@
     id = undefined,
     class: className = "",
     children,
+    status,
     footer,
   }: Props = $props();
 </script>
 
 <section {id} class="settings-card {className}">
   <header class="settings-card__header">
-    <h2 class="settings-card__title">{title}</h2>
-    {#if description}
-      <p class="settings-card__description">{description}</p>
-    {/if}
+    <div class="settings-card__heading">
+      <h2 class="settings-card__title">{title}</h2>
+      {#if description}
+        <p class="settings-card__description">{description}</p>
+      {/if}
+    </div>
+    {@render status?.()}
   </header>
   <div class="settings-card__body">
     {@render children?.()}
@@ -45,7 +50,15 @@
   }
 
   .settings-card__header {
+    display: flex;
+    align-items: flex-start;
+    justify-content: space-between;
+    gap: var(--jb-space-3);
     margin-bottom: var(--jb-space-4);
+  }
+
+  .settings-card__heading {
+    min-width: 0;
   }
 
   .settings-card__title {

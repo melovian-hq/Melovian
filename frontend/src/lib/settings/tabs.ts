@@ -7,6 +7,7 @@ export const SETTINGS_TAB_IDS = [
   "servers",
   "playback",
   "downloads",
+  "about",
   "mixes",
   "connection",
   "lyrics",
@@ -15,7 +16,6 @@ export const SETTINGS_TAB_IDS = [
   "listenbrainz",
   "lastfm",
   "extensions",
-  "about",
   "tasks",
 ] as const;
 

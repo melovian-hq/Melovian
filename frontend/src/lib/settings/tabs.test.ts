@@ -6,6 +6,7 @@ import {
   filterSettingsTabs,
   isSettingsPath,
   isSettingsTabId,
+  SETTINGS_TAB_IDS,
   SETTINGS_TABS,
   settingsTabFromPath,
   settingsTabPath,
@@ -35,6 +36,35 @@ describe("settings tabs", () => {
     expect(settingsTabPath("video")).toBe("/settings/video");
     expect(settingsTabPath("about")).toBe("/settings/about");
     expect(settingsTabPath("tasks")).toBe("/settings/tasks");
+  });
+
+  it("keeps SETTINGS_TAB_IDS aligned with SETTINGS_TABS order", () => {
+    expect([...SETTINGS_TAB_IDS]).toEqual(SETTINGS_TABS.map((tab) => tab.id));
+    expect(SETTINGS_TABS.map((tab) => tab.id)).toEqual([
+      "profile",
+      "general",
+      "servers",
+      "playback",
+      "downloads",
+      "about",
+      "mixes",
+      "connection",
+      "lyrics",
+      "video",
+      "rocksky",
+      "listenbrainz",
+      "lastfm",
+      "extensions",
+      "tasks",
+    ]);
+    const recommendedCount = SETTINGS_TABS.filter(
+      (tab) => tab.tier !== "advanced",
+    ).length;
+    expect(
+      SETTINGS_TABS.slice(recommendedCount).every(
+        (tab) => tab.tier === "advanced",
+      ),
+    ).toBe(true);
   });
 
   it("includes about and tasks in visible tabs", () => {

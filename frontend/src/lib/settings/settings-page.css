@@ -46,10 +46,6 @@
   gap: var(--jb-space-2);
 }
 
-.settings-page__library-refresh {
-  margin-bottom: var(--jb-space-4);
-}
-
 .settings-page__path {
   display: block;
   padding: var(--jb-space-3);
@@ -74,13 +70,6 @@
   margin-top: var(--jb-space-4);
 }
 
-.settings-page__backup-buttons {
-  display: flex;
-  flex-wrap: wrap;
-  gap: var(--jb-space-3);
-  margin-top: var(--jb-space-5);
-}
-
 .settings-page__backup-input {
   display: none;
 }
@@ -89,10 +78,6 @@
   margin: 0;
   color: var(--jb-text-muted);
   font-size: 0.9375rem;
-}
-
-.settings-page__actions {
-  margin-top: var(--jb-space-4);
 }
 
 .settings-page__divider {
@@ -121,6 +106,14 @@
   flex: 1;
 }
 
+.settings-loading {
+  display: grid;
+  place-content: center;
+  min-height: 4rem;
+  padding: var(--jb-space-3) 0;
+  color: var(--jb-text-muted);
+}
+
 .settings-input {
   width: 100%;
   padding: var(--jb-space-3);
@@ -142,14 +135,5 @@
   .settings-page__subtitle {
     margin-top: var(--jb-space-1);
     font-size: 0.875rem;
-  }
-
-  .settings-page__backup-buttons {
-    flex-direction: column;
-  }
-
-  .settings-page__backup-buttons .button {
-    width: 100%;
-    justify-content: center;
   }
 }

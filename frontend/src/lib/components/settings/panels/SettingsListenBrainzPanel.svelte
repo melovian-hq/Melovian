@@ -3,16 +3,19 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
+  import { useDebounce } from "runed";
   import * as musicApi from "$lib/music/api";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { toast } from "$lib/ui/toast.svelte";
-  import "$lib/settings/settings-page.css";
+  import { createSaveStatus } from "$lib/settings/save-status.svelte";
+
+  const listenBrainzStatus = createSaveStatus();
 
   let settings = $state<musicApi.ListenBrainzSettings | null>(null);
   let token = $state("");
   let endpoint = $state("");
   let testing = $state(false);
-  let saving = $state(false);
 
   const enabled = $derived(extensionFeatures.isEnabled("listenbrainz"));
 
@@ -34,7 +37,7 @@
   async function test() {
     const value = token.trim();
     const ep = endpoint.trim() || "https://api.listenbrainz.org";
-    if (!value) return;
+    if (!value && !settings?.hasToken) return;
     testing = true;
     try {
       const result = await musicApi.testListenBrainzToken(value, ep);
@@ -54,14 +57,13 @@
     }
   }
 
+  // The server stores the payload verbatim, so a save only runs while the
+  // token field is filled. An empty token would wipe the stored one.
   async function save() {
     const value = token.trim();
-    if (!value) {
-      toast.error("Enter a token to save");
-      return;
-    }
+    if (!value) return;
     const ep = endpoint.trim() || "https://api.listenbrainz.org";
-    saving = true;
+    listenBrainzStatus.begin();
     try {
       const next = await musicApi.saveListenBrainzSettings({
         token: value,
@@ -69,18 +71,26 @@
       });
       if (next) {
         settings = next;
-        token = "";
-        toast.success("ListenBrainz settings saved");
+        endpoint = next.endpoint;
+        listenBrainzStatus.saved();
       } else {
-        toast.error("Could not save settings");
+        listenBrainzStatus.failed("Could not save ListenBrainz settings");
+        toast.error("Could not save ListenBrainz settings");
       }
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Could not save settings",
-      );
-    } finally {
-      saving = false;
+      const message =
+        err instanceof Error
+          ? err.message
+          : "Could not save ListenBrainz settings";
+      listenBrainzStatus.failed(message);
+      toast.error(message);
     }
+  }
+
+  const debouncedSave = useDebounce(() => save(), 500);
+
+  function queueSave() {
+    void debouncedSave().catch(() => {});
   }
 </script>
 
@@ -88,64 +98,54 @@
   title="ListenBrainz"
   description="Scrobble listens to ListenBrainz or a self-hosted compatible endpoint."
 >
-  <div class="listenbrainz-settings">
-    {#if !enabled}
-      <p class="listenbrainz-settings__note">
-        Enable the ListenBrainz extension in the Extensions tab to start
-        scrobbling.
-      </p>
-    {/if}
-    <label class="listenbrainz-settings__label" for="listenbrainz-endpoint">
-      Endpoint
-    </label>
-    <Input
-      id="listenbrainz-endpoint"
-      type="url"
-      placeholder="https://api.listenbrainz.org"
-      bind:value={endpoint}
-      disabled={!settings}
-    />
-    <label class="listenbrainz-settings__label" for="listenbrainz-token">
-      API token
-    </label>
-    <Input
-      id="listenbrainz-token"
-      type="password"
-      placeholder="Paste your ListenBrainz token"
-      bind:value={token}
-      disabled={!settings}
-    />
-    {#if settings?.hasToken}
-      <p class="listenbrainz-settings__status">
-        A token is already saved. Type above to replace it.
-      </p>
-    {/if}
-    <div class="listenbrainz-settings__actions">
-      <Button
-        size="sm"
-        disabled={!token.trim() || testing || saving || !settings}
-        onclick={() => void test()}
-      >
-        {testing ? "Testing..." : "Test token"}
-      </Button>
-      <Button
-        size="sm"
-        disabled={!token.trim() || saving || testing || !settings}
-        onclick={() => void save()}
-      >
-        {saving ? "Saving..." : "Save token"}
-      </Button>
-    </div>
-  </div>
+  {#snippet status()}
+    <SettingsSaveStatus status={listenBrainzStatus} />
+  {/snippet}
+  {#if !enabled}
+    <p class="listenbrainz-settings__note">
+      Enable the ListenBrainz extension in the Extensions tab to start
+      scrobbling.
+    </p>
+  {/if}
+  <label class="listenbrainz-settings__label" for="listenbrainz-endpoint">
+    Endpoint
+  </label>
+  <Input
+    id="listenbrainz-endpoint"
+    type="url"
+    placeholder="https://api.listenbrainz.org"
+    bind:value={endpoint}
+    oninput={queueSave}
+    disabled={!settings}
+  />
+  <label class="listenbrainz-settings__label" for="listenbrainz-token">
+    API token
+  </label>
+  <Input
+    id="listenbrainz-token"
+    type="password"
+    placeholder="Paste your ListenBrainz token"
+    bind:value={token}
+    oninput={queueSave}
+    disabled={!settings}
+  />
+  {#if settings?.hasToken && !token.trim()}
+    <p class="listenbrainz-settings__status">
+      A token is saved. Enter it to update the endpoint or replace it.
+    </p>
+  {/if}
+  {#snippet footer()}
+    <Button
+      size="sm"
+      disabled={(!token.trim() && !settings?.hasToken) || testing || !settings}
+      onclick={() => void test()}
+    >
+      {testing ? "Testing..." : "Test token"}
+    </Button>
+  {/snippet}
 </SettingsCard>
 
 <style>
-  .listenbrainz-settings {
-    display: grid;
-    gap: var(--jb-space-3);
-    max-width: 32rem;
-  }
-
   .listenbrainz-settings__note {
     margin: 0;
     font-size: 0.8125rem;
@@ -161,10 +161,5 @@
     margin: 0;
     font-size: 0.8125rem;
     color: var(--jb-text-muted);
-  }
-
-  .listenbrainz-settings__actions {
-    display: flex;
-    gap: var(--jb-space-3);
   }
 </style>

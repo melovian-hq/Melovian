@@ -1,10 +1,13 @@
 <script lang="ts">
+  import { untrack } from "svelte";
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import { APP_NAME } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { useDebounce } from "runed";
   import { music } from "$lib/config/music.svelte";
   import {
     ALL_MIX_IDS,
@@ -19,10 +22,17 @@
     type MixSettings,
   } from "$lib/music/mix-settings";
   import { toast } from "$lib/ui/toast.svelte";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+    type SaveStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
 
+  const mixStatus = createSaveStatus();
+  const mixTypesStatus = createSaveStatus();
+
   let mixSettings = $state<MixSettings>(mergeMixSettings(music.mixSettings));
-  let mixSettingsSaving = $state(false);
   let mixRegenerating = $state(false);
   let preferredLanguagesInput = $state(
     formatPreferredLanguages(music.mixSettings.preferredLanguages),
@@ -38,10 +48,18 @@
   ][];
 
   $effect(() => {
-    mixSettings = mergeMixSettings(music.mixSettings);
-    preferredLanguagesInput = formatPreferredLanguages(
-      music.mixSettings.preferredLanguages,
+    const storedSettings = music.mixSettings;
+    mixSettings = mergeMixSettings(storedSettings);
+    // Only rewrite the language input when the stored languages differ from
+    // what the field already parses to, so auto-save does not strip commas
+    // or spaces while the user is still typing.
+    const stored = formatPreferredLanguages(storedSettings.preferredLanguages);
+    const typed = untrack(() =>
+      formatPreferredLanguages(
+        parsePreferredLanguages(preferredLanguagesInput),
+      ),
     );
+    if (typed !== stored) preferredLanguagesInput = stored;
   });
 
   function toggleMixEnabled(id: MixId, checked: boolean) {
@@ -61,6 +79,7 @@
       ...mixSettings,
       enabledMixIds: next.length === ALL_MIX_IDS.length ? [] : next,
     };
+    applyMixSettings(mixTypesStatus);
   }
 
   function isMixTypeEnabled(id: MixId): boolean {
@@ -68,22 +87,26 @@
     return mixSettings.enabledMixIds.includes(id);
   }
 
-  async function applyMixSettings() {
-    mixSettingsSaving = true;
-    try {
-      const next = mergeMixSettings({
-        ...mixSettings,
-        preferredLanguages: parsePreferredLanguages(preferredLanguagesInput),
-      });
-      mixSettings = next;
-      preferredLanguagesInput = formatPreferredLanguages(
-        next.preferredLanguages,
-      );
-      music.updateMixSettings(next);
-      toast.success("Mix settings saved");
-    } finally {
-      mixSettingsSaving = false;
-    }
+  function applyMixSettings(status: SaveStatus) {
+    void saveWithStatus(
+      status,
+      "Could not save mix settings",
+      () => {
+        const next = mergeMixSettings({
+          ...mixSettings,
+          preferredLanguages: parsePreferredLanguages(preferredLanguagesInput),
+        });
+        mixSettings = next;
+        music.updateMixSettings(next);
+      },
+      () => toast.error("Could not save mix settings"),
+    );
+  }
+
+  const debouncedMixSave = useDebounce(() => applyMixSettings(mixStatus), 500);
+
+  function queueMixSave() {
+    void debouncedMixSave().catch(() => {});
   }
 
   async function regenerateMixes() {
@@ -94,6 +117,9 @@
         preferredLanguages: parsePreferredLanguages(preferredLanguagesInput),
       });
       mixSettings = next;
+      preferredLanguagesInput = formatPreferredLanguages(
+        next.preferredLanguages,
+      );
       music.updateMixSettings(next);
       await music.regenerateMixes();
       toast.success("Mixes regenerated");
@@ -118,13 +144,20 @@
   title="Mix generation"
   description={`Tune how ${APP_NAME} builds your daily mixes. Leave preferred languages empty to infer from listening history.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={mixStatus} />
+  {/snippet}
   <Field
     label="Language bias"
     hint="Prefer or restrict mixes toward your main languages."
   >
     <Select
-      bind:value={mixSettings.languageBias}
+      value={mixSettings.languageBias}
       options={languageBiasOptions.map(([value, label]) => ({ value, label }))}
+      onchange={(languageBias) => {
+        mixSettings = { ...mixSettings, languageBias };
+        applyMixSettings(mixStatus);
+      }}
     />
   </Field>
 
@@ -136,6 +169,7 @@
       type="text"
       class="settings-input"
       bind:value={preferredLanguagesInput}
+      oninput={queueMixSave}
       placeholder="ru, en"
     />
   </Field>
@@ -145,11 +179,15 @@
     hint="Personal uses albums from your top artists. Library uses server genre size."
   >
     <Select
-      bind:value={mixSettings.genreSelection}
+      value={mixSettings.genreSelection}
       options={genreSelectionOptions.map(([value, label]) => ({
         value,
         label,
       }))}
+      onchange={(genreSelection) => {
+        mixSettings = { ...mixSettings, genreSelection };
+        applyMixSettings(mixStatus);
+      }}
     />
   </Field>
 
@@ -163,6 +201,7 @@
       min="7"
       max="90"
       bind:value={mixSettings.discoverRecentDays}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -176,6 +215,7 @@
       min="14"
       max="365"
       bind:value={mixSettings.throwbackDays}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -189,6 +229,7 @@
       min="0"
       max="10"
       bind:value={mixSettings.deepCutMaxPlayCount}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -202,6 +243,7 @@
       min="5"
       max="50"
       bind:value={mixSettings.minTracksPerMix}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -212,6 +254,7 @@
       min="10"
       max="100"
       bind:value={mixSettings.maxTracksPerMix}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -225,6 +268,7 @@
       min="2"
       max="8"
       bind:value={mixSettings.flowAlbumLookback}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -238,6 +282,7 @@
       min="0"
       max="24"
       bind:value={mixSettings.personalRadioRecencyHours}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -251,6 +296,7 @@
       min="1"
       max="50"
       bind:value={mixSettings.personalRadioColdStartPlays}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -265,6 +311,7 @@
       max="2"
       step="0.1"
       bind:value={mixSettings.radioExploreBonus}
+      oninput={queueMixSave}
     />
   </Field>
 
@@ -273,6 +320,7 @@
     checked={mixSettings.crossMixDedup}
     onchange={(checked) => {
       mixSettings = { ...mixSettings, crossMixDedup: checked };
+      applyMixSettings(mixStatus);
     }}
   />
 
@@ -281,16 +329,11 @@
     checked={mixSettings.durationPacing}
     onchange={(checked) => {
       mixSettings = { ...mixSettings, durationPacing: checked };
+      applyMixSettings(mixStatus);
     }}
   />
 
   {#snippet footer()}
-    <Button
-      disabled={mixSettingsSaving}
-      onclick={() => void applyMixSettings()}
-    >
-      Save mix settings
-    </Button>
     <Button
       variant="ghost"
       disabled={mixRegenerating || !music.connected}
@@ -308,6 +351,9 @@
   title="Enabled mix types"
   description={`Choose which personalized mixes ${APP_NAME} generates.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={mixTypesStatus} />
+  {/snippet}
   <div class="settings-grid settings-grid--mix-types">
     {#each ALL_MIX_IDS as mixId (mixId)}
       <SettingsToggleRow

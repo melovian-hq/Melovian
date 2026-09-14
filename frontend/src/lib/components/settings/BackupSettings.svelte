@@ -125,20 +125,20 @@
       />
     {/each}
   </div>
-  <div class="settings-page__backup-buttons">
+  <input
+    bind:this={backupFileInput}
+    type="file"
+    accept="application/json,.json"
+    class="settings-page__backup-input"
+    onchange={(event) => void handleImportBackupFile(event)}
+  />
+  {#snippet footer()}
     <Button
       onclick={() => void handleExportBackup()}
       disabled={backupExporting || backupImporting}
     >
       {backupExporting ? "Exporting…" : "Export backup"}
     </Button>
-    <input
-      bind:this={backupFileInput}
-      type="file"
-      accept="application/json,.json"
-      class="settings-page__backup-input"
-      onchange={(event) => void handleImportBackupFile(event)}
-    />
     <Button
       variant="ghost"
       disabled={backupExporting || backupImporting}
@@ -146,5 +146,5 @@
     >
       {backupImporting ? "Importing…" : "Import backup"}
     </Button>
-  </div>
+  {/snippet}
 </SettingsCard>

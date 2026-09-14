@@ -1,6 +1,7 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import { APP_NAME, APP_SLUG } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Button from "$lib/components/ui/Button.svelte";
@@ -27,6 +28,11 @@
     type StoredSentrySettings,
   } from "$lib/core/sentry-settings";
   import { toast } from "$lib/ui/toast.svelte";
+  import { useDebounce } from "runed";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
 
   let sentryServer = $state<StoredSentrySettings>(
@@ -37,10 +43,10 @@
   let sentryClient = $state<SentryClientSettings>(
     defaultSentryClientSettings(),
   );
+  const sentryStatus = createSaveStatus();
+
   let sentryServerLoading = $state(false);
   let sentryClientLoading = $state(false);
-  let sentryServerSaving = $state(false);
-  let sentryClientSaving = $state(false);
   let sentryServerAvailable = $state(false);
   let sentryTestSending = $state(false);
   let sentryTestStatus = $state("");
@@ -86,52 +92,57 @@
   }
 
   async function handleSaveSentryServerSettings() {
-    sentryServerSaving = true;
-    try {
-      const response = await saveSentryServerSettings(sentryServer);
-      sentryServer = mergeStoredSentrySettings(response.stored);
-      sentryEnvLocks = response.envLocks;
-      sentryEffectiveEnabled = response.effective.enabled;
-      sentryTestStatus = "";
-      toast.success("Server error tracking saved");
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save error tracking",
-      );
-    } finally {
-      sentryServerSaving = false;
-    }
+    await saveWithStatus(
+      sentryStatus,
+      (err) =>
+        err instanceof Error ? err.message : "Could not save error tracking",
+      async () => {
+        const response = await saveSentryServerSettings(sentryServer);
+        sentryServer = mergeStoredSentrySettings(response.stored);
+        sentryEnvLocks = response.envLocks;
+        sentryEffectiveEnabled = response.effective.enabled;
+        sentryTestStatus = "";
+      },
+      (message) => toast.error(message),
+    );
   }
 
   async function handleSaveSentryClientSettings() {
-    sentryClientSaving = true;
-    try {
-      sentryClient = await saveSentryClientSettings(sentryClient);
-      const configResponse = await fetchWithRetry(ApiPaths.config, {
-        headers: apiHeaders(),
-      });
-      if (configResponse.ok) {
-        const cfg = await parseJson(
-          runtimeConfigSchema,
-          configResponse,
-          "runtime config",
-        );
-        if (sentryClient.enabled && cfg.sentry?.clientReporting) {
-          applyRuntimeSentryConfig(cfg.sentry);
-        } else {
-          disableClientSentry();
-        }
-      }
-      toast.success("Client error reporting updated");
-    } catch (err) {
-      toast.error(
+    await saveWithStatus(
+      sentryStatus,
+      (err) =>
         err instanceof Error
           ? err.message
-          : "Failed to save client error reporting",
-      );
-    } finally {
-      sentryClientSaving = false;
-    }
+          : "Could not save client error reporting",
+      async () => {
+        sentryClient = await saveSentryClientSettings(sentryClient);
+        const configResponse = await fetchWithRetry(ApiPaths.config, {
+          headers: apiHeaders(),
+        });
+        if (configResponse.ok) {
+          const cfg = await parseJson(
+            runtimeConfigSchema,
+            configResponse,
+            "runtime config",
+          );
+          if (sentryClient.enabled && cfg.sentry?.clientReporting) {
+            applyRuntimeSentryConfig(cfg.sentry);
+          } else {
+            disableClientSentry();
+          }
+        }
+      },
+      (message) => toast.error(message),
+    );
+  }
+
+  const debouncedServerSave = useDebounce(
+    () => handleSaveSentryServerSettings(),
+    500,
+  );
+
+  function queueServerSave() {
+    void debouncedServerSave().catch(() => {});
   }
 
   async function handleSendSentryTestEvent() {
@@ -159,6 +170,9 @@
   title="Error tracking"
   description="Send backend and client errors to Sentry or GlitchTip. Environment variables override stored values when set."
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={sentryStatus} />
+  {/snippet}
   {#if sentryClientLoading}
     <p class="settings-page__meta">Loading client settings...</p>
   {:else}
@@ -168,15 +182,9 @@
       checked={sentryClient.enabled}
       onchange={(enabled) => {
         sentryClient = { ...sentryClient, enabled };
+        void handleSaveSentryClientSettings();
       }}
     />
-    <Button
-      variant="primary"
-      disabled={sentryClientSaving}
-      onclick={() => void handleSaveSentryClientSettings()}
-    >
-      Save client reporting
-    </Button>
   {/if}
 
   {#if canManageServerSentry}
@@ -191,6 +199,7 @@
         disabled={sentryEnvLocks.dsn === true}
         onchange={(enabled) => {
           sentryServer = { ...sentryServer, enabled };
+          void handleSaveSentryServerSettings();
         }}
       />
       <Field
@@ -209,6 +218,7 @@
               ...sentryServer,
               dsn: (e.currentTarget as HTMLInputElement).value,
             };
+            queueServerSave();
           }}
         />
       </Field>
@@ -229,6 +239,7 @@
               ...sentryServer,
               frontendDsn: (e.currentTarget as HTMLInputElement).value,
             };
+            queueServerSave();
           }}
         />
       </Field>
@@ -249,6 +260,7 @@
               ...sentryServer,
               environment: (e.currentTarget as HTMLInputElement).value,
             };
+            queueServerSave();
           }}
         />
       </Field>
@@ -268,6 +280,7 @@
               ...sentryServer,
               release: (e.currentTarget as HTMLInputElement).value,
             };
+            queueServerSave();
           }}
         />
       </Field>
@@ -292,6 +305,7 @@
               ...sentryServer,
               tracesSampleRate: Number.isFinite(value) ? value : 0,
             };
+            queueServerSave();
           }}
         />
       </Field>
@@ -305,38 +319,31 @@
             ...sentryServer,
             clientReportingAllowed,
           };
+          void handleSaveSentryServerSettings();
         }}
       />
-      <div class="settings-page__backup-buttons">
-        <Button
-          variant="primary"
-          disabled={sentryServerSaving}
-          onclick={() => void handleSaveSentryServerSettings()}
-        >
-          Save server error tracking
-        </Button>
-        <Button
-          variant="ghost"
-          disabled={sentryTestDisabled}
-          onclick={() => void handleSendSentryTestEvent()}
-        >
-          {sentryTestSending ? "Sending…" : "Send test event"}
-        </Button>
-      </div>
       <p class="settings-page__meta">
         Backend tracking: {sentryEffectiveEnabled ? "active" : "inactive"}
       </p>
       {#if sentryTestStatus}
         <p class="settings-page__meta" role="status">{sentryTestStatus}</p>
       {/if}
-      <p class="settings-page__meta">
-        Save server settings before testing. The test button stays disabled
-        until backend tracking is active.
-      </p>
     {:else}
       <p class="settings-page__meta">
         Server error tracking settings are not available on this instance.
       </p>
     {/if}
   {/if}
+
+  {#snippet footer()}
+    {#if canManageServerSentry && sentryServerAvailable && !sentryServerLoading}
+      <Button
+        variant="ghost"
+        disabled={sentryTestDisabled}
+        onclick={() => void handleSendSentryTestEvent()}
+      >
+        {sentryTestSending ? "Sending..." : "Send test event"}
+      </Button>
+    {/if}
+  {/snippet}
 </SettingsCard>

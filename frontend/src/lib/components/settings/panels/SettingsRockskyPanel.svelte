@@ -3,15 +3,18 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
+  import { useDebounce } from "runed";
   import * as musicApi from "$lib/music/api";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { toast } from "$lib/ui/toast.svelte";
-  import "$lib/settings/settings-page.css";
+  import { createSaveStatus } from "$lib/settings/save-status.svelte";
+
+  const rockskyStatus = createSaveStatus();
 
   let settings = $state<musicApi.RockskySettings | null>(null);
   let token = $state("");
   let testing = $state(false);
-  let saving = $state(false);
 
   const enabled = $derived(extensionFeatures.isEnabled("rocksky"));
 
@@ -31,7 +34,7 @@
 
   async function test() {
     const value = token.trim();
-    if (!value) return;
+    if (!value && !settings?.hasToken) return;
     testing = true;
     try {
       const result = await musicApi.testRockskyToken(value);
@@ -53,76 +56,67 @@
 
   async function save() {
     const value = token.trim();
-    if (!value) {
-      toast.error("Enter a token to save");
-      return;
-    }
-    saving = true;
+    if (!value) return;
+    rockskyStatus.begin();
     try {
       const next = await musicApi.saveRockskySettings({ token: value });
       if (next) {
         settings = next;
-        token = "";
-        toast.success("Rocksky token saved");
+        rockskyStatus.saved();
       } else {
-        toast.error("Could not save token");
+        rockskyStatus.failed("Could not save Rocksky token");
+        toast.error("Could not save Rocksky token");
       }
     } catch (err) {
-      toast.error(err instanceof Error ? err.message : "Could not save token");
-    } finally {
-      saving = false;
+      const message =
+        err instanceof Error ? err.message : "Could not save Rocksky token";
+      rockskyStatus.failed(message);
+      toast.error(message);
     }
+  }
+
+  const debouncedSave = useDebounce(() => save(), 500);
+
+  function queueSave() {
+    void debouncedSave().catch(() => {});
   }
 </script>
 
 <SettingsCard title="Rocksky" description="Scrobble listens to Rocksky.">
-  <div class="rocksky-settings">
-    {#if !enabled}
-      <p class="rocksky-settings__note">
-        Enable the Rocksky extension in the Extensions tab to start scrobbling.
-      </p>
-    {/if}
-    <label class="rocksky-settings__label" for="rocksky-token">
-      API token
-    </label>
-    <Input
-      id="rocksky-token"
-      type="password"
-      placeholder="Paste your Rocksky API token"
-      bind:value={token}
-      disabled={!settings}
-    />
-    {#if settings?.hasToken}
-      <p class="rocksky-settings__status">
-        A token is already saved. Type above to replace it.
-      </p>
-    {/if}
-    <div class="rocksky-settings__actions">
-      <Button
-        size="sm"
-        disabled={!token.trim() || testing || saving || !settings}
-        onclick={() => void test()}
-      >
-        {testing ? "Testing..." : "Test token"}
-      </Button>
-      <Button
-        size="sm"
-        disabled={!token.trim() || saving || testing || !settings}
-        onclick={() => void save()}
-      >
-        {saving ? "Saving..." : "Save token"}
-      </Button>
-    </div>
-  </div>
+  {#snippet status()}
+    <SettingsSaveStatus status={rockskyStatus} />
+  {/snippet}
+  {#if !enabled}
+    <p class="rocksky-settings__note">
+      Enable the Rocksky extension in the Extensions tab to start scrobbling.
+    </p>
+  {/if}
+  <label class="rocksky-settings__label" for="rocksky-token"> API token </label>
+  <Input
+    id="rocksky-token"
+    type="password"
+    placeholder="Paste your Rocksky API token"
+    bind:value={token}
+    oninput={queueSave}
+    disabled={!settings}
+  />
+  {#if settings?.hasToken}
+    <p class="rocksky-settings__status">
+      A token is saved. Typing a new one replaces it.
+    </p>
+  {/if}
+  {#snippet footer()}
+    <Button
+      size="sm"
+      disabled={(!token.trim() && !settings?.hasToken) || testing || !settings}
+      onclick={() => void test()}
+    >
+      {testing ? "Testing..." : "Test token"}
+    </Button>
+  {/snippet}
 </SettingsCard>
 
 <style>
-  .rocksky-settings {
-    display: grid;
-    gap: var(--jb-space-3);
-    max-width: 32rem;
-  }
-
   .rocksky-settings__note {
     margin: 0;
     font-size: 0.8125rem;
@@ -138,10 +132,5 @@
     margin: 0;
     font-size: 0.8125rem;
     color: var(--jb-text-muted);
-  }
-
-  .rocksky-settings__actions {
-    display: flex;
-    gap: var(--jb-space-3);
   }
 </style>

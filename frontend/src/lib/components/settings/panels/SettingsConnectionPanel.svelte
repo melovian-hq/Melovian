@@ -1,11 +1,18 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import { APP_NAME } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { connection } from "$lib/music/connection.svelte";
   import { toast } from "$lib/ui/toast.svelte";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
+
+  const connectionStatus = createSaveStatus();
 
   let settings = $derived(connection.settings);
 
@@ -16,14 +23,14 @@
     });
   }
 
-  function patchConnectionSettings(
-    patch: Partial<typeof settings>,
-    message = "Connection settings saved",
-  ) {
+  function patchConnectionSettings(patch: Partial<typeof settings>) {
     settings = { ...settings, ...patch };
-    void connection.updateSettings(settings).then(() => {
-      toast.success(message);
-    });
+    void saveWithStatus(
+      connectionStatus,
+      "Could not save connection settings",
+      () => connection.updateSettings(settings),
+      () => toast.error("Could not save connection settings"),
+    );
   }
 </script>
 
@@ -31,6 +38,9 @@
   title="Connection and recovery"
   description={`${APP_NAME} remembers disconnects and adapts retry timing from past events.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={connectionStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Auto-reconnect when server is unreachable"
     checked={settings.autoReconnect}

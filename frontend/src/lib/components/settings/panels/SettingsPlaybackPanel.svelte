@@ -1,5 +1,6 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
@@ -37,7 +38,17 @@
     type ImmersiveAudioSettings,
   } from "$lib/music/immersive-audio-settings";
   import { toast } from "$lib/ui/toast.svelte";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
+
+  const nativeStatus = createSaveStatus();
+  const immersiveStatus = createSaveStatus();
+  const playbackStatus = createSaveStatus();
+  const queueStatus = createSaveStatus();
+  const transcodeStatus = createSaveStatus();
 
   let nativeBackendPref = $state<NativeBackendPref>(loadNativeBackendPref());
   let nativePlaybackSaving = $state(false);
@@ -113,23 +124,39 @@
   });
 
   function applyTranscodingSettings() {
-    music.updateTranscodingSettings(transcodingSettings);
-    toast.success("Transcoding settings saved");
+    void saveWithStatus(
+      transcodeStatus,
+      "Could not save transcoding settings",
+      () => music.updateTranscodingSettings(transcodingSettings),
+      () => toast.error("Could not save transcoding settings"),
+    );
   }
 
   function applyImmersiveAudioSettings() {
-    music.updateImmersiveAudioSettings(immersiveAudioSettings);
-    toast.success("Immersive audio settings saved");
+    void saveWithStatus(
+      immersiveStatus,
+      "Could not save immersive audio settings",
+      () => music.updateImmersiveAudioSettings(immersiveAudioSettings),
+      () => toast.error("Could not save immersive audio settings"),
+    );
   }
 
   function applyQueueSettings() {
-    music.updateQueueSettings(queueSettings);
-    toast.success("Queue settings saved");
+    void saveWithStatus(
+      queueStatus,
+      "Could not save queue settings",
+      () => music.updateQueueSettings(queueSettings),
+      () => toast.error("Could not save queue settings"),
+    );
   }
 
   function savePlaybackSettings() {
-    music.updatePlaybackSettings(playbackSettings);
-    toast.success("Playback settings saved");
+    void saveWithStatus(
+      playbackStatus,
+      "Could not save playback settings",
+      () => music.updatePlaybackSettings(playbackSettings),
+      () => toast.error("Could not save playback settings"),
+    );
   }
 
   function saveQueueSize(value: number) {
@@ -155,25 +182,23 @@
 
   async function applyNativeBackend(backend: NativeBackendPref) {
     nativePlaybackSaving = true;
+    nativeStatus.begin();
     try {
       nativeBackendPref = backend;
       saveNativeBackendPref(backend);
       await music.setNativeBackend(backend);
       if (music.nativeInitError) {
+        nativeStatus.failed(music.nativeInitError);
         toast.error(music.nativeInitError);
         return;
       }
       if (!music.nativeAvailable) {
-        toast.error("Could not initialize the selected native backend");
+        const message = "Could not initialize the selected native backend";
+        nativeStatus.failed(message);
+        toast.error(message);
         return;
       }
-      const label =
-        music.nativeBackend === "vlc"
-          ? "VLC"
-          : music.nativeBackend === "mpv"
-            ? "mpv"
-            : backend;
-      toast.success(`Native backend set to ${label}`);
+      nativeStatus.saved();
     } finally {
       nativePlaybackSaving = false;
     }
@@ -187,12 +212,11 @@
       return;
     }
     nativePlaybackSaving = true;
+    nativeStatus.begin();
     try {
       saveNativePlaybackPref(enabled);
       await music.setNativePlaybackEnabled(enabled);
-      toast.success(
-        enabled ? "Native playback enabled" : "Web playback enabled",
-      );
+      nativeStatus.saved();
     } finally {
       nativePlaybackSaving = false;
     }
@@ -204,6 +228,9 @@
     title="Native playback"
     description="Use libmpv or VLC for broad codec support. The equalizer and crossfade are disabled while native playback is active."
   >
+    {#snippet status()}
+      <SettingsSaveStatus status={nativeStatus} />
+    {/snippet}
     <SettingsToggleRow
       label="Use native playback"
       description="Stream through a native audio backend instead of the browser."
@@ -273,6 +300,9 @@
   title="Immersive audio"
   description={`Surround PCM, Dolby/DTS bitstream passthrough for Atmos-capable receivers, and headphone binaural crossfeed. ${APP_NAME} does not ship a licensed Dolby decoder. Atmos object audio is preserved only when passthrough reaches a receiver that can decode it.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={immersiveStatus} />
+  {/snippet}
   <Field
     label="Output mode"
     hint={IMMERSIVE_AUDIO_MODE_HINTS[immersiveAudioSettings.mode]}
@@ -320,6 +350,9 @@
     title="Remote audio output"
     description="Send decoded audio to extra targets in addition to the speakers. Applies to native mpv playback only. The stream is raw 48 kHz s16 stereo PCM."
   >
+    {#snippet status()}
+      <SettingsSaveStatus status={immersiveStatus} />
+    {/snippet}
     <Field
       label="Output targets"
       hint="Comma separated: device, stdout, fifo:/path, tcp:host:port, tcp-listen:0.0.0.0:4987, unix:/path.sock, unix-listen:/path.sock"
@@ -342,6 +375,9 @@
   title="Session"
   description={`Control how ${APP_NAME} resumes when you reopen the app.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={playbackStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Continue playback on launch"
     description="Restore your queue and playback position from the last session."
@@ -360,6 +396,9 @@
   title="Playback queue"
   description={`Limit how many tracks ${APP_NAME} keeps in the playback queue. Continuous modes (library shuffle, personal radio, random radio) refill up to this size as you listen.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={queueStatus} />
+  {/snippet}
   <Field
     label="Maximum queue size"
     hint="Unlimited allows the queue to grow without a cap."
@@ -376,6 +415,9 @@
   title="Crossfade"
   description="Blend the end of one track into the start of the next during sequential playback."
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={playbackStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Crossfade between tracks"
     description="Web playback only. Shuffle, repeat-one, and native playback disable crossfade."
@@ -413,6 +455,9 @@
   title="Streaming and transcoding"
   description={`Control how ${APP_NAME} requests audio from your server.`}
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={transcodeStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Always transcode streams"
     description="Request transcoded audio even when the browser might decode the original format."

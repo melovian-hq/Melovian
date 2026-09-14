@@ -121,11 +121,13 @@
   {#if canEditUsername}
     <Field
       label="Username"
+      group
       hint="Letters, numbers, _, -, and . (2-64 characters)."
     >
       <div class="profile-settings__username-row">
         <input
           class="settings-input"
+          aria-label="Username"
           bind:value={usernameDraft}
           autocomplete="username"
           maxlength={64}

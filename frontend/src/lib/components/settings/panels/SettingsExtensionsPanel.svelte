@@ -1,7 +1,6 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import ExtensionsSettings from "$lib/components/settings/ExtensionsSettings.svelte";
-  import "$lib/settings/settings-page.css";
 </script>
 
 <SettingsCard

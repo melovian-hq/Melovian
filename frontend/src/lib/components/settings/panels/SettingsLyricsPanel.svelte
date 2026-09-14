@@ -1,9 +1,11 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
   import { APP_NAME } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Button from "$lib/components/ui/Button.svelte";
+  import { useDebounce } from "runed";
   import { music } from "$lib/config/music.svelte";
   import {
     defaultLyricsSettings,
@@ -16,14 +18,19 @@
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { toast } from "$lib/ui/toast.svelte";
   import { confirmDialog } from "$lib/ui/confirm.svelte";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
+
+  const lyricsStatus = createSaveStatus();
 
   let lyricsSettings = $state<LyricsSettings>(defaultLyricsSettings());
   let lyricsResolvedDir = $state("");
   let lyricsDefaultDir = $state("");
   let lyricsTrackCount = $state(0);
   let lyricsUsedBytes = $state(0);
-  let lyricsSaving = $state(false);
   let lyricsClearing = $state(false);
   let customProviderName = $state("");
   let customProviderURL = $state("");
@@ -49,6 +56,7 @@
         provider.id === id ? { ...provider, enabled: checked } : provider,
       ),
     };
+    void applyLyricsSettings();
   }
 
   function addCustomLyricsProvider() {
@@ -68,6 +76,7 @@
     };
     customProviderName = "";
     customProviderURL = "";
+    void applyLyricsSettings();
   }
 
   function removeCustomLyricsProvider(id: string) {
@@ -77,26 +86,31 @@
         (provider) => provider.id !== id,
       ),
     };
+    void applyLyricsSettings();
   }
 
   async function applyLyricsSettings() {
-    lyricsSaving = true;
-    try {
-      await music.updateLyricsSettings(lyricsSettings);
-      if (music.lyricsSettings) {
-        lyricsResolvedDir = music.lyricsSettings.resolvedStorageDir;
-        lyricsDefaultDir = music.lyricsSettings.defaultStorageDir;
-        lyricsTrackCount = music.lyricsSettings.trackCount;
-        lyricsUsedBytes = music.lyricsSettings.usedBytes;
-      }
-      toast.success("Lyrics settings saved");
-    } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save lyrics settings",
-      );
-    } finally {
-      lyricsSaving = false;
-    }
+    await saveWithStatus(
+      lyricsStatus,
+      (err) =>
+        err instanceof Error ? err.message : "Could not save lyrics settings",
+      async () => {
+        await music.updateLyricsSettings(lyricsSettings);
+        if (music.lyricsSettings) {
+          lyricsResolvedDir = music.lyricsSettings.resolvedStorageDir;
+          lyricsDefaultDir = music.lyricsSettings.defaultStorageDir;
+          lyricsTrackCount = music.lyricsSettings.trackCount;
+          lyricsUsedBytes = music.lyricsSettings.usedBytes;
+        }
+      },
+      (message) => toast.error(message),
+    );
+  }
+
+  const debouncedLyricsSave = useDebounce(() => applyLyricsSettings(), 500);
+
+  function queueLyricsSave() {
+    void debouncedLyricsSave().catch(() => {});
   }
 
   async function clearLyricsCache() {
@@ -139,11 +153,15 @@
   title="Lyrics providers"
   description="Fetch lyrics from your server and free online providers. Synced lines can be clicked to seek during playback."
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={lyricsStatus} />
+  {/snippet}
   <SettingsToggleRow
     label="Fetch lyrics automatically when missing"
     checked={lyricsSettings.autoFetch}
     onchange={(checked) => {
       lyricsSettings = { ...lyricsSettings, autoFetch: checked };
+      void applyLyricsSettings();
     }}
   />
 
@@ -155,6 +173,7 @@
       type="text"
       class="settings-input"
       bind:value={lyricsSettings.storageDir}
+      oninput={queueLyricsSave}
       placeholder={lyricsDefaultDir || "lyrics"}
     />
   </Field>
@@ -228,6 +247,7 @@
         type="text"
         class="settings-input"
         bind:value={lyricsSettings.whisperUrl}
+        oninput={queueLyricsSave}
         placeholder="http://127.0.0.1:8080"
       />
     </Field>
@@ -237,9 +257,6 @@
   {/if}
 
   {#snippet footer()}
-    <Button disabled={lyricsSaving} onclick={() => void applyLyricsSettings()}>
-      Save lyrics settings
-    </Button>
     <Button
       variant="ghost"
       disabled={lyricsClearing}

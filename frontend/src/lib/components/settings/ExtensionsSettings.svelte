@@ -390,13 +390,13 @@
 
   .extensions-settings__list {
     display: grid;
-    gap: 0.5rem;
+    gap: var(--jb-space-2);
   }
 
   .extensions-settings__row {
     display: grid;
-    gap: 0.5rem;
-    padding: 0.5rem 0;
+    gap: var(--jb-space-2);
+    padding: var(--jb-space-2) 0;
     border-bottom: 1px solid
       color-mix(in srgb, var(--jb-border, currentColor) 35%, transparent);
   }
@@ -447,14 +447,14 @@
     flex: 1;
     min-width: 0;
     display: grid;
-    gap: 0.25rem;
+    gap: var(--jb-space-1);
   }
 
   .extensions-settings__name-row {
     display: flex;
     flex-wrap: wrap;
     align-items: center;
-    gap: 0.5rem;
+    gap: var(--jb-space-2);
   }
 
   .extensions-settings__name {
@@ -500,6 +500,6 @@
     display: flex;
     flex-wrap: wrap;
     gap: var(--jb-space-2);
-    margin-top: 0.125rem;
+    margin-top: var(--jb-space-1);
   }
 </style>

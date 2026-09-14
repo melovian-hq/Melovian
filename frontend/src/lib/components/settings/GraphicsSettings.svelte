@@ -1,10 +1,9 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
-  import { APP_NAME } from "$lib/brand";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import { nativeDesktopAvailable } from "$lib/config/runtime";
   import {
     appliedEnvSummary,
@@ -17,11 +16,13 @@
     type NvExplicitSyncMode,
   } from "$lib/desktop/graphics-settings";
   import { toast } from "$lib/ui/toast.svelte";
+  import { createSaveStatus } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
+
+  const graphicsStatus = createSaveStatus();
 
   let graphicsEnv = $state<GraphicsEnvironment | null>(null);
   let graphicsSettings = $state<GraphicsSettings>(mergeGraphicsSettings(null));
-  let graphicsSaving = $state(false);
 
   const nvSyncOptions = (["auto", "on", "off"] as NvExplicitSyncMode[]).map(
     (mode) => ({ value: mode, label: nvExplicitSyncLabel(mode) }),
@@ -37,21 +38,20 @@
     });
   });
 
-  async function handleSaveGraphicsSettings() {
-    graphicsSaving = true;
+  async function applyGraphicsSettings() {
+    graphicsStatus.begin();
     try {
       await saveGraphicsSettings(graphicsSettings);
-      toast.success(`Graphics settings saved. Restart ${APP_NAME} to apply.`);
+      graphicsStatus.saved();
       graphicsEnv = await loadGraphicsEnvironment();
       if (graphicsEnv) {
         graphicsSettings = mergeGraphicsSettings(graphicsEnv.settings);
       }
     } catch (err) {
-      toast.error(
-        err instanceof Error ? err.message : "Failed to save graphics settings",
-      );
-    } finally {
-      graphicsSaving = false;
+      const message =
+        err instanceof Error ? err.message : "Could not save graphics settings";
+      graphicsStatus.failed(message);
+      toast.error(message);
     }
   }
 </script>
@@ -61,6 +61,9 @@
     title="Graphics stability"
     description="Linux WebKitGTK workarounds for GPU and display-driver crashes."
   >
+    {#snippet status()}
+      <SettingsSaveStatus status={graphicsStatus} />
+    {/snippet}
     <p class="settings-page__meta">
       Session: {graphicsEnv.wayland ? "Wayland" : "X11"}
       {#if graphicsEnv.nvidia}
@@ -82,6 +85,7 @@
           ...graphicsSettings,
           disableDmabufRenderer: enabled,
         };
+        void applyGraphicsSettings();
       }}
     />
     <SettingsToggleRow
@@ -93,6 +97,7 @@
           ...graphicsSettings,
           disableCompositingMode: enabled,
         };
+        void applyGraphicsSettings();
       }}
     />
     {#if graphicsEnv.wayland || graphicsEnv.nvidia}
@@ -108,17 +113,10 @@
               ...graphicsSettings,
               nvDisableExplicitSync,
             };
+            void applyGraphicsSettings();
           }}
         />
       </Field>
     {/if}
-    <div class="settings-page__actions">
-      <Button
-        onclick={() => void handleSaveGraphicsSettings()}
-        disabled={graphicsSaving}
-      >
-        {graphicsSaving ? "Saving…" : "Save graphics settings"}
-      </Button>
-    </div>
   </SettingsCard>
 {/if}

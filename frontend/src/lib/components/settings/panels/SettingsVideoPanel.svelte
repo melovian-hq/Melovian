@@ -1,10 +1,11 @@
 <script lang="ts">
   import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
+  import SettingsSaveStatus from "$lib/components/settings/SettingsSaveStatus.svelte";
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Select from "$lib/components/ui/Select.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
+  import { useDebounce } from "runed";
   import { getVideoSettings, saveVideoSettings } from "$lib/video/api";
   import { videoFeature } from "$lib/video/feature.svelte";
   import {
@@ -14,11 +15,16 @@
     type VideoSettings,
   } from "$lib/video/ids";
   import { toast } from "$lib/ui/toast.svelte";
+  import {
+    createSaveStatus,
+    saveWithStatus,
+  } from "$lib/settings/save-status.svelte";
   import "$lib/settings/settings-page.css";
+
+  const videoStatus = createSaveStatus();
 
   let settings = $state<VideoSettings>(defaultVideoSettings());
   let loading = $state(true);
-  let saving = $state(false);
 
   const searchProviderOptions: {
     value: VideoSearchProvider;
@@ -52,26 +58,30 @@
     };
   });
 
-  async function onSave() {
-    saving = true;
-    try {
-      settings = mergeVideoSettings(
-        await saveVideoSettings({
-          enabled: settings.enabled,
-          searchProvider: settings.searchProvider,
-          invidiousBaseUrl: settings.invidiousBaseUrl.trim(),
-          youtubeApiKey: settings.youtubeApiKey.trim(),
-        }),
-      );
-      videoFeature.applySettings(settings);
-      toast.success("Video settings saved");
-    } catch (err) {
-      toast.error(
+  async function saveSettings() {
+    await saveWithStatus(
+      videoStatus,
+      (err) =>
         err instanceof Error ? err.message : "Could not save video settings",
-      );
-    } finally {
-      saving = false;
-    }
+      async () => {
+        settings = mergeVideoSettings(
+          await saveVideoSettings({
+            enabled: settings.enabled,
+            searchProvider: settings.searchProvider,
+            invidiousBaseUrl: settings.invidiousBaseUrl.trim(),
+            youtubeApiKey: settings.youtubeApiKey.trim(),
+          }),
+        );
+        videoFeature.applySettings(settings);
+      },
+      (message) => toast.error(message),
+    );
+  }
+
+  const debouncedSave = useDebounce(() => saveSettings(), 500);
+
+  function queueSave() {
+    void debouncedSave().catch(() => {});
   }
 </script>
 
@@ -79,8 +89,11 @@
   title="Videos"
   description="Local files and music-video search are off until you turn this on. Invidious is the default search path. YouTube Data API is optional."
 >
+  {#snippet status()}
+    <SettingsSaveStatus status={videoStatus} />
+  {/snippet}
   {#if loading}
-    <div class="settings-panel__loading">
+    <div class="settings-loading">
       <Spinner />
     </div>
   {:else}
@@ -90,14 +103,19 @@
       checked={settings.enabled}
       onchange={(checked) => {
         settings = { ...settings, enabled: checked };
+        void saveSettings();
       }}
     />
 
     <Field label="Search provider">
       <Select
-        bind:value={settings.searchProvider}
+        value={settings.searchProvider}
         options={searchProviderOptions}
         disabled={!settings.enabled}
+        onchange={(searchProvider) => {
+          settings = { ...settings, searchProvider };
+          void saveSettings();
+        }}
       />
     </Field>
 
@@ -109,6 +127,7 @@
         type="url"
         class="settings-input"
         bind:value={settings.invidiousBaseUrl}
+        oninput={queueSave}
         placeholder="https://"
         autocomplete="off"
         spellcheck="false"
@@ -124,29 +143,12 @@
         type="password"
         class="settings-input"
         bind:value={settings.youtubeApiKey}
-        placeholder="AIza…"
+        oninput={queueSave}
+        placeholder="AIza..."
         autocomplete="off"
         spellcheck="false"
         disabled={!settings.enabled}
       />
     </Field>
-
-    <div class="settings-actions">
-      <Button onclick={onSave} disabled={saving}>
-        {saving ? "Saving…" : "Save"}
-      </Button>
-    </div>
   {/if}
 </SettingsCard>
-
-<style>
-  .settings-panel__loading {
-    display: grid;
-    place-content: center;
-    min-height: 4rem;
-  }
-
-  .settings-actions {
-    margin-top: var(--jb-space-3);
-  }
-</style>
