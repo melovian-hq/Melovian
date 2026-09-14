@@ -6,6 +6,7 @@ import * as v from "valibot";
 export const authUserSchema = v.looseObject({
   id: v.string(),
   username: v.string(),
+  hasPassword: v.optional(v.boolean()),
 });
 
 export const authSessionSchema = v.looseObject({
@@ -26,6 +27,7 @@ export const authStatusSchema = v.looseObject({
   fakeCatalog: v.optional(v.boolean()),
   oidcEnabled: v.optional(v.boolean()),
   oidcLoginUrl: v.optional(v.string()),
+  oidcProviderName: v.optional(v.string()),
   localLoginEnabled: v.optional(v.boolean()),
   user: v.optional(authUserSchema),
 });

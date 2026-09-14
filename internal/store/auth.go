@@ -12,6 +12,8 @@ import (
 	"fmt"
 	"strings"
 	"time"
+
+	"melovian/internal/appconfig"
 )
 
 const (
@@ -134,11 +136,73 @@ func (s *AuthStore) CreateUser(username, password string) (AuthUser, error) {
 	if err != nil {
 		return AuthUser{}, err
 	}
-	return AuthUser{
+	user := AuthUser{
 		ID:        id,
 		Username:  name,
 		CreatedAt: time.Unix(now, 0),
-	}, nil
+	}
+	if err := s.claimFirstUserSources(user.ID); err != nil {
+		return AuthUser{}, err
+	}
+	return user, nil
+}
+
+// claimFirstUserSources hands config-provisioned sources to userID when it
+// is the only account. Provisioned rows are stored with an empty user_id so
+// the first registered user adopts them instead of never seeing them.
+func (s *AuthStore) claimFirstUserSources(userID string) error {
+	count, err := s.CountUsers()
+	if err != nil {
+		return err
+	}
+	if count != 1 {
+		return nil
+	}
+	return s.claimProvisionedSources(userID)
+}
+
+// claimProvisionedSources assigns every source still owned by the empty
+// user (config provisioning) to userID and copies the process-global active
+// selections into that user's preferences.
+func (s *AuthStore) claimProvisionedSources(userID string) error {
+	tx, err := s.db.begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	if _, err := tx.Exec(`UPDATE subsonic_instances SET user_id = ? WHERE user_id = ''`, userID); err != nil {
+		return err
+	}
+	if _, err := tx.Exec(`UPDATE local_libraries SET user_id = ? WHERE user_id = ''`, userID); err != nil {
+		return err
+	}
+	for _, copy := range []struct {
+		setting string
+		pref    string
+	}{
+		{appconfig.SettingActiveInstanceID, prefActiveInstanceID},
+		{prefActiveLocalLibraryID, prefActiveLocalLibraryID},
+	} {
+		value, err := getSettingTx(tx, copy.setting)
+		if err != nil {
+			return err
+		}
+		if value == "" {
+			continue
+		}
+		if err := setUserPrefTx(tx, userID, copy.pref, value); err != nil {
+			return err
+		}
+	}
+	if mode, err := getSettingTx(tx, appconfig.SettingSourceViewMode); err != nil {
+		return err
+	} else if mode != "" {
+		if err := setUserPrefTx(tx, userID, PrefKeySourceViewMode, normalizeSourceViewMode(mode)); err != nil {
+			return err
+		}
+	}
+	return tx.Commit()
 }
 
 func (s *AuthStore) Authenticate(username, password string) (AuthUser, error) {
@@ -199,22 +263,36 @@ func (s *AuthStore) FindOrCreateOIDCUser(issuer, subject, username string) (Auth
 		return AuthUser{}, fmt.Errorf("oidc issuer and subject are required")
 	}
 
-	row := s.db.queryRow(
-		`SELECT id, username, created_at FROM melovian_users WHERE oidc_issuer = ? AND oidc_subject = ?`,
-		iss, sub,
-	)
-	var user AuthUser
-	var created int64
-	err := row.Scan(&user.ID, &user.Username, &created)
+	user, err := s.findOIDCUser(iss, sub)
 	if err == nil {
-		user.CreatedAt = time.Unix(created, 0)
 		return user, nil
 	}
 	if !errors.Is(err, sql.ErrNoRows) {
 		return AuthUser{}, err
 	}
+	return s.createOIDCUser(iss, sub, normalizeOIDCUsername(username, sub))
+}
 
-	name := normalizeOIDCUsername(username, sub)
+func (s *AuthStore) findOIDCUser(issuer, subject string) (AuthUser, error) {
+	row := s.db.queryRow(
+		`SELECT id, username, created_at FROM melovian_users WHERE oidc_issuer = ? AND oidc_subject = ?`,
+		issuer, subject,
+	)
+	var user AuthUser
+	var created int64
+	if err := row.Scan(&user.ID, &user.Username, &created); err != nil {
+		return AuthUser{}, err
+	}
+	user.CreatedAt = time.Unix(created, 0)
+	return user, nil
+}
+
+// createOIDCUser inserts a passwordless OIDC account, retrying with a
+// suffixed username only when the identity itself is still unclaimed. A
+// unique violation on the (oidc_issuer, oidc_subject) index means a
+// concurrent first login already created the row, so the existing user is
+// returned instead of burning username candidates.
+func (s *AuthStore) createOIDCUser(issuer, subject, name string) (AuthUser, error) {
 	for attempt := range 5 {
 		candidate := name
 		if attempt > 0 {
@@ -224,17 +302,28 @@ func (s *AuthStore) FindOrCreateOIDCUser(issuer, subject, username string) (Auth
 		now := nowUnix()
 		_, err := s.db.exec(
 			`INSERT INTO melovian_users (id, username, password_hash, created_at, oidc_issuer, oidc_subject) VALUES (?, ?, '', ?, ?, ?)`,
-			id, candidate, now, iss, sub,
+			id, candidate, now, issuer, subject,
 		)
 		if err == nil {
-			return AuthUser{
+			user := AuthUser{
 				ID:        id,
 				Username:  candidate,
 				CreatedAt: time.Unix(now, 0),
-			}, nil
+			}
+			if err := s.claimFirstUserSources(id); err != nil {
+				return AuthUser{}, err
+			}
+			return user, nil
 		}
 		if !strings.Contains(strings.ToLower(err.Error()), "unique") {
 			return AuthUser{}, err
+		}
+		existing, lookupErr := s.findOIDCUser(issuer, subject)
+		if lookupErr == nil {
+			return existing, nil
+		}
+		if !errors.Is(lookupErr, sql.ErrNoRows) {
+			return AuthUser{}, lookupErr
 		}
 	}
 	return AuthUser{}, fmt.Errorf("failed to create oidc user")
@@ -550,6 +639,20 @@ func (s *AuthStore) migrateSubsonicSecret(userID, password string) error {
 		secret, userID,
 	)
 	return err
+}
+
+// HasPassword reports whether the account has a local password set. OIDC
+// provisioned users have an empty password_hash.
+func (s *AuthStore) HasPassword(userID string) (bool, error) {
+	row := s.db.queryRow(
+		`SELECT password_hash FROM melovian_users WHERE id = ?`,
+		userID,
+	)
+	var hash string
+	if err := row.Scan(&hash); err != nil {
+		return false, err
+	}
+	return hash != "", nil
 }
 
 func (s *AuthStore) DeleteUser(userID, password string) error {

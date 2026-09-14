@@ -28,8 +28,9 @@ type Handler struct {
 	limiter *apishared.RateLimiter
 
 	setupMu          sync.Mutex
-	oidcOnce         sync.Once
+	oidcMu           sync.Mutex
 	oidcInitErr      error
+	oidcInitErrAt    time.Time
 	oidcRuntimeValue *oidcRuntime
 }
 
@@ -52,7 +53,7 @@ func (h *Handler) registerAuthRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/auth/change-password", h.handleChangePassword)
 	mux.HandleFunc("POST /api/auth/username", h.handleChangeUsername)
 	mux.HandleFunc("POST /api/auth/delete-account", h.handleDeleteAccount)
-	mux.HandleFunc("GET /api/auth/subsonic-key", h.handleGetSubsonicKey)
+	mux.HandleFunc("POST /api/auth/subsonic-key", h.handleGetSubsonicKey)
 	mux.HandleFunc("POST /api/auth/subsonic-key/rotate", h.handleRotateSubsonicKey)
 	mux.HandleFunc("GET /health", h.handleHealth)
 }
@@ -67,13 +68,14 @@ func (h *Handler) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 	demo := h.cfg.DemoModeEffective()
 	enabled := !demo && h.auth != nil && h.auth.Enabled()
 	payload := map[string]any{
-		"enabled":       enabled,
-		"authenticated": false,
-		"setupRequired": false,
-		"oidcEnabled":   h.cfg.OIDCEnabled(),
-		"oidcLoginUrl":  "/api/auth/oidc/login",
-		"demoMode":      demo,
-		"fakeCatalog":   democatalog.UsesFakeCatalog(h.cfg),
+		"enabled":          enabled,
+		"authenticated":    false,
+		"setupRequired":    false,
+		"oidcEnabled":      h.cfg.OIDCEnabled(),
+		"oidcLoginUrl":     "/api/auth/oidc/login",
+		"oidcProviderName": h.cfg.OIDC.ProviderName,
+		"demoMode":         demo,
+		"fakeCatalog":      democatalog.UsesFakeCatalog(h.cfg),
 	}
 	if !enabled {
 		httputil.WriteJSON(w, http.StatusOK, payload)
@@ -105,10 +107,17 @@ func (h *Handler) handleAuthStatus(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	hasPassword, err := h.auth.HasPassword(userID)
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to read auth status")
+		return
+	}
+
 	payload["authenticated"] = true
 	payload["user"] = map[string]any{
-		"id":       user.ID,
-		"username": user.Username,
+		"id":          user.ID,
+		"username":    user.Username,
+		"hasPassword": hasPassword,
 	}
 	httputil.WriteJSON(w, http.StatusOK, payload)
 }
@@ -328,6 +337,7 @@ func (h *Handler) handleChangeUsername(w http.ResponseWriter, r *http.Request) {
 
 type deleteAccountRequest struct {
 	Password string `json:"password"`
+	Confirm  bool   `json:"confirm"`
 }
 
 func (h *Handler) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
@@ -344,6 +354,29 @@ func (h *Handler) handleDeleteAccount(w http.ResponseWriter, r *http.Request) {
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", err.Error())
 		return
+	}
+	hasPassword, err := h.auth.HasPassword(userID)
+	if err != nil {
+		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to read account")
+		return
+	}
+	if !hasPassword {
+		// Passwordless (OIDC) accounts cannot prove identity with a
+		// password, so deletion requires an explicit confirmation.
+		keys := h.loginRateLimitKeys(r, "")
+		if h.loginKeysRateLimited(w, keys) {
+			return
+		}
+		if !req.Confirm {
+			if h.limiter != nil {
+				h.limiter.Record(keys...)
+			}
+			httputil.WriteError(w, http.StatusBadRequest, "confirmation_required", "account deletion requires confirmation")
+			return
+		}
+		if h.limiter != nil {
+			h.limiter.Reset(keys...)
+		}
 	}
 	if err := h.auth.DeleteUser(userID, req.Password); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "delete_account_failed", err.Error())
@@ -406,8 +439,17 @@ func (h *Handler) handleGetSubsonicKey(w http.ResponseWriter, r *http.Request) {
 	}
 	secret, err := h.auth.SubsonicAPISecretForUser(userID)
 	if err != nil {
-		httputil.WriteError(w, http.StatusNotFound, "no_key", "no subsonic api key configured")
-		return
+		// OIDC provisioned accounts have no key yet. Create one on demand
+		// instead of making the user rotate a key that does not exist.
+		secret, err = h.auth.RegenerateSubsonicAPISecret(userID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				httputil.WriteError(w, http.StatusNotFound, "no_key", "no subsonic api key configured")
+				return
+			}
+			httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "failed to create api key")
+			return
+		}
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"apiKey":  secret,

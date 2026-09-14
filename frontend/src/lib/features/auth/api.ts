@@ -10,6 +10,7 @@ import { authStatusSchema, authUserResponseSchema } from "./schemas";
 export interface AuthUser {
   id: string;
   username: string;
+  hasPassword?: boolean;
 }
 
 export interface AuthStatus {
@@ -20,8 +21,15 @@ export interface AuthStatus {
   fakeCatalog?: boolean;
   oidcEnabled?: boolean;
   oidcLoginUrl?: string;
+  oidcProviderName?: string;
   localLoginEnabled?: boolean;
   user?: AuthUser;
+}
+
+/** Label for the SSO button, "SSO" when the provider has no configured name. */
+export function ssoProviderLabel(providerName?: string | null): string {
+  const name = providerName?.trim();
+  return name ? name : "SSO";
 }
 
 export async function getAuthStatus(): Promise<AuthStatus> {

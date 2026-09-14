@@ -133,7 +133,7 @@ func TestSubsonicAPIKeyIsNotPassword(t *testing.T) {
 	handler := srv.Handler()
 	cookie := setupUser(t, handler, "admin", "password123")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/auth/subsonic-key", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/subsonic-key", nil)
 	req.AddCookie(cookie)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
@@ -194,7 +194,7 @@ func TestSubsonicKeyRotateRevokesOld(t *testing.T) {
 	cookie := setupUser(t, handler, "admin", "password123")
 
 	getKey := func() string {
-		req := httptest.NewRequest(http.MethodGet, "/api/auth/subsonic-key", nil)
+		req := httptest.NewRequest(http.MethodPost, "/api/auth/subsonic-key", nil)
 		req.AddCookie(cookie)
 		rec := httptest.NewRecorder()
 		handler.ServeHTTP(rec, req)
@@ -234,7 +234,7 @@ func TestSubsonicKeyRequiresSession(t *testing.T) {
 	handler := srv.Handler()
 	setupUser(t, handler, "admin", "password123")
 
-	req := httptest.NewRequest(http.MethodGet, "/api/auth/subsonic-key", nil)
+	req := httptest.NewRequest(http.MethodPost, "/api/auth/subsonic-key", nil)
 	rec := httptest.NewRecorder()
 	handler.ServeHTTP(rec, req)
 	if rec.Code != http.StatusUnauthorized {

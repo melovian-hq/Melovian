@@ -15,6 +15,7 @@ class AuthStore {
   fakeCatalog = $state(false);
   oidcEnabled = $state(false);
   oidcLoginUrl = $state<string>(ApiPaths.authOidcLogin);
+  oidcProviderName = $state("");
   localLoginEnabled = $state(true);
   user = $state<AuthUser | null>(null);
   loading = $state(true);
@@ -23,6 +24,8 @@ class AuthStore {
   statusLoaded = $state(false);
 
   ready = $derived(!this.loading);
+  /** False for OIDC provisioned accounts that have no local password. */
+  hasPassword = $derived(this.user?.hasPassword ?? true);
   needsAccountLogin = $derived(
     this.ready &&
       this.statusLoaded &&
@@ -50,6 +53,7 @@ class AuthStore {
       this.fakeCatalog = status.fakeCatalog === true;
       this.oidcEnabled = status.oidcEnabled ?? false;
       this.oidcLoginUrl = status.oidcLoginUrl ?? ApiPaths.authOidcLogin;
+      this.oidcProviderName = status.oidcProviderName ?? "";
       this.localLoginEnabled = status.localLoginEnabled ?? true;
       this.user = status.user ?? null;
       this.statusLoaded = true;

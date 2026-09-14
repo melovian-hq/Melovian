@@ -79,7 +79,7 @@
     }
     deletingAccount = true;
     try {
-      await accountApi.deleteAccount(deletePassword);
+      await accountApi.deleteAccount(deletePassword, !auth.hasPassword);
       auth.authenticated = false;
       auth.user = null;
       music.disconnect();
@@ -169,13 +169,15 @@
       void handleDeleteAccount();
     }}
   >
-    <Field label="Confirm password">
-      <input
-        type="password"
-        bind:value={deletePassword}
-        autocomplete="current-password"
-      />
-    </Field>
+    {#if auth.hasPassword}
+      <Field label="Confirm password">
+        <input
+          type="password"
+          bind:value={deletePassword}
+          autocomplete="current-password"
+        />
+      </Field>
+    {/if}
     <Button type="submit" variant="ghost" disabled={deletingAccount}>
       {confirmDelete ? "Confirm delete account" : "Delete account"}
     </Button>

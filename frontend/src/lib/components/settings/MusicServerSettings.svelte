@@ -70,7 +70,9 @@
   async function loadSubsonicKey() {
     try {
       const res = await fetchWithRetry(ApiPaths.authSubsonicKey, {
-        headers: apiHeaders(),
+        method: "POST",
+        headers: apiHeaders("application/json"),
+        body: "{}",
       });
       if (!res.ok) return;
       const data = await parseJson(
@@ -230,8 +232,8 @@
 <style>
   .music-server-settings__block {
     display: grid;
-    gap: 0.5rem;
-    margin-top: 0.75rem;
+    gap: var(--jb-space-2);
+    margin-top: var(--jb-space-3);
   }
 
   .music-server-settings__label {
@@ -249,7 +251,7 @@
 
   .music-server-settings__url {
     display: block;
-    padding: 0.65rem 0.75rem;
+    padding: var(--jb-space-2) var(--jb-space-3);
     border-radius: 0.5rem;
     background: var(--jb-surface-2);
     font-size: 0.85rem;
@@ -258,12 +260,12 @@
 
   .music-server-settings__key {
     display: grid;
-    gap: 0.5rem;
+    gap: var(--jb-space-2);
   }
 
   .music-server-settings__key-actions {
     display: flex;
-    gap: 0.5rem;
+    gap: var(--jb-space-2);
     flex-wrap: wrap;
   }
 </style>

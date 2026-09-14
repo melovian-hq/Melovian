@@ -5,6 +5,7 @@
   import Button from "$lib/components/ui/Button.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import { auth } from "$lib/features/auth/store.svelte";
+  import { ssoProviderLabel } from "$lib/features/auth/api";
   import { instances } from "$lib/features/instances/store.svelte";
   import { localLibraries } from "$lib/features/local-libraries/store.svelte";
   import { sources } from "$lib/features/sources/store.svelte";
@@ -75,7 +76,7 @@
       {#if showOIDC}
         <div class="account-login__oidc">
           <Button type="button" onclick={startOIDCLogin} disabled={submitting}>
-            Sign in with SSO
+            Sign in with {ssoProviderLabel(auth.oidcProviderName)}
           </Button>
         </div>
       {/if}
