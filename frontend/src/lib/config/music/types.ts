@@ -155,6 +155,7 @@ export interface MusicStoreHost {
   recommendations: MusicStore["recommendations"];
   reconnectPositionMs: MusicStore["reconnectPositionMs"];
   reconnectResumePending: MusicStore["reconnectResumePending"];
+  reconnectResumeTrackId: MusicStore["reconnectResumeTrackId"];
   recordNowPlaying: MusicStore["recordNowPlaying"];
   recordPlayCompletion: MusicStore["recordPlayCompletion"];
   refillLibraryQueue: MusicStore["refillLibraryQueue"];

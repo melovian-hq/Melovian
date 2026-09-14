@@ -75,6 +75,12 @@ export function createConnectContext(
     set reconnectPositionMs(v) {
       store.reconnectPositionMs = v;
     },
+    get reconnectResumeTrackId() {
+      return store.reconnectResumeTrackId;
+    },
+    set reconnectResumeTrackId(v) {
+      store.reconnectResumeTrackId = v;
+    },
     get currentTime() {
       return store.currentTime;
     },

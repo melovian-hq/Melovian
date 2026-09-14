@@ -487,8 +487,15 @@ class MusicStore {
   private connectInFlight: Promise<boolean> | null = null;
   private libraryWarmup = false;
   private playbackRestored = false;
-  private reconnectResumePending = false;
+  private reconnectResumePending = $state(false);
   private reconnectPositionMs = 0;
+  private reconnectResumeTrackId: string | null = null;
+  /**
+   * resumePendingOnReconnect is true while playback is parked on a track that
+   * failed because the server went away. The queue holds its position and the
+   * next successful reconnect resumes it automatically.
+   */
+  resumePendingOnReconnect = $derived(this.reconnectResumePending);
   private nextTrackPrepared = false;
   private crossfadeHandled = false;
   private crossfadeFinishingTrack: QueueTrack | null = null;
@@ -1243,6 +1250,10 @@ class MusicStore {
         this.crossfadeFinishingTrack = null;
         return;
       }
+      // The engine already swapped elements, so the queue must advance even
+      // if the user paused mid-fade. onPlaybackStarted is what flips playing
+      // back to true, so a paused store commits the queue state without it
+      // and leaves playback stopped as the user asked.
       this.queueIndex = nextIdx;
       const finished = this.crossfadeFinishingTrack;
       this.crossfadeFinishingTrack = null;
@@ -1251,8 +1262,10 @@ class MusicStore {
       this.prefetchAround();
       if (finished) void this.recordPlayCompletion(finished);
       const track = this.currentTrack;
-      if (track) {
+      if (track && this.playing) {
         this.onPlaybackStarted(track, token, { incrementPlay: true });
+      } else {
+        this.syncMediaSession();
       }
     });
   }
@@ -1495,6 +1508,10 @@ class MusicStore {
     this.playing = false;
     this.stopSmoothProgress();
     this.syncMediaSession();
+    // The queue reached its end, so a resume parked against it is stale.
+    this.reconnectResumePending = false;
+    this.reconnectPositionMs = 0;
+    this.reconnectResumeTrackId = null;
     this.persistPlaybackState();
   }
 

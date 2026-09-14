@@ -30,6 +30,7 @@ export interface MusicConnectContext {
   queueIndex: number;
   reconnectResumePending: boolean;
   reconnectPositionMs: number;
+  reconnectResumeTrackId: string | null;
   currentTime: number;
   currentTrack: QueueTrack | null;
   engine: PlaybackEngine | null;
@@ -287,7 +288,7 @@ export async function bootstrapOfflinePlayback(ctx: MusicConnectContext) {
 }
 
 export function suspendForReconnect(ctx: MusicConnectContext) {
-  if (!ctx.currentTrack || !ctx.playing) return;
+  if (!ctx.currentTrack) return;
   markPendingReconnectResume(ctx);
   ctx.engine?.pause();
   ctx.playing = false;
@@ -296,7 +297,15 @@ export function suspendForReconnect(ctx: MusicConnectContext) {
 }
 
 export function markPendingReconnectResume(ctx: MusicConnectContext) {
-  if (!ctx.currentTrack) return;
+  const track = ctx.currentTrack;
+  if (!track) return;
+  // The parked position belongs to a specific track. If the user moved to a
+  // different track while suspended, start its resume bookkeeping fresh
+  // instead of carrying the old position over.
+  if (ctx.reconnectResumeTrackId !== track.id) {
+    ctx.reconnectResumeTrackId = track.id;
+    ctx.reconnectPositionMs = 0;
+  }
   ctx.reconnectResumePending = true;
   ctx.reconnectPositionMs = Math.max(
     ctx.reconnectPositionMs,
@@ -304,11 +313,36 @@ export function markPendingReconnectResume(ctx: MusicConnectContext) {
   );
 }
 
-export async function resumeAfterReconnect(ctx: MusicConnectContext) {
-  if (!ctx.reconnectResumePending || !ctx.currentTrack) return;
+/**
+ * clearPendingReconnectResume drops a parked resume so it cannot fire on a
+ * later unrelated reconnect. Queue teardown paths (clearQueue,
+ * stopAtQueueEnd, disconnect) call this because a resume parked against the
+ * old queue must not playCurrent into a queue the user rebuilt.
+ */
+export function clearPendingReconnectResume(ctx: {
+  reconnectResumePending: boolean;
+  reconnectPositionMs: number;
+  reconnectResumeTrackId: string | null;
+}) {
   ctx.reconnectResumePending = false;
-  const positionMs = ctx.reconnectPositionMs;
   ctx.reconnectPositionMs = 0;
+  ctx.reconnectResumeTrackId = null;
+}
+
+export async function resumeAfterReconnect(ctx: MusicConnectContext) {
+  if (!ctx.reconnectResumePending) return;
+  // Consume the pending flag even when there is no current track. The queue
+  // may have been cleared or rebuilt while suspended, and leaving the flag
+  // armed would let a later reconnect resume into that new queue.
+  ctx.reconnectResumePending = false;
+  const track = ctx.currentTrack;
+  const positionMs =
+    track && ctx.reconnectResumeTrackId === track.id
+      ? ctx.reconnectPositionMs
+      : 0;
+  ctx.reconnectResumeTrackId = null;
+  ctx.reconnectPositionMs = 0;
+  if (!track) return;
   try {
     await ctx.playCurrent();
     if (positionMs > 1000) {
@@ -341,7 +375,11 @@ export function disconnect(ctx: MusicConnectContext) {
   resetSubsonicDetailCaches();
   clearMetadataEnhancementMemoryCache();
   ctx.stopLibraryWatch();
-  connection.onServerDisconnected();
+  clearPendingReconnectResume(ctx);
+  // Sign-out and account deletion are deliberate, not outages. teardown
+  // detaches the store without the disconnect toast, history entry, or
+  // reconnect scheduling that onServerDisconnected would produce.
+  connection.teardown();
 }
 
 export function createConnectOps(ctx: MusicConnectContext) {

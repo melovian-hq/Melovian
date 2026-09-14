@@ -36,6 +36,13 @@ class ConnectionStore {
     typeof navigator !== "undefined" ? navigator.onLine : true,
   );
   serverOnline = $state(false);
+  /**
+   * managed is true between init() and dispose(). It marks that this store
+   * owns connect/ping/heal probes for the active source, so serverOnline is
+   * authoritative and playback may hold the queue on failures. Sources that
+   * never init the store (local-only, demo) stay unmanaged and unaffected.
+   */
+  managed = $state(false);
   phase = $state<ConnectionPhase>("offline");
   reconnectAttempt = $state(0);
   lastDisconnectedAt = $state<number | null>(null);
@@ -65,6 +72,10 @@ class ConnectionStore {
     this.pendingPing = ping;
     this.pendingHeal = heal;
     this.callbacks = callbacks;
+    this.managed = true;
+    if (typeof navigator !== "undefined") {
+      this.browserOnline = navigator.onLine;
+    }
     this.bindListeners();
     this.restartTimers();
     void this.tryConnect(true);
@@ -183,15 +194,37 @@ class ConnectionStore {
     void this.tryConnect(true);
   }
 
-  dispose() {
+  /**
+   * teardown detaches the store from the active source without recording an
+   * outage. Deliberate sign-out and account deletion are not server
+   * disconnects, so no history entry is written, no disconnect callback
+   * fires, and no reconnect is scheduled. Runtime state returns to defaults
+   * so a later init starts clean instead of inheriting a stale outage.
+   */
+  teardown() {
     this.stopReconnect();
     this.stopHealthLoop();
     this.stopSelfHealLoop();
+    this.managed = false;
+    this.pendingConnect = null;
+    this.pendingPing = null;
+    this.pendingHeal = null;
+    this.callbacks = {};
+    this.serverOnline = false;
+    this.phase = "offline";
+    this.reconnectAttempt = 0;
+    this.lastDisconnectedAt = null;
+    this.nextRetryAt = null;
+    this.hadOutage = false;
     if (typeof window !== "undefined") {
       window.removeEventListener("online", this.handleBrowserOnline);
       window.removeEventListener("offline", this.handleBrowserOffline);
     }
     this.listenersBound = false;
+  }
+
+  dispose() {
+    this.teardown();
   }
 
   private bindListeners() {
@@ -218,6 +251,21 @@ class ConnectionStore {
     this.browserOnline = false;
     this.serverOnline = false;
     this.phase = "offline";
+    // Mirror the bookkeeping onServerDisconnected does so history and the
+    // reconnect banner measure the outage from when the browser dropped,
+    // not from whenever the next probe happens to run.
+    const now = Date.now();
+    if (this.lastDisconnectedAt === null) {
+      this.lastDisconnectedAt = now;
+      if (this.settings.rememberHistory) {
+        this.history = appendConnectionEvent(
+          this.history,
+          { disconnectedAt: now },
+          this.settings.maxHistoryEntries,
+        );
+        saveConnectionHistory(this.history);
+      }
+    }
     if (!this.hadOutage) {
       this.hadOutage = true;
       this.callbacks.onDisconnected?.();

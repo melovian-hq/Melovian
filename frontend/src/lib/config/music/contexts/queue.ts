@@ -84,6 +84,24 @@ export function createQueueContext(store: MusicStoreHost): MusicQueueContext {
     set pendingStartPaused(v) {
       store.pendingStartPaused = v;
     },
+    get reconnectResumePending() {
+      return store.reconnectResumePending;
+    },
+    set reconnectResumePending(v) {
+      store.reconnectResumePending = v;
+    },
+    get reconnectPositionMs() {
+      return store.reconnectPositionMs;
+    },
+    set reconnectPositionMs(v) {
+      store.reconnectPositionMs = v;
+    },
+    get reconnectResumeTrackId() {
+      return store.reconnectResumeTrackId;
+    },
+    set reconnectResumeTrackId(v) {
+      store.reconnectResumeTrackId = v;
+    },
     playTracks: (tracks, startIndex) => store.playTracks(tracks, startIndex),
     prefetchAround: () => store.prefetchAround(),
     persistPlaybackState: () => store.persistPlaybackState(),

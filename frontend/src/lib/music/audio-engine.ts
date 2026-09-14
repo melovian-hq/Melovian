@@ -11,6 +11,14 @@ import { setMobileMediaPlaying } from "$lib/config/runtime";
 
 type Handler = () => void;
 
+/**
+ * LOAD_TIMEOUT_MS bounds how long a media load may sit without canplay or
+ * error. A stalled connection can hang a load forever without ever firing
+ * error, which would wedge the serialized play chain and block every later
+ * advance, so the load is abandoned after this window.
+ */
+const LOAD_TIMEOUT_MS = 30_000;
+
 type CrossfeedNodes = {
   splitter: ChannelSplitterNode;
   merger: ChannelMergerNode;
@@ -52,6 +60,7 @@ export class AudioEngine implements PlaybackEngine {
   private currentVolume = 1;
   private prefetchEls = new Map<string, HTMLAudioElement>();
   private crossfadeInFlight = false;
+  private crossfadeGeneration = 0;
   private suppressEndedIndex: number | null = null;
 
   private endedHandlers = new Set<Handler>();
@@ -291,6 +300,7 @@ export class AudioEngine implements PlaybackEngine {
   private loadInto(el: HTMLAudioElement, url: string): Promise<void> {
     return new Promise((resolve, reject) => {
       const cleanup = () => {
+        window.clearTimeout(timer);
         el.removeEventListener("canplay", onCanPlay);
         el.removeEventListener("error", onError);
       };
@@ -307,6 +317,15 @@ export class AudioEngine implements PlaybackEngine {
           ),
         );
       };
+      const onTimeout = () => {
+        cleanup();
+        reject(
+          new Error(
+            `Audio load timed out after ${LOAD_TIMEOUT_MS / 1000}s${url ? `: ${url}` : ""}`,
+          ),
+        );
+      };
+      const timer = window.setTimeout(onTimeout, LOAD_TIMEOUT_MS);
       el.addEventListener("canplay", onCanPlay);
       el.addEventListener("error", onError);
       // When the Web Audio graph is active, the audio element must feed it at
@@ -381,6 +400,10 @@ export class AudioEngine implements PlaybackEngine {
 
   private cancelCrossfade() {
     this.crossfadeInFlight = false;
+    // Bumping the generation tells a fade still waiting on its timer that
+    // its commit is stale: pause, seek, loadSource, and destroy all funnel
+    // through here, so any of them abandons the pending swap.
+    this.crossfadeGeneration += 1;
     this.suppressEndedIndex = null;
     this.resetSourceGains();
   }
@@ -399,6 +422,9 @@ export class AudioEngine implements PlaybackEngine {
   }
 
   private async instantPrepared(url: string): Promise<boolean> {
+    // A swap here supersedes any fade still waiting on its timer, so mark
+    // it cancelled before touching the elements.
+    this.cancelCrossfade();
     const next = this.standby;
     await this.silenceForSwap();
     this.active.pause();
@@ -441,6 +467,7 @@ export class AudioEngine implements PlaybackEngine {
 
     this.crossfadeInFlight = true;
     this.suppressEndedIndex = outgoingIndex;
+    const generation = this.crossfadeGeneration;
 
     const duration = Math.max(0.25, crossfadeSec);
     const now = this.context.currentTime;
@@ -464,6 +491,19 @@ export class AudioEngine implements PlaybackEngine {
       await new Promise<void>((resolve) => {
         window.setTimeout(resolve, duration * 1000);
       });
+
+      // A cancel during the fade (pause, seek, a new loadSource, destroy)
+      // cleared the flag and bumped the generation. Committing the swap
+      // anyway would leave the engine playing this crossfade target while
+      // the store has already moved to a different track, so abandon it:
+      // stop the incoming element and hand full gain back to the outgoing
+      // one, which keeps playing (or stays paused) exactly as the cancel
+      // left it.
+      if (!this.crossfadeInFlight || generation !== this.crossfadeGeneration) {
+        incoming.pause();
+        this.resetSourceGains();
+        return false;
+      }
 
       outgoing.pause();
       this.activeIndex = incomingIndex;

@@ -38,6 +38,9 @@ export interface MusicPlaybackCoreContext {
   pendingStartPaused: boolean;
   transcodedTrackIds: Set<string>;
   failedTrackSkips: number;
+  reconnectResumePending: boolean;
+  reconnectPositionMs: number;
+  reconnectResumeTrackId: string | null;
   playing: boolean;
   currentTrack: QueueTrack | null;
   currentTime: number;
@@ -129,6 +132,10 @@ export function onPlaybackStarted(
   options: { incrementPlay?: boolean } = {},
 ) {
   ctx.failedTrackSkips = 0;
+  // Playback succeeded on its own, so any parked reconnect resume is stale.
+  ctx.reconnectResumePending = false;
+  ctx.reconnectPositionMs = 0;
+  ctx.reconnectResumeTrackId = null;
   ctx.playing = true;
   pauseVideoForMusic();
   ctx.startProgressTracking();
@@ -375,10 +382,16 @@ export async function flushPlaybackState(
 
 export function persistPlaybackState(ctx: MusicPlaybackCoreContext) {
   if (ctx.queue.length === 0 || ctx.queueIndex < 0) return;
+  // While a reconnect resume is parked, the engine clock is already lost
+  // (the failed load reset the element), so persist the parked resume
+  // position instead of the near-zero live position.
+  const positionMs = ctx.reconnectResumePending
+    ? ctx.reconnectPositionMs
+    : Math.floor((ctx.engine?.currentTime ?? ctx.currentTime) * 1000);
   savePlayback({
     trackIds: ctx.queue.map((t) => t.id),
     queueIndex: ctx.queueIndex,
-    positionMs: Math.floor((ctx.engine?.currentTime ?? ctx.currentTime) * 1000),
+    positionMs,
     shuffle: ctx.shuffle,
     autoplay: ctx.autoplay,
     continuousMode: ctx.continuousMode,

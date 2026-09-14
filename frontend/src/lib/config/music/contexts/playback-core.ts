@@ -50,6 +50,24 @@ export function createPlaybackCoreContext(
     set failedTrackSkips(v) {
       store.failedTrackSkips = v;
     },
+    get reconnectResumePending() {
+      return store.reconnectResumePending;
+    },
+    set reconnectResumePending(v) {
+      store.reconnectResumePending = v;
+    },
+    get reconnectPositionMs() {
+      return store.reconnectPositionMs;
+    },
+    set reconnectPositionMs(v) {
+      store.reconnectPositionMs = v;
+    },
+    get reconnectResumeTrackId() {
+      return store.reconnectResumeTrackId;
+    },
+    set reconnectResumeTrackId(v) {
+      store.reconnectResumeTrackId = v;
+    },
     get playing() {
       return store.playing;
     },

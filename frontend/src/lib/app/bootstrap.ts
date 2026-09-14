@@ -147,7 +147,11 @@ export function initSourceConnection(
   bootstrapped: boolean,
 ): (() => void) | undefined {
   if (!bootstrapped || auth.needsAccountLogin || sources.needsSetup) return;
-  if (sources.hasSubsonicActive && !sources.hasUnifiedMode) {
+  // Unified mode with a subsonic instance still streams remote tracks, so it
+  // gets the managed connection too. Local playback in unified keeps working
+  // while the server is down; the offline hold only parks queue advancement
+  // on actual track failures (playbackHoldActive in skipFailedTrack).
+  if (sources.hasSubsonicActive) {
     connection.init(
       () => music.connect({ quiet: true, authEnabled: auth.enabled }),
       () => music.pingServer(),

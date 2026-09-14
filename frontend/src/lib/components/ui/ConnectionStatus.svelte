@@ -22,8 +22,11 @@
     return () => clearInterval(timer);
   });
 
+  // managed matches the OfflineBanner gate: sources that never init the
+  // connection store (local-only, demo) must not show outage UI.
   const show = $derived(
     music.status.enabled &&
+      connection.managed &&
       (!connection.online ||
         connection.phase === "reconnecting" ||
         connection.phase === "retrying" ||
@@ -138,21 +141,13 @@
 
   .conn-status--online {
     padding: 0.4375rem;
-    color: var(--jb-success, #16a34a);
-    border-color: color-mix(
-      in srgb,
-      var(--jb-success, #16a34a) 35%,
-      var(--jb-border)
-    );
+    color: var(--jb-success);
+    border-color: color-mix(in srgb, var(--jb-success) 35%, var(--jb-border));
     cursor: pointer;
   }
 
   button.conn-status--online:hover:not(:disabled) {
-    border-color: color-mix(
-      in srgb,
-      var(--jb-success, #16a34a) 55%,
-      var(--jb-accent)
-    );
+    border-color: color-mix(in srgb, var(--jb-success) 55%, var(--jb-accent));
   }
 
   .conn-status__cloud-wrap {

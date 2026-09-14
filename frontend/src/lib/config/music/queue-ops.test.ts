@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it, vi } from "vitest";
-import { moveInQueue, type MusicQueueContext } from "./queue-ops";
+import { clearQueue, moveInQueue, type MusicQueueContext } from "./queue-ops";
 import type { QueueTrack } from "$lib/subsonic";
 
 function track(id: string): QueueTrack {
@@ -28,6 +28,9 @@ function makeCtx(
     playerLayout: "mini",
     pendingStartAt: null,
     pendingStartPaused: false,
+    reconnectResumePending: false,
+    reconnectPositionMs: 0,
+    reconnectResumeTrackId: null,
     playTracks: vi.fn(),
     prefetchAround: vi.fn(),
     persistPlaybackState: vi.fn(),
@@ -57,5 +60,22 @@ describe("moveInQueue", () => {
     expect(ctx.shuffleHistory).toEqual([0]);
     expect(ctx.shuffleUpcoming).toEqual([2]);
     expect(ctx.seedShuffleUpcoming).not.toHaveBeenCalled();
+  });
+});
+
+describe("clearQueue", () => {
+  it("drops a parked reconnect resume with the queue", () => {
+    const ctx = makeCtx({
+      reconnectResumePending: true,
+      reconnectPositionMs: 42500,
+      reconnectResumeTrackId: "a",
+    });
+
+    clearQueue(ctx);
+
+    expect(ctx.queue).toEqual([]);
+    expect(ctx.reconnectResumePending).toBe(false);
+    expect(ctx.reconnectPositionMs).toBe(0);
+    expect(ctx.reconnectResumeTrackId).toBeNull();
   });
 });

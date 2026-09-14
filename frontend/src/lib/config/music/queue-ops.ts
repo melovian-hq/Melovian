@@ -16,6 +16,7 @@ import {
 import { clearMediaSession } from "$lib/music/media-session";
 import type { QueueTrack, SubsonicSong } from "$lib/subsonic";
 import { toast } from "$lib/ui/toast.svelte";
+import { clearPendingReconnectResume } from "./connect-ops";
 import type { PlayerLayout } from "./types";
 
 export interface MusicQueueContext {
@@ -33,6 +34,9 @@ export interface MusicQueueContext {
   playerLayout: PlayerLayout;
   pendingStartAt: number | null;
   pendingStartPaused: boolean;
+  reconnectResumePending: boolean;
+  reconnectPositionMs: number;
+  reconnectResumeTrackId: string | null;
   playTracks(tracks: SubsonicSong[], startIndex?: number): void;
   prefetchAround(): void;
   persistPlaybackState(): void;
@@ -55,6 +59,7 @@ export function removeFromQueue(ctx: MusicQueueContext, index: number) {
     ctx.shuffleHistory = [];
     ctx.engine?.pause();
     ctx.playing = false;
+    clearPendingReconnectResume(ctx);
     ctx.persistPlaybackState();
     return;
   }
@@ -248,6 +253,8 @@ export function clearQueue(ctx: MusicQueueContext) {
   ctx.shuffleHistory = [];
   ctx.queueOpen = false;
   clearMediaSession();
+  // The queue is gone, so a resume parked against it is stale.
+  clearPendingReconnectResume(ctx);
   ctx.persistPlaybackState();
 }
 

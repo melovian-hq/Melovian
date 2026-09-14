@@ -2,6 +2,10 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { connection } from "$lib/music/connection.svelte";
+import {
+  failuresSuggestOutage,
+  playbackHoldActive,
+} from "$lib/music/offline-gate";
 import * as musicApi from "$lib/music/api";
 import { toRockskyTrack } from "$lib/music/rocksky";
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
@@ -242,7 +246,13 @@ export async function onTrackEnded(ctx: MusicTrackBoundaryContext) {
     if (ctx.repeat === "one") {
       if (ctx.engine) {
         ctx.engine.currentTime = 0;
-        void ctx.engine.play();
+        void ctx.engine.play().catch(() => {
+          // A rejected replay leaves the element paused at zero. Surface
+          // the stopped state instead of leaving the store flagged as
+          // playing.
+          ctx.playing = false;
+          ctx.stopSmoothProgress();
+        });
       }
       if (finished) void ctx.recordPlayCompletion(finished);
       return;
@@ -480,7 +490,32 @@ export function skipFailedTrack(
   reason?: string,
 ) {
   if (epoch !== ctx.playbackEpoch) return;
+
+  // The server is known unreachable. Hold the queue in place instead of
+  // burning through tracks that can only fail while it is down.
+  if (
+    playbackHoldActive({
+      managed: connection.managed,
+      browserOnline: connection.browserOnline,
+      serverOnline: connection.serverOnline,
+    })
+  ) {
+    holdQueueForReconnect(ctx);
+    return;
+  }
+
   ctx.failedTrackSkips += 1;
+
+  // A run of consecutive failures is itself outage evidence. Audio elements
+  // often surface a dead server as SRC_NOT_SUPPORTED or decode errors rather
+  // than MEDIA_ERR_NETWORK, so push the connection store into its reconnect
+  // path and hold the queue until it recovers.
+  if (connection.managed && failuresSuggestOutage(ctx.failedTrackSkips)) {
+    connection.onServerDisconnected(reason ?? "Playback failed repeatedly");
+    holdQueueForReconnect(ctx);
+    return;
+  }
+
   const limit = Math.max(1, Math.min(ctx.queue.length, MAX_FAILED_TRACK_SKIPS));
   if (ctx.failedTrackSkips >= limit) {
     ctx.failedTrackSkips = 0;
@@ -492,6 +527,17 @@ export function skipFailedTrack(
     ctx.failedTrackSkips = 0;
     ctx.stopAtQueueEnd();
   }
+}
+
+/**
+ * holdQueueForReconnect parks the queue on the failed track and flags a
+ * resume for the next successful reconnect, keeping the user's position
+ * instead of advancing into tracks that cannot load while the server is down.
+ */
+function holdQueueForReconnect(ctx: MusicTrackBoundaryContext) {
+  ctx.failedTrackSkips = 0;
+  ctx.suspendForReconnect();
+  ctx.persistPlaybackState();
 }
 
 export async function restorePlayback(ctx: MusicTrackBoundaryContext) {
