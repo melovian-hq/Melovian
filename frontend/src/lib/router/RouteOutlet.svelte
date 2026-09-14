@@ -6,11 +6,13 @@
   import type { RouteComponent, RouteLoader } from "./router.svelte";
   import { routePropsFromMatch } from "./route-props";
   import {
+    captureViewSnapshot,
     pageInFly,
     pageOutFade,
     pinOutgoingPage,
     resetPageScroll,
     routeViewKey,
+    type PinnedViewSnapshot,
   } from "./page-motion";
 
   interface Props {
@@ -29,11 +31,32 @@
   let loadError = $state<string | null>(null);
   let retryToken = $state(0);
   let outletEl = $state<HTMLDivElement | null>(null);
+  let viewSnapshot: PinnedViewSnapshot | null = null;
 
   const viewKey = $derived(routeViewKey(shownPath, shownParams));
   const pageProps: Record<string, string> = $derived(
     routePropsFromMatch(shownPath, shownParams),
   );
+
+  function captureView() {
+    const el = outletEl;
+    if (el) viewSnapshot = captureViewSnapshot(el);
+  }
+
+  // Keep a fresh geometry snapshot of the stable view. Route commits can
+  // shift the outlet (content padding flips between compact and fill), and
+  // onoutrostart reads this to pin the leaving page where it last painted.
+  // ResizeObserver covers sidebar, window, and chrome resizes between
+  // commits; the viewKey rAF below covers commits that do not resize.
+  $effect(() => {
+    const el = outletEl;
+    if (!el) return;
+    captureView();
+    if (typeof ResizeObserver === "undefined") return;
+    const observer = new ResizeObserver(captureView);
+    observer.observe(el);
+    return () => observer.disconnect();
+  });
 
   // The shell scroll container is shared across routes. Reset it when a new
   // view commits. onoutrostart already resets during crossfades, but zero
@@ -42,7 +65,10 @@
     void viewKey;
     const el = outletEl;
     if (!el) return;
-    const raf = requestAnimationFrame(() => resetPageScroll(el));
+    const raf = requestAnimationFrame(() => {
+      resetPageScroll(el);
+      captureView();
+    });
     return () => cancelAnimationFrame(raf);
   });
 
@@ -120,7 +146,7 @@
   function onPageOutroStart(event: Event) {
     const node = event.currentTarget;
     if (node instanceof HTMLElement) {
-      pinOutgoingPage(node);
+      pinOutgoingPage(node, viewSnapshot);
       resetPageScroll(node);
     }
   }
@@ -128,7 +154,10 @@
 
 {#if coldLoading && !Page}
   <div class="route-loading"><Spinner /></div>
-{:else if loadError && !Page}
+{:else if loadError}
+  <!-- A failed lazy load replaces the stale page so the retry affordance is
+       visible. Page is kept in state, so a successful retry swaps straight
+       back in instead of falling through to the cold spinner. -->
   <ErrorFallback error={loadError} onretry={retryLoad} />
 {:else if Page}
   <div class="route-outlet" bind:this={outletEl}>

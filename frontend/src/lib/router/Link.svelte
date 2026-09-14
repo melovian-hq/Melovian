@@ -33,6 +33,7 @@
 <a
   href={resolvedHref}
   class="{className}{active && activeClass ? ` ${activeClass}` : ''}"
+  aria-current={active ? "page" : undefined}
   use:link={href}
   {...rest}
 >

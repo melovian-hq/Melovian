@@ -6,6 +6,19 @@ export interface RouteMatch {
   query: Record<string, string>;
 }
 
+// decodeURIComponent throws on malformed escapes like "%zz". A bad URL should
+// fall back to the raw segment, not crash the match during render.
+function decodeSegment(value: string): string {
+  try {
+    return decodeURIComponent(value);
+  } catch {
+    return value;
+  }
+}
+
+// A trailing ":name*" segment is a splat. It consumes every remaining path
+// segment (including none) and joins them into one param. Only the final
+// pattern segment may be a splat.
 export function matchPath(
   pattern: string,
   pathname: string,
@@ -13,7 +26,17 @@ export function matchPath(
   const patternParts = pattern.split("/").filter(Boolean);
   const pathParts = pathname.split("/").filter(Boolean);
 
-  if (patternParts.length !== pathParts.length) return null;
+  const last = patternParts[patternParts.length - 1] ?? "";
+  const splatName =
+    last.startsWith(":") && last.endsWith("*")
+      ? last.slice(1, -1) || "splat"
+      : null;
+
+  if (splatName !== null) {
+    if (pathParts.length < patternParts.length - 1) return null;
+  } else if (patternParts.length !== pathParts.length) {
+    return null;
+  }
 
   const params: Record<string, string> = {};
 
@@ -21,8 +44,14 @@ export function matchPath(
     const part = patternParts[i];
     const value = pathParts[i];
 
+    if (splatName !== null && i === patternParts.length - 1) {
+      params[splatName] = pathParts.slice(i).map(decodeSegment).join("/");
+      break;
+    }
+
     if (part.startsWith(":")) {
-      params[part.slice(1)] = decodeURIComponent(value);
+      if (value === undefined) return null;
+      params[part.slice(1)] = decodeSegment(value);
     } else if (part !== value) {
       return null;
     }

@@ -38,4 +38,35 @@ describe("router match", () => {
     expect(result?.match.params.albumId).toBe("abc");
     expect(result?.match.query.from).toBe("search");
   });
+
+  it("matches a catch-all splat at any depth", () => {
+    const match = matchPath("/:splat*", "/definitely/not/a/page");
+    expect(match?.params.splat).toBe("definitely/not/a/page");
+  });
+
+  it("matches a splat with zero trailing segments", () => {
+    const match = matchPath("/:splat*", "/");
+    expect(match).not.toBeNull();
+    expect(match?.params.splat).toBe("");
+  });
+
+  it("matches a splat after a static prefix", () => {
+    expect(matchPath("/music/:rest*", "/music/a/b")?.params.rest).toBe("a/b");
+    expect(matchPath("/music/:rest*", "/music")?.params.rest).toBe("");
+    expect(matchPath("/music/:rest*", "/other/deep")).toBeNull();
+  });
+
+  it("decodes splat segments and tolerates malformed escapes", () => {
+    expect(matchPath("/:splat*", "/Classic%20Rock/jazz")?.params.splat).toBe(
+      "Classic Rock/jazz",
+    );
+    expect(matchPath("/:splat*", "/bad%zz")?.params.splat).toBe("bad%zz");
+    expect(matchPath("/music/:id", "/music/bad%zz")?.params.id).toBe("bad%zz");
+  });
+
+  it("matchRoute falls through to a trailing catch-all", () => {
+    const routes = [{ path: "/music" }, { path: "/:splat*" }];
+    expect(matchRoute(routes, "/music")?.path).toBe("/music");
+    expect(matchRoute(routes, "/nope/deep")?.path).toBe("/:splat*");
+  });
 });

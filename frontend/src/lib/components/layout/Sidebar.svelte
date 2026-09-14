@@ -13,6 +13,7 @@
   import { videoFeature } from "$lib/video/feature.svelte";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { Cap, supports } from "$lib/compat";
+  import { logClientError } from "$lib/core/logger";
   import { layout } from "./layout.svelte";
 
   interface Props {
@@ -96,7 +97,8 @@
       .then((m) => m.getMusicStatus())
       .then((status) => {
         music.status = status;
-      });
+      })
+      .catch((err) => logClientError(err, "sidebar"));
   });
 
   function closeOnNavigate() {
@@ -122,18 +124,18 @@
     aria-label="{APP_NAME} home"
   >
     <AppLogo size={brandLogoSize} />
-    {#if !collapsed}
-      <div class="sidebar__brand-copy">
-        <span class="sidebar__title">{APP_NAME}</span>
-        <span class="sidebar__subtitle">
-          {instances.active?.serverName ?? music.serverName}
-        </span>
-      </div>
-    {/if}
+    <div class="sidebar__brand-copy">
+      <span class="sidebar__title">{APP_NAME}</span>
+      <span class="sidebar__subtitle">
+        {instances.active?.serverName ?? music.serverName}
+      </span>
+    </div>
   </Link>
 
-  {#if !collapsed && !auth.demoMode}
-    <InstanceSwitcher compact />
+  {#if !auth.demoMode}
+    <div class="sidebar__instance">
+      <InstanceSwitcher compact />
+    </div>
   {/if}
 
   <div class="sidebar__nav">
@@ -143,29 +145,25 @@
         class="sidebar__link"
         activeClass="sidebar__link--active"
         onclick={closeOnNavigate}
+        aria-label={item.label}
       >
         <MdiIcon name={item.icon} size={navIconSize} />
-        {#if !collapsed}
-          <span>{item.label}</span>
-        {/if}
+        <span class="sidebar__label">{item.label}</span>
       </Link>
     {/each}
 
     {#if toolNav.length > 0}
-      {#if !collapsed}
-        <p class="sidebar__section-label">Library tools</p>
-      {/if}
+      <p class="sidebar__section-label">Library tools</p>
       {#each toolNav as item (item.href)}
         <Link
           href={item.href}
           class="sidebar__link"
           activeClass="sidebar__link--active"
           onclick={closeOnNavigate}
+          aria-label={item.label}
         >
           <MdiIcon name={item.icon} size={navIconSize} />
-          {#if !collapsed}
-            <span>{item.label}</span>
-          {/if}
+          <span class="sidebar__label">{item.label}</span>
         </Link>
       {/each}
     {/if}
@@ -177,27 +175,25 @@
         activeClass="sidebar__link--active"
         matchPrefix="/settings"
         onclick={closeOnNavigate}
+        aria-label="Settings"
       >
         <MdiIcon name="settings" size={navIconSize} />
-        {#if !collapsed}
-          <span>Settings</span>
-        {/if}
+        <span class="sidebar__label">Settings</span>
       </Link>
     {/if}
   </div>
 
   <div class="sidebar__footer jb-no-drag">
-    {#if !collapsed}
-      <div class="sidebar__footer-tools">
-        <ConnectionStatus embedded />
-        <ThemeToggle embedded />
-      </div>
-    {/if}
+    <div class="sidebar__footer-tools">
+      <ConnectionStatus embedded />
+      <ThemeToggle embedded />
+    </div>
     <button
       type="button"
       class="sidebar__collapse"
       onclick={() => layout.toggleCollapsed()}
       aria-label={collapsed ? "Expand sidebar" : "Collapse sidebar"}
+      aria-expanded={!collapsed}
       title={collapsed ? "Expand sidebar" : "Collapse sidebar"}
     >
       <MdiIcon
@@ -209,33 +205,34 @@
 </nav>
 
 <style>
+  /* The inner rail keeps a fixed expanded width. The aside clips it while
+     animating width, and clip-path mirrors the clip so content never
+     repaints outside the rail when the aside allows overflow (custom
+     window chrome). Item positions never recompute during the transition. */
   .sidebar {
+    position: relative;
     display: flex;
     flex-direction: column;
+    width: var(--jb-sidebar-width);
+    flex-shrink: 0;
     height: 100%;
     min-height: 0;
     padding: var(--jb-space-4);
     background: var(--jb-bg-elevated);
-    border-right: 1px solid var(--jb-border);
     gap: var(--jb-space-6);
+    clip-path: inset(0 0 0 0);
+    transition: clip-path var(--jb-transition);
+  }
+
+  .sidebar--collapsed {
+    clip-path: inset(
+      0 calc(var(--jb-sidebar-width) - var(--jb-sidebar-width-collapsed)) 0 0
+    );
   }
 
   :global(html[data-custom-window-chrome="true"]) .sidebar {
     padding-top: calc(var(--jb-window-chrome-height, 2rem) + var(--jb-space-2));
     gap: var(--jb-space-4);
-    border-right: none;
-    position: relative;
-  }
-
-  :global(html[data-custom-window-chrome="true"]) .sidebar::after {
-    content: "";
-    position: absolute;
-    top: calc(var(--jb-window-chrome-height, 2rem));
-    right: 0;
-    bottom: 0;
-    width: 1px;
-    background: var(--jb-border);
-    pointer-events: none;
   }
 
   .sidebar :global(.sidebar__brand) {
@@ -275,6 +272,32 @@
     min-width: 0;
     gap: 0.125rem;
     line-height: 1.2;
+  }
+
+  .sidebar__instance {
+    flex-shrink: 0;
+    min-width: 0;
+  }
+
+  /* Text and tool rows fade in place instead of being removed, so the
+     pinned-width layout above them never reflows mid transition. */
+  .sidebar__label,
+  .sidebar__brand-copy,
+  .sidebar__instance,
+  .sidebar__section-label,
+  .sidebar__footer-tools {
+    transition:
+      opacity var(--jb-transition),
+      visibility var(--jb-transition);
+  }
+
+  .sidebar--collapsed .sidebar__label,
+  .sidebar--collapsed .sidebar__brand-copy,
+  .sidebar--collapsed .sidebar__instance,
+  .sidebar--collapsed .sidebar__section-label,
+  .sidebar--collapsed .sidebar__footer-tools {
+    opacity: 0;
+    visibility: hidden;
   }
 
   .sidebar__title {
@@ -325,6 +348,13 @@
       box-shadow var(--jb-transition);
   }
 
+  .sidebar__label {
+    min-width: 0;
+    overflow: hidden;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
   .sidebar :global(.sidebar__link:hover) {
     background: var(--jb-surface-hover);
     color: var(--jb-text);
@@ -343,33 +373,11 @@
     color: var(--jb-text);
   }
 
-  .sidebar--collapsed {
-    padding-left: var(--jb-space-2);
-    padding-right: var(--jb-space-2);
-  }
-
-  :global(html[data-custom-window-chrome="true"])
-    .sidebar--collapsed
-    :global(.sidebar__brand) {
-    padding-inline: var(--jb-space-2);
-    margin-inline: calc(var(--jb-space-2) * -1);
-    margin-top: 0;
-    justify-content: center;
-  }
-
-  .sidebar--collapsed :global(.sidebar__brand) {
-    justify-content: center;
-  }
-
-  .sidebar--collapsed :global(.sidebar__link) {
-    justify-content: center;
-    padding: var(--jb-space-2);
-  }
-
   .sidebar__footer {
     display: none;
     flex-shrink: 0;
     margin-top: auto;
+    min-height: calc(var(--jb-space-3) + 2.25rem);
     padding-top: var(--jb-space-3);
     border-top: 1px solid var(--jb-border);
     position: relative;
@@ -386,19 +394,30 @@
     flex: 1;
   }
 
+  /* The toggle rides the aside edge via transform, staying in sync with the
+     width transition instead of jumping between footer slots. */
   .sidebar__collapse {
+    position: absolute;
+    left: 0;
+    bottom: 0;
     display: inline-flex;
     align-items: center;
     justify-content: center;
     width: 2.25rem;
     height: 2.25rem;
-    margin-left: auto;
     border: none;
     border-radius: var(--jb-radius-md);
     background: transparent;
     color: var(--jb-text-muted);
     cursor: pointer;
+    transform: translateX(
+      calc(
+        var(--jb-sidebar-current-width, var(--jb-sidebar-width)) -
+          var(--jb-space-8) - 2.25rem
+      )
+    );
     transition:
+      transform var(--jb-transition),
       background var(--jb-transition),
       color var(--jb-transition);
   }
@@ -408,18 +427,21 @@
     color: var(--jb-text);
   }
 
-  .sidebar--collapsed .sidebar__footer {
-    justify-content: center;
-  }
-
-  .sidebar--collapsed .sidebar__collapse {
-    margin-left: 0;
-    width: 2.5rem;
-    height: 2.5rem;
+  @media (prefers-reduced-motion: reduce) {
+    .sidebar,
+    .sidebar__collapse,
+    .sidebar__label,
+    .sidebar__brand-copy,
+    .sidebar__instance,
+    .sidebar__section-label,
+    .sidebar__footer-tools {
+      transition: none;
+    }
   }
 
   @media (max-width: 768px) {
     .sidebar {
+      width: 100%;
       padding-top: calc(env(safe-area-inset-top, 0px) + var(--jb-space-6));
       padding-bottom: calc(
         env(safe-area-inset-bottom, 0px) + var(--jb-space-4)

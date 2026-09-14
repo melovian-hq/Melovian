@@ -10,10 +10,10 @@
 
   const message = $derived(
     error instanceof Error
-      ? error.message || "Something went wrong"
+      ? error.message || `Unexpected error (${error.name})`
       : typeof error === "string"
         ? error
-        : "Something went wrong",
+        : "Unexpected error. Check the app logs for details.",
   );
 </script>
 
@@ -45,7 +45,7 @@
 
   .error-fallback__eyebrow {
     margin: 0;
-    color: var(--jb-danger, #f87171);
+    color: var(--jb-danger);
     font-size: 0.75rem;
     font-weight: 700;
     letter-spacing: 0.08em;
@@ -87,7 +87,7 @@
   .error-fallback__retry {
     border: none;
     background: var(--jb-accent);
-    color: white;
+    color: var(--jb-accent-text);
     cursor: pointer;
   }
 

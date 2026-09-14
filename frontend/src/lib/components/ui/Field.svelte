@@ -2,20 +2,42 @@
   interface Props {
     label: string;
     hint?: string;
+    /** Render as a group wrapper (role=group) instead of a label. Use when the
+     * field wraps buttons or more than one control, where a label would
+     * forward clicks to the first control. */
+    group?: boolean;
     class?: string;
     children?: import("svelte").Snippet;
   }
 
-  let { label, hint = "", class: className = "", children }: Props = $props();
+  let {
+    label,
+    hint = "",
+    group = false,
+    class: className = "",
+    children,
+  }: Props = $props();
+
+  const labelId = $props.id();
 </script>
 
-<label class="field {className}">
-  <span class="field__label">{label}</span>
-  {@render children?.()}
-  {#if hint}
-    <span class="field__hint">{hint}</span>
-  {/if}
-</label>
+{#if group}
+  <div class="field {className}" role="group" aria-labelledby={labelId}>
+    <span class="field__label" id={labelId}>{label}</span>
+    {@render children?.()}
+    {#if hint}
+      <span class="field__hint">{hint}</span>
+    {/if}
+  </div>
+{:else}
+  <label class="field {className}">
+    <span class="field__label">{label}</span>
+    {@render children?.()}
+    {#if hint}
+      <span class="field__hint">{hint}</span>
+    {/if}
+  </label>
+{/if}
 
 <style>
   .field {

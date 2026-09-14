@@ -16,6 +16,7 @@
   import ClosePrompt from "$lib/components/desktop/ClosePrompt.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import CompatBanner from "$lib/components/ui/CompatBanner.svelte";
+
   import RouteOutlet from "$lib/router/RouteOutlet.svelte";
   import RouteBoundary from "$lib/router/RouteBoundary.svelte";
   import AppShell from "$lib/components/layout/AppShell.svelte";
@@ -191,12 +192,6 @@
       </RouteBoundary>
     </AppShell>
   </div>
-{:else}
-  <div class="not-found">
-    <h1>404</h1>
-    <p>That page does not exist.</p>
-    <a href="/music">Go home</a>
-  </div>
 {/if}
 
 {#if showShell}
@@ -249,19 +244,5 @@
     font-weight: 600;
     padding: 0.5rem 1.25rem;
     cursor: pointer;
-  }
-
-  .not-found {
-    min-height: 100vh;
-    display: grid;
-    place-content: center;
-    text-align: center;
-    gap: var(--jb-space-3);
-    background: var(--jb-bg);
-    color: var(--jb-text);
-  }
-
-  .not-found a {
-    color: var(--jb-accent);
   }
 </style>

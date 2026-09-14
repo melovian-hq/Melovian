@@ -10,6 +10,9 @@
     sourceKind?: SourceKind;
     class?: string;
     embedded?: boolean;
+    /** Heading element for the title. Use "h1" when the empty state is the
+     * page's primary heading (e.g. the 404 page). */
+    titleAs?: "h1" | "h2" | "h3";
     actions?: import("svelte").Snippet;
   }
 
@@ -20,6 +23,7 @@
     sourceKind,
     class: className = "",
     embedded = false,
+    titleAs = "h2",
     actions,
   }: Props = $props();
 </script>
@@ -32,7 +36,9 @@
       <MdiIcon name={icon} size={28} />
     {/if}
   </div>
-  <h2 class="empty-state__title">{title}</h2>
+  <svelte:element this={titleAs} class="empty-state__title"
+    >{title}</svelte:element
+  >
   {#if message}
     <p class="empty-state__message">{message}</p>
   {/if}

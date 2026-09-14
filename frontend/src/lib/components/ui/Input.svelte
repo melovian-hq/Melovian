@@ -30,6 +30,7 @@
     autofocus?: boolean;
     onblur?: (event: FocusEvent) => void;
     oninput?: (event: Event) => void;
+    [key: string]: unknown;
   }
 
   let {
@@ -49,6 +50,7 @@
     autofocus = false,
     onblur,
     oninput,
+    ...rest
   }: Props = $props();
 
   function focusIfNeeded(node: HTMLInputElement) {
@@ -74,6 +76,7 @@
   bind:value
   class="input {className}"
   use:focusIfNeeded
+  {...rest}
 />
 
 <style>

@@ -211,4 +211,13 @@ export const routes: RouteDefinition[] = [
     index: false,
     content: "compact",
   },
+  // Catch-all splat. Keep last so every real route wins first.
+  {
+    path: "/:splat*",
+    load: () => import("./pages/NotFoundPage.svelte"),
+    title: "Page not found",
+    description: "The requested page does not exist.",
+    index: false,
+    content: "compact",
+  },
 ];
