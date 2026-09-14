@@ -366,7 +366,9 @@
       "Year": 2026,
       "Genre": "Pop",
       "CoverArt": "al-009-02",
-      "SongIDs": ["tr-0179"],
+      "SongIDs": [
+        "tr-0179"
+      ],
       "CreatedAt": "2026-06-15T12:00:00Z"
     },
     {
@@ -512,120 +514,198 @@
       "ID": "ar-001",
       "Name": "Bruno Mars",
       "CoverArt": "ar-001",
-      "AlbumIDs": ["al-001-01", "al-001-02"],
+      "AlbumIDs": [
+        "al-001-01",
+        "al-001-02"
+      ],
       "Biography": "Pop and R\u0026B. Top monthly listeners on Spotify in 2026.",
-      "SimilarIDs": ["ar-004", "ar-006"]
+      "SimilarIDs": [
+        "ar-004",
+        "ar-006"
+      ]
     },
     {
       "ID": "ar-002",
       "Name": "Taylor Swift",
       "CoverArt": "ar-002",
-      "AlbumIDs": ["al-002-01", "al-002-02"],
+      "AlbumIDs": [
+        "al-002-01",
+        "al-002-02"
+      ],
       "Biography": "Pop songwriter. Among the most-streamed artists worldwide.",
-      "SimilarIDs": ["ar-005", "ar-001"]
+      "SimilarIDs": [
+        "ar-005",
+        "ar-001"
+      ]
     },
     {
       "ID": "ar-003",
       "Name": "The Weeknd",
       "CoverArt": "ar-003",
-      "AlbumIDs": ["al-003-01", "al-003-02"],
+      "AlbumIDs": [
+        "al-003-01",
+        "al-003-02"
+      ],
       "Biography": "R\u0026B and pop. Blinding Lights-era catalog still dominates charts.",
-      "SimilarIDs": ["ar-001", "ar-006"]
+      "SimilarIDs": [
+        "ar-001",
+        "ar-006"
+      ]
     },
     {
       "ID": "ar-004",
       "Name": "Lady Gaga",
       "CoverArt": "ar-004",
-      "AlbumIDs": ["al-004-01"],
+      "AlbumIDs": [
+        "al-004-01"
+      ],
       "Biography": "Pop. Die With a Smile with Bruno Mars was a defining 2024-2025 global hit.",
-      "SimilarIDs": ["ar-001", "ar-002"]
+      "SimilarIDs": [
+        "ar-001",
+        "ar-002"
+      ]
     },
     {
       "ID": "ar-005",
       "Name": "Billie Eilish",
       "CoverArt": "ar-005",
-      "AlbumIDs": ["al-005-01"],
+      "AlbumIDs": [
+        "al-005-01"
+      ],
       "Biography": "Alt-pop. Hit Me Hard and Soft kept her near the top of Spotify followers.",
-      "SimilarIDs": ["ar-002", "ar-008"]
+      "SimilarIDs": [
+        "ar-002",
+        "ar-008"
+      ]
     },
     {
       "ID": "ar-006",
       "Name": "Bad Bunny",
       "CoverArt": "ar-006",
-      "AlbumIDs": ["al-006-01", "al-006-02"],
+      "AlbumIDs": [
+        "al-006-01",
+        "al-006-02"
+      ],
       "Biography": "Reggaeton and Latin pop. Long-running Spotify streaming leader.",
-      "SimilarIDs": ["ar-003", "ar-001"]
+      "SimilarIDs": [
+        "ar-003",
+        "ar-001"
+      ]
     },
     {
       "ID": "ar-007",
       "Name": "Rezz",
       "CoverArt": "ar-007",
-      "AlbumIDs": ["al-007-01", "al-007-02"],
+      "AlbumIDs": [
+        "al-007-01",
+        "al-007-02"
+      ],
       "Biography": "Canadian electronic producer. Mid-tempo bass and dark techno.",
-      "SimilarIDs": ["ar-008", "ar-003"]
+      "SimilarIDs": [
+        "ar-008",
+        "ar-003"
+      ]
     },
     {
       "ID": "ar-008",
       "Name": "Fred again..",
       "CoverArt": "ar-008",
-      "AlbumIDs": ["al-008-01", "al-008-02"],
+      "AlbumIDs": [
+        "al-008-01",
+        "al-008-02"
+      ],
       "Biography": "One-man UK producer. Actual Life samples and stadium dance sets.",
-      "SimilarIDs": ["ar-007", "ar-003"]
+      "SimilarIDs": [
+        "ar-007",
+        "ar-003"
+      ]
     },
     {
       "ID": "ar-009",
       "Name": "Ariana Grande",
       "CoverArt": "ar-009",
-      "AlbumIDs": ["al-009-01", "al-009-02"],
+      "AlbumIDs": [
+        "al-009-01",
+        "al-009-02"
+      ],
       "Biography": "Pop. Still among Spotify's top monthly listeners in 2026.",
-      "SimilarIDs": ["ar-002", "ar-004"]
+      "SimilarIDs": [
+        "ar-002",
+        "ar-004"
+      ]
     },
     {
       "ID": "ar-010",
       "Name": "Drake",
       "CoverArt": "ar-010",
-      "AlbumIDs": ["al-010-01", "al-010-02"],
+      "AlbumIDs": [
+        "al-010-01",
+        "al-010-02"
+      ],
       "Biography": "Hip-hop and R\u0026B. Permanent fixture near the top of Spotify charts.",
-      "SimilarIDs": ["ar-003", "ar-006"]
+      "SimilarIDs": [
+        "ar-003",
+        "ar-006"
+      ]
     },
     {
       "ID": "ar-011",
       "Name": "Ella Langley",
       "CoverArt": "ar-011",
-      "AlbumIDs": ["al-011-01"],
+      "AlbumIDs": [
+        "al-011-01"
+      ],
       "Biography": "Country. Choosin' Texas spent 19 weeks at No. 1 on the Hot 100 in 2026.",
-      "SimilarIDs": ["ar-001", "ar-002"]
+      "SimilarIDs": [
+        "ar-001",
+        "ar-002"
+      ]
     },
     {
       "ID": "ar-012",
       "Name": "Olivia Rodrigo",
       "CoverArt": "ar-012",
-      "AlbumIDs": ["al-012-01"],
+      "AlbumIDs": [
+        "al-012-01"
+      ],
       "Biography": "Pop-rock. Drop Dead led her third album onto the Hot 100 and Billboard 200.",
-      "SimilarIDs": ["ar-005", "ar-002"]
+      "SimilarIDs": [
+        "ar-005",
+        "ar-002"
+      ]
     },
     {
       "ID": "ar-013",
       "Name": "Harry Styles",
       "CoverArt": "ar-013",
-      "AlbumIDs": ["al-013-01"],
+      "AlbumIDs": [
+        "al-013-01"
+      ],
       "Biography": "Pop. Aperture debuted at No. 1 on the Hot 100 in February 2026.",
-      "SimilarIDs": ["ar-002", "ar-001"]
+      "SimilarIDs": [
+        "ar-002",
+        "ar-001"
+      ]
     },
     {
       "ID": "ar-014",
       "Name": "BTS",
       "CoverArt": "ar-014",
-      "AlbumIDs": ["al-014-01"],
+      "AlbumIDs": [
+        "al-014-01"
+      ],
       "Biography": "K-pop. Swim debuted at No. 1 on the Hot 100. Arirang led the Billboard 200.",
-      "SimilarIDs": ["ar-002", "ar-009"]
+      "SimilarIDs": [
+        "ar-002",
+        "ar-009"
+      ]
     }
   ],
   "genres": [
     {
-      "Name": "R\u0026B",
-      "SongCount": 39,
-      "AlbumCount": 3
+      "Name": "Reggaeton",
+      "SongCount": 26,
+      "AlbumCount": 2
     },
     {
       "Name": "Electronic",
@@ -648,6 +728,11 @@
       "AlbumCount": 1
     },
     {
+      "Name": "R\u0026B",
+      "SongCount": 39,
+      "AlbumCount": 3
+    },
+    {
       "Name": "Pop",
       "SongCount": 82,
       "AlbumCount": 8
@@ -656,11 +741,6 @@
       "Name": "Alt Pop",
       "SongCount": 10,
       "AlbumCount": 1
-    },
-    {
-      "Name": "Reggaeton",
-      "SongCount": 26,
-      "AlbumCount": 2
     }
   ],
   "playlists": [
@@ -744,7 +824,13 @@
       "ID": "pl-country",
       "Name": "Choosin' Country",
       "Comment": "Ella Langley Dandelion era",
-      "SongIDs": ["tr-0203", "tr-0206", "tr-0202", "tr-0208", "tr-0204"],
+      "SongIDs": [
+        "tr-0203",
+        "tr-0206",
+        "tr-0202",
+        "tr-0208",
+        "tr-0204"
+      ],
       "Created": "2026-04-10T12:00:00Z",
       "Changed": "2026-08-20T12:00:00Z",
       "Public": true,

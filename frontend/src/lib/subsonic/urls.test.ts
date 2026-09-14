@@ -3,7 +3,7 @@
 
 import { describe, expect, it, beforeEach, afterEach } from "vitest";
 import { streamUrl, coverArtImageUrl, coverArtUrl } from "./urls";
-import { setMediaBaseUrl } from "$lib/config/runtime";
+import { setMediaBaseUrl, setStaticDemo } from "$lib/config/runtime";
 import { setActiveInstanceId } from "$lib/features/instances/context";
 import { setMusicSourceKind } from "$lib/music/source.svelte";
 import type { SubsonicConfig } from "./types";
@@ -19,12 +19,14 @@ describe("stream urls", () => {
     setMediaBaseUrl("");
     setActiveInstanceId(null);
     setMusicSourceKind("subsonic");
+    setStaticDemo(false);
   });
 
   afterEach(() => {
     setMediaBaseUrl("");
     setActiveInstanceId(null);
     setMusicSourceKind("subsonic");
+    setStaticDemo(false);
   });
 
   it("targets the real http server when a media base is set", () => {
@@ -93,6 +95,19 @@ describe("stream urls", () => {
     setMediaBaseUrl("http://127.0.0.1:17337");
     expect(coverArtUrl(config, "alb_123", 300)).toBe(
       "http://127.0.0.1:17337/api/local-music/cover/alb_123?size=300",
+    );
+  });
+
+  it("returns null cover art urls in static demo builds", () => {
+    setStaticDemo(true);
+    expect(coverArtUrl(config, "al-001-01", 300)).toBeNull();
+    expect(coverArtImageUrl(config, "al-001-01")).toBeNull();
+  });
+
+  it("points streams at the bundled silent track in static demo builds", () => {
+    setStaticDemo(true);
+    expect(streamUrl(config, "track-1").endsWith("/demo/silent.wav")).toBe(
+      true,
     );
   });
 });

@@ -276,7 +276,7 @@ export async function loadRuntimeConfig(): Promise<void> {
       setMediaBaseUrl(window.location.origin);
     }
     applyCompatFromConfig({
-      version: "0.1.0",
+      version: CLIENT_VERSION,
       apiVersion: 1,
       minClientVersion: "0.1.0",
       minServerVersion: "0.1.0",

@@ -2,7 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { getActiveInstanceId } from "$lib/features/instances/context";
-import { resolveMediaUrl } from "$lib/config/runtime";
+import { isStaticDemo, resolveMediaUrl } from "$lib/config/runtime";
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { isLocalMusicId } from "$lib/music/library-adapter";
 import {
@@ -43,6 +43,9 @@ export function coverArtImageUrl(
   size = 300,
 ): string | null {
   if (!id) return null;
+  // The static demo has no media host. Skip the request so <img> falls
+  // straight back to generated art instead of firing a doomed fetch.
+  if (isStaticDemo()) return null;
   const base = config.serverUrl.replace(/\/+$/, "");
   const params = subsonicMediaParams(config, { id, size: String(size) });
   return `${base}/rest/getCoverArt.view?${params.toString()}`;
@@ -63,6 +66,11 @@ export function streamUrl(
   }
   if (isLocalMusicSource()) {
     return localStreamUrl(trackId);
+  }
+  if (isStaticDemo()) {
+    const base =
+      (typeof import.meta !== "undefined" && import.meta.env?.BASE_URL) || "/";
+    return `${base.endsWith("/") ? base.slice(0, -1) : base}/demo/silent.wav`;
   }
   const base = resolveMediaUrl(config.serverUrl.replace(/\/+$/, ""));
   const params = subsonicMediaParams(config, { id: trackId });

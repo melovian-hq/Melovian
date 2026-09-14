@@ -18,7 +18,9 @@
     emptyIcon = "listMusic",
   }: Props = $props();
 
-  const covers = $derived(coverArtIds.filter(Boolean).slice(0, 3));
+  const covers = $derived(
+    [...new Set(coverArtIds.filter(Boolean))].slice(0, 3),
+  );
   const count = $derived(covers.length);
   const mosaic = $derived(variant !== "compact");
 

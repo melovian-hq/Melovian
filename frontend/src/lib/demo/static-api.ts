@@ -102,12 +102,20 @@ function asset(path: string): string {
   return `${baseUrl()}${p}`;
 }
 
+function demoVersion(): string {
+  return (
+    (typeof import.meta !== "undefined" &&
+      (import.meta.env?.VITE_APP_VERSION as string | undefined)) ||
+    "0.1.0"
+  );
+}
+
 function jsonResponse(body: unknown, status = 200): Response {
   return new Response(JSON.stringify(body), {
     status,
     headers: {
       "Content-Type": "application/json",
-      "X-Melovian-Server-Version": "0.1.0",
+      "X-Melovian-Server-Version": demoVersion(),
       "X-Melovian-API-Version": "1",
     },
   });
@@ -483,9 +491,13 @@ function playlistApiPayload(c: DemoCatalog) {
       (ms, sid) => ms + (findSong(c, sid)?.Duration ?? 0) * 1000,
       0,
     ),
-    coverArtIds: p.SongIDs.slice(0, 4)
-      .map((sid) => findSong(c, sid)?.CoverArt)
-      .filter((id): id is string => Boolean(id)),
+    coverArtIds: [
+      ...new Set(
+        p.SongIDs.slice(0, 8)
+          .map((sid) => findSong(c, sid)?.CoverArt)
+          .filter((id): id is string => Boolean(id)),
+      ),
+    ].slice(0, 4),
   }));
 }
 
@@ -600,7 +612,7 @@ async function handleApi(
     case "/health":
       return jsonResponse({
         status: "ok",
-        version: "0.1.0",
+        version: demoVersion(),
         apiVersion: 1,
         minClientVersion: "0.1.0",
         minServerVersion: "0.1.0",
@@ -626,7 +638,7 @@ async function handleApi(
         serverMode: true,
         demoMode: true,
         fakeCatalog: true,
-        version: "0.1.0",
+        version: demoVersion(),
         apiVersion: 1,
         minClientVersion: "0.1.0",
         minServerVersion: "0.1.0",
@@ -727,6 +739,11 @@ async function handleApi(
       return jsonResponse({});
     case ApiPaths.musicPlaylists:
       return jsonResponse({ playlists: playlistApiPayload(c) });
+    case ApiPaths.musicSmartPlaylistsSupport:
+      return jsonResponse({
+        supported: false,
+        reason: "Smart playlists are not available in the demo",
+      });
     case ApiPaths.musicFavorites:
       return jsonResponse({
         items: c.songs

@@ -49,9 +49,7 @@ test.describe("demo mode", () => {
     await settle(page);
 
     const sidebar = page.getByRole("navigation", { name: "Main navigation" });
-    await expect(
-      sidebar.getByRole("link", { name: "Settings" }),
-    ).toBeHidden();
+    await expect(sidebar.getByRole("link", { name: "Settings" })).toBeHidden();
     await expect(sidebar.locator(".sidebar__instance")).toHaveCount(0);
   });
 });

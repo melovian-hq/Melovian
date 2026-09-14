@@ -108,11 +108,18 @@
       return;
     }
     let cancelled = false;
-    void musicApi.getSmartPlaylistSupport().then((support) => {
-      if (cancelled) return;
-      smartPlaylistSupported = support.supported;
-      smartPlaylistSupportReason = support.reason ?? "";
-    });
+    void musicApi
+      .getSmartPlaylistSupport()
+      .then((support) => {
+        if (cancelled) return;
+        smartPlaylistSupported = support.supported;
+        smartPlaylistSupportReason = support.reason ?? "";
+      })
+      .catch(() => {
+        if (cancelled) return;
+        smartPlaylistSupported = false;
+        smartPlaylistSupportReason = "";
+      });
     return () => {
       cancelled = true;
     };
