@@ -20,11 +20,10 @@ type Handler struct {
 	auth    *store.AuthStore
 	events  *EventHub
 	devices *DeviceRegistry
-	notify  func(store.CreateNotificationInput) (store.Notification, error)
 }
 
-func New(auth *store.AuthStore, events *EventHub, devices *DeviceRegistry, notify func(store.CreateNotificationInput) (store.Notification, error)) *Handler {
-	return &Handler{auth: auth, events: events, devices: devices, notify: notify}
+func New(auth *store.AuthStore, events *EventHub, devices *DeviceRegistry) *Handler {
+	return &Handler{auth: auth, events: events, devices: devices}
 }
 
 func (h *Handler) Register(mux *http.ServeMux) {
@@ -68,15 +67,7 @@ func (h *Handler) handleWebSocket(w http.ResponseWriter, r *http.Request) {
 	ctx, cancel := context.WithCancel(r.Context())
 	defer cancel()
 	defer func() {
-		notice := h.devices.PeekPartyLeaveNotice(client.ScopeKey(), client.DeviceID())
-		if notice != nil && notice.Kind == "ended" {
-			notice.Reason = "host_disconnected"
-		}
-		if notice != nil && notice.Kind == "left" {
-			notice.Reason = "disconnected"
-		}
 		h.devices.Unregister(client)
-		h.dispatchPartyLeaveNotice(notice)
 		h.events.Unregister(client)
 		_ = conn.Close(websocket.StatusNormalClosure, "closed")
 	}()

@@ -93,9 +93,6 @@ func (db *DB) runMigrations(legacy appconfig.Config) error {
 	if err := NewShareStore(db).migrate(); err != nil {
 		return err
 	}
-	if err := NewNotificationStore(db).migrate(); err != nil {
-		return err
-	}
 	return nil
 }
 

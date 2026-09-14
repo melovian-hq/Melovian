@@ -51,12 +51,6 @@ export const ApiPaths = {
   sourcesMultiLocalLibrary: "/api/sources/multi-local-library",
   sourcesViewMode: "/api/sources/view-mode",
 
-  notifications: "/api/notifications",
-  notificationsUnreadCount: "/api/notifications/unread-count",
-  notificationsReadAll: "/api/notifications/read-all",
-  notificationById: (id: string) => `/api/notifications/${id}`,
-  notificationRead: (id: string) => `/api/notifications/${id}/read`,
-
   musicStatus: "/api/music/status",
   musicLibraryStats: "/api/music/library-stats",
   musicLibraryRefresh: "/api/music/library/refresh",

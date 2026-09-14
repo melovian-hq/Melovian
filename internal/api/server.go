@@ -19,7 +19,6 @@ import (
 	instancesapi "melovian/internal/api/instances"
 	"melovian/internal/api/library"
 	"melovian/internal/api/music"
-	"melovian/internal/api/notify"
 	"melovian/internal/api/realtime"
 	"melovian/internal/api/sharing"
 	"melovian/internal/api/system"
@@ -70,11 +69,9 @@ type Server struct {
 	systemH          *system.Handler
 	instancesH       *instancesapi.Handler
 	lyricsH          *music.LyricsHandler
-	notifyH          *notify.Handler
 	authH            *auth.Handler
 	subsonicServer   *subsonicserver.Server
 	shares           *store.ShareStore
-	notifications    *store.NotificationStore
 	jukebox          *jukebox.Controller
 	dlna             *dlna.Server
 	db               *store.DB
@@ -126,7 +123,6 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 		events:           events,
 		devices:          realtime.NewDeviceRegistry(events),
 		shares:           store.NewShareStore(db),
-		notifications:    store.NewNotificationStore(db),
 		jukebox:          jukebox.NewController(),
 		authLimiter:      apishared.NewRateLimiter(consts.AuthRateLimit, consts.AuthRateWindow),
 		shareLimiter:     apishared.NewRateLimiter(consts.ShareRateLimit, consts.ShareRateWindow),
@@ -182,9 +178,7 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	}
 	s.instancesH = instancesapi.New(s.instances, s.localLibraries, s.preferences, s.resolver, s.cfg)
 	s.instancesH.Register(s.mux)
-	s.notifyH = notify.New(s.notifications, s.events, s.cfg)
-	s.notifyH.Register(s.mux)
-	s.realtimeH = realtime.New(s.auth, s.events, s.devices, s.notifyH.Notify)
+	s.realtimeH = realtime.New(s.auth, s.events, s.devices)
 	s.realtimeH.Register(s.mux)
 	s.libraryH = library.New(library.Deps{
 		Config:       &s.cfg,
@@ -231,7 +225,6 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 		Devices:     s.devices,
 		Limiter:     s.shareLimiter,
 		Library:     s.libraryH,
-		Notify:      s.notifyH.Notify,
 	})
 	s.sharingH.Register(s.mux)
 

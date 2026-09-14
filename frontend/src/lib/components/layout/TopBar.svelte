@@ -1,9 +1,7 @@
 <script lang="ts">
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import AvatarStack from "$lib/components/ui/AvatarStack.svelte";
-  import NotificationsPanel from "$lib/components/notifications/NotificationsPanel.svelte";
   import { auth } from "$lib/features/auth/store.svelte";
-  import { notifications } from "$lib/notifications/notifications.svelte";
   import { deviceSync } from "$lib/music/device-sync.svelte";
   import { nativeDesktopAvailable } from "$lib/config/runtime";
   import { handleTitleBarDoubleClick } from "$lib/desktop/window-chrome";
@@ -16,10 +14,6 @@
 
   let { class: className = "", actions }: Props = $props();
 
-  const showBell = $derived(auth.enabled && auth.authenticated);
-  const unreadLabel = $derived(
-    notifications.unread > 99 ? "99+" : String(notifications.unread),
-  );
   const sessionStackMembers = $derived(
     deviceSync.sessionMembers.map((d) => ({
       seed: d.deviceId,
@@ -75,34 +69,11 @@
         />
       </button>
     {/if}
-    {#if showBell}
-      <button
-        type="button"
-        class="topbar__bell"
-        aria-label={notifications.unread > 0
-          ? `Notifications, ${notifications.unread} unread`
-          : "Notifications"}
-        aria-expanded={notifications.panelOpen}
-        onclick={() => notifications.togglePanel()}
-      >
-        <MdiIcon
-          name={notifications.unread > 0 ? "bellBadge" : "bell"}
-          size={18}
-        />
-        {#if notifications.unread > 0}
-          <span class="topbar__bell-count">{unreadLabel}</span>
-        {/if}
-      </button>
-    {/if}
     {#if actions}
       {@render actions()}
     {/if}
   </div>
 </header>
-
-{#if showBell}
-  <NotificationsPanel />
-{/if}
 
 <style>
   .topbar {
@@ -143,7 +114,6 @@
   }
 
   .topbar__menu-btn,
-  .topbar__bell,
   .topbar__presence {
     display: inline-flex;
     align-items: center;
@@ -159,8 +129,7 @@
     position: relative;
   }
 
-  .topbar__menu-btn,
-  .topbar__bell {
+  .topbar__menu-btn {
     width: 2.75rem;
   }
 
@@ -169,22 +138,6 @@
     min-width: 2.75rem;
     padding: 0 0.45rem;
     --avatar-stack-ring: var(--jb-island-bg);
-  }
-
-  .topbar__bell-count {
-    position: absolute;
-    top: -0.15rem;
-    right: -0.15rem;
-    min-width: 1.1rem;
-    height: 1.1rem;
-    padding: 0 0.25rem;
-    border-radius: var(--jb-radius-full);
-    background: var(--jb-accent);
-    color: var(--jb-accent-text);
-    font-size: 0.625rem;
-    font-weight: 700;
-    line-height: 1.1rem;
-    text-align: center;
   }
 
   .topbar__actions {
@@ -215,7 +168,6 @@
     }
 
     .topbar__menu-btn,
-    .topbar__bell,
     .topbar__presence {
       height: 2.5rem;
       border-radius: var(--jb-radius-md);
@@ -225,8 +177,7 @@
       box-shadow: none;
     }
 
-    .topbar__menu-btn,
-    .topbar__bell {
+    .topbar__menu-btn {
       width: 2.5rem;
     }
 

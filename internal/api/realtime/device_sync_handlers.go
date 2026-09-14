@@ -6,11 +6,9 @@ package realtime
 import (
 	"encoding/json"
 	"net/http"
-	"strings"
 
 	"melovian/internal/api/apishared"
 	"melovian/internal/httputil"
-	"melovian/internal/store"
 )
 
 func (h *Handler) handleDeviceClientMessage(client *WSClient, raw []byte) {
@@ -107,7 +105,7 @@ func (h *Handler) handleDeviceClientMessage(client *WSClient, raw []byte) {
 		}
 
 	case CmdSessionLeave:
-		h.leaveListenSession(client)
+		h.devices.LeaveSession(client)
 
 	case CmdSessionInvite:
 		var p struct {
@@ -116,78 +114,6 @@ func (h *Handler) handleDeviceClientMessage(client *WSClient, raw []byte) {
 		_ = json.Unmarshal(msg.Payload, &p)
 		if code := h.devices.InviteToSession(client, p.TargetID); code != "" {
 			h.replyDeviceError(client, code, deviceErrorMessage(code))
-		}
-	}
-}
-
-func (h *Handler) leaveListenSession(client *WSClient) {
-	if client == nil || h.devices == nil {
-		return
-	}
-	notice := h.devices.PeekPartyLeaveNotice(client.ScopeKey(), client.DeviceID())
-	if notice != nil && notice.Kind == "ended" {
-		notice.Reason = "host_left"
-	}
-	if notice != nil && notice.Kind == "left" {
-		notice.Reason = "left"
-	}
-	h.devices.LeaveSession(client)
-	h.dispatchPartyLeaveNotice(notice)
-}
-
-func (h *Handler) dispatchPartyLeaveNotice(notice *PartyLeaveNotice) {
-	if notice == nil || len(notice.NotifyIDs) == 0 {
-		return
-	}
-	href := ""
-	if notice.InviteToken != "" {
-		href = "/listen/" + notice.InviteToken
-	}
-	actor := strings.TrimSpace(notice.ActorUser)
-	if actor == "" {
-		actor = strings.TrimSpace(notice.ActorName)
-	}
-	if actor == "" {
-		actor = "Someone"
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"sessionId": notice.SessionID,
-		"reason":    notice.Reason,
-		"name":      notice.ActorName,
-		"username":  notice.ActorUser,
-	})
-	switch notice.Kind {
-	case "ended":
-		body := "The host left the session."
-		if notice.Reason == "host_disconnected" {
-			body = "The host disconnected."
-		}
-		for _, uid := range notice.NotifyIDs {
-			_, _ = h.notify(store.CreateNotificationInput{
-				UserID:  uid,
-				Kind:    store.NotificationPartyEnded,
-				Title:   "Listen together ended",
-				Body:    body,
-				Href:    href,
-				Payload: string(payload),
-			})
-		}
-	case "left":
-		title := actor + " left the session"
-		body := ""
-		if notice.Reason == "disconnected" {
-			title = actor + " disconnected"
-			body = "They dropped out of listen together."
-		}
-		for _, uid := range notice.NotifyIDs {
-			_, _ = h.notify(store.CreateNotificationInput{
-				UserID:  uid,
-				Kind:    store.NotificationPartyLeft,
-				Title:   title,
-				Body:    body,
-				Href:    href,
-				Payload: string(payload),
-			})
 		}
 	}
 }

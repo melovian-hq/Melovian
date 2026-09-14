@@ -8,7 +8,6 @@ import (
 	"crypto/sha256"
 	"database/sql"
 	"encoding/hex"
-	"encoding/json"
 	"errors"
 	"io"
 	"net/http"
@@ -41,7 +40,6 @@ type Handler struct {
 	devices        *realtime.DeviceRegistry
 	limiter        *apishared.RateLimiter
 	library        *library.Handler
-	notify         func(store.CreateNotificationInput) (store.Notification, error)
 }
 
 type Deps struct {
@@ -57,7 +55,6 @@ type Deps struct {
 	Devices     *realtime.DeviceRegistry
 	Limiter     *apishared.RateLimiter
 	Library     *library.Handler
-	Notify      func(store.CreateNotificationInput) (store.Notification, error)
 }
 
 func New(d Deps) *Handler {
@@ -74,7 +71,6 @@ func New(d Deps) *Handler {
 		devices:        d.Devices,
 		limiter:        d.Limiter,
 		library:        d.Library,
-		notify:         d.Notify,
 	}
 }
 
@@ -349,41 +345,7 @@ func (h *Handler) handleCreateShare(w http.ResponseWriter, r *http.Request) {
 		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
 		return
 	}
-	if accessMode == store.ShareAccessRestricted {
-		h.notifyShareRecipients(ownerID, share)
-	}
 	httputil.WriteJSON(w, http.StatusCreated, h.shareJSON(share))
-}
-
-func (h *Handler) notifyShareRecipients(ownerID string, share store.Share) {
-	ownerName := "Someone"
-	if owner, err := h.auth.GetUser(ownerID); err == nil && owner.Username != "" {
-		ownerName = owner.Username
-	}
-	label := strings.TrimSpace(share.Description)
-	if label == "" {
-		label = share.ResourceType
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"shareId":      share.ID,
-		"token":        share.Token,
-		"resourceType": share.ResourceType,
-		"resourceId":   share.ResourceID,
-	})
-	href := "/share/" + share.Token
-	for _, recipientID := range share.RecipientIDs {
-		if recipientID == "" || recipientID == ownerID {
-			continue
-		}
-		_, _ = h.notify(store.CreateNotificationInput{
-			UserID:  recipientID,
-			Kind:    store.NotificationShareReceived,
-			Title:   ownerName + " shared with you",
-			Body:    label,
-			Href:    href,
-			Payload: string(payload),
-		})
-	}
 }
 
 func (h *Handler) handleDeleteShare(w http.ResponseWriter, r *http.Request) {

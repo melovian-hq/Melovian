@@ -10,7 +10,6 @@ import { sources } from "$lib/features/sources/store.svelte";
 import { auth } from "$lib/features/auth/store.svelte";
 import { eventSocket } from "$lib/core/events/ws.svelte";
 import { deviceSync } from "$lib/music/device-sync.svelte";
-import { notifications } from "$lib/notifications/notifications.svelte";
 import { tasks } from "$lib/tasks/tasks.svelte";
 import { router } from "$lib/router/router.svelte";
 import { bindNativeMedia } from "$lib/media/native.svelte";
@@ -112,11 +111,6 @@ export function connectRealtimeServices(
   if (isStaticDemo() || !supports(Cap.ws)) return;
   eventSocket.connect();
   deviceSync.start();
-  if (auth.enabled && auth.authenticated) {
-    void notifications.start();
-  } else {
-    notifications.stop();
-  }
   // untrack: bindEvents reads eventSocket.connected once. Tracking it
   // re-ran this effect, called disconnect(), and permanently killed WS.
   const unbindScans = untrack(() => localLibraries.bindEvents());

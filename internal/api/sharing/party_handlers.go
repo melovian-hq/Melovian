@@ -4,7 +4,6 @@
 package sharing
 
 import (
-	"encoding/json"
 	"io"
 	"net/http"
 	"strings"
@@ -111,22 +110,6 @@ func (h *Handler) handlePartyInvite(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	hostName := "Someone"
-	if owner, err := h.auth.GetUser(userID); err == nil && owner.Username != "" {
-		hostName = owner.Username
-	}
-	payload, _ := json.Marshal(map[string]any{
-		"sessionId": sessionID,
-		"token":     token,
-	})
-	_, _ = h.notify(store.CreateNotificationInput{
-		UserID:  target.ID,
-		Kind:    store.NotificationPartyInvite,
-		Title:   hostName + " invited you to listen together",
-		Body:    "Open the invite to join their session.",
-		Href:    "/listen/" + token,
-		Payload: string(payload),
-	})
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"sessionId": sessionID,
 		"token":     token,
@@ -156,28 +139,6 @@ func (h *Handler) handlePartyJoin(w http.ResponseWriter, r *http.Request) {
 	if !ok {
 		httputil.WriteError(w, http.StatusNotFound, "session_unavailable", "invite is invalid or the party ended")
 		return
-	}
-
-	session, found := h.devices.GetSession(sessionID)
-	if found && session.HostUserID != "" && session.HostUserID != userID {
-		guestName := "A guest"
-		if h.auth != nil {
-			if u, err := h.auth.GetUser(userID); err == nil && u.Username != "" {
-				guestName = u.Username
-			}
-		}
-		payload, _ := json.Marshal(map[string]any{
-			"sessionId": sessionID,
-			"deviceId":  deviceID,
-		})
-		_, _ = h.notify(store.CreateNotificationInput{
-			UserID:  session.HostUserID,
-			Kind:    store.NotificationPartyJoined,
-			Title:   guestName + " joined your party",
-			Body:    "They are listening with you now.",
-			Href:    "/listen/" + session.InviteToken,
-			Payload: string(payload),
-		})
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
