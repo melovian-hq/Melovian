@@ -413,8 +413,10 @@
     overflow: hidden;
     border: 1px solid color-mix(in srgb, var(--jb-border) 55%, transparent);
     border-radius: var(--jb-radius-xl);
-    background: color-mix(in srgb, var(--jb-bg-elevated) 42%, transparent);
-    backdrop-filter: blur(16px);
+    /* Opaque enough to skip backdrop-filter entirely. The panel sits on the
+       already blurred ambient backdrop, and sampling it per frame during
+       route crossfades shows as flicker on weaker compositors. */
+    background: color-mix(in srgb, var(--jb-bg-elevated) 78%, transparent);
   }
 
   .now-playing-side__queue {
@@ -525,10 +527,7 @@
       border-left: none;
       border-right: none;
       border-radius: var(--jb-radius-xl) var(--jb-radius-xl) 0 0;
-      background: color-mix(in srgb, var(--jb-bg) 28%, transparent);
-      /* The only backdrop is the already blurred ambient image, so sampling
-         it again per frame buys nothing and costs a repaint on scroll. */
-      backdrop-filter: none;
+      background: color-mix(in srgb, var(--jb-bg) 78%, transparent);
     }
 
     .now-playing-side__queue {

@@ -106,6 +106,44 @@ func TestProxyCachesSmallJSON(t *testing.T) {
 	}
 }
 
+func TestProxyDoesNotCacheRandomDraws(t *testing.T) {
+	var calls int
+	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+		calls++
+		w.Header().Set("Content-Type", "application/json")
+		_, _ = io.WriteString(w, `{"ok":true}`)
+	}))
+	t.Cleanup(upstream.Close)
+
+	responseCache := cache.NewResponseCache()
+	handler := NewProxy(func(context.Context) *Client {
+		return NewClient(upstream.URL, "alice", "secret")
+	}, responseCache, true, nil)
+
+	paths := []string{
+		"/api/subsonic/rest/getRandomSongs.view?size=8",
+		"/api/subsonic/rest/getAlbumList.view?type=random&size=20",
+		"/api/subsonic/rest/getAlbumList2.view?type=random&size=20",
+	}
+	for _, path := range paths {
+		for i := 0; i < 2; i++ {
+			req := httptest.NewRequest(http.MethodGet, path, nil)
+			rec := httptest.NewRecorder()
+			handler.ServeHTTP(rec, req)
+			if got := rec.Header().Get("X-Cache"); got == "HIT" {
+				t.Fatalf("%s request %d was served from cache", path, i)
+			}
+		}
+	}
+	if calls != 6 {
+		t.Fatalf("upstream calls=%d want 6, random draws must not be cached", calls)
+	}
+	entries, _ := responseCache.Stats()
+	if entries != 0 {
+		t.Fatalf("random draws must not populate the cache, entries=%d", entries)
+	}
+}
+
 func TestProxyForwardsNavidromeShareImagesWithoutAuth(t *testing.T) {
 	var gotPath, gotRawQuery string
 	upstream := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {

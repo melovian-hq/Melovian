@@ -176,6 +176,9 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	if err := s.systemH.InitSentryFromStore(); err != nil {
 		slog.Error("sentry init failed", "err", err)
 	}
+	if err := observability.InitOTel(context.Background()); err != nil {
+		slog.Error("otel init failed", "err", err)
+	}
 	s.instancesH = instancesapi.New(s.instances, s.localLibraries, s.preferences, s.resolver, s.cfg)
 	s.instancesH.Register(s.mux)
 	s.realtimeH = realtime.New(s.auth, s.events, s.devices)
@@ -290,6 +293,7 @@ func (s *Server) Stop(ctx context.Context) error {
 	if s.dlna != nil {
 		_ = s.dlna.Stop(ctx)
 	}
+	observability.ShutdownOTel(ctx)
 	if s.server == nil {
 		return nil
 	}
@@ -308,6 +312,7 @@ func (s *Server) buildAPIHandler() http.Handler {
 	inner = LoggingMiddleware(inner)
 	inner = RecoverMiddleware(inner)
 	inner = system.MetricsMiddleware(inner)
+	inner = observability.OTelHTTPMiddleware()(inner)
 	api := observability.HTTPMiddleware()(inner)
 	return CORSMiddleware(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
 		if strings.HasPrefix(r.URL.Path, "/rest/") {

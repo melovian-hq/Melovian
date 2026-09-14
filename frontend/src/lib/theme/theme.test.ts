@@ -120,7 +120,7 @@ describe("theme store", () => {
     expect(localStorage.getItem(StorageKeys.customCss)).toBeNull();
   });
 
-  it("applies a dark palette through data-palette and persists it", () => {
+  it("applies a palette through data-palette and persists it for both modes", () => {
     const store = freshThemeStore();
     store.setMode("dark");
     store.setPalette("oled");
@@ -128,36 +128,100 @@ describe("theme store", () => {
     expect(store.palette).toBe("oled");
     expect(document.documentElement.dataset.palette).toBe("oled");
     expect(localStorage.getItem(StorageKeys.themePaletteDark)).toBe("oled");
+    expect(localStorage.getItem(StorageKeys.themePaletteLight)).toBe("oled");
 
     store.setPalette("default");
     flushSync();
     expect(document.documentElement.dataset.palette).toBeUndefined();
     expect(localStorage.getItem(StorageKeys.themePaletteDark)).toBeNull();
+    expect(localStorage.getItem(StorageKeys.themePaletteLight)).toBeNull();
   });
 
-  it("rejects palettes that do not match the resolved theme", () => {
+  it("rejects unknown palette ids", () => {
     const store = freshThemeStore();
     store.setMode("dark");
     flushSync();
-    store.setPalette("paper");
+    store.setPalette("does-not-exist");
     flushSync();
     expect(store.palette).toBe("default");
     expect(document.documentElement.dataset.palette).toBeUndefined();
   });
 
-  it("swaps the palette attribute when the resolved theme flips", () => {
+  it("keeps the same palette id when the resolved theme flips", () => {
     const store = freshThemeStore();
     store.setMode("dark");
     store.setPalette("midnight");
     flushSync();
     store.setMode("light");
     flushSync();
-    store.setPalette("paper");
+    expect(store.palette).toBe("midnight");
+    expect(document.documentElement.dataset.palette).toBe("midnight");
+  });
+
+  it("applies a custom palette through the jb-custom variables", () => {
+    const store = freshThemeStore();
+    store.setMode("dark");
+    store.setPalette("custom");
     flushSync();
-    expect(document.documentElement.dataset.palette).toBe("paper");
+    store.setCustomPaletteColor("dark", "bg", "#112233");
+    store.setCustomPaletteColor("dark", "surface", "#223344");
+    store.setCustomPaletteColor("dark", "accent", "#33cc66");
+    flushSync();
+    const style = document.documentElement.style;
+    expect(document.documentElement.dataset.palette).toBe("custom");
+    expect(style.getPropertyValue("--jb-custom-bg")).toBe("#112233");
+    expect(style.getPropertyValue("--jb-custom-surface")).toBe("#223344");
+    expect(style.getPropertyValue("--jb-custom-accent")).toBe("#33cc66");
+    const stored = JSON.parse(
+      localStorage.getItem(StorageKeys.themeCustomPalette) ?? "{}",
+    );
+    expect(stored.dark).toEqual({
+      bg: "#112233",
+      surface: "#223344",
+      accent: "#33cc66",
+    });
+  });
+
+  it("rejects malformed custom palette colors", () => {
+    const store = freshThemeStore();
     store.setMode("dark");
     flushSync();
-    expect(document.documentElement.dataset.palette).toBe("midnight");
+    store.setCustomPaletteColor("dark", "bg", "javascript:alert(1)");
+    store.setCustomPaletteColor("dark", "bg", "red");
+    flushSync();
+    expect(store.palette).toBe("default");
+    expect(
+      document.documentElement.style.getPropertyValue("--jb-custom-bg"),
+    ).toBe("");
+  });
+
+  it("clears custom palette variables when another palette is picked", () => {
+    const store = freshThemeStore();
+    store.setMode("dark");
+    store.setPalette("custom");
+    store.setCustomPaletteColor("dark", "bg", "#112233");
+    flushSync();
+    store.setPalette("forest");
+    flushSync();
+    const style = document.documentElement.style;
+    expect(document.documentElement.dataset.palette).toBe("forest");
+    expect(style.getPropertyValue("--jb-custom-bg")).toBe("");
+    expect(style.getPropertyValue("--jb-custom-surface")).toBe("");
+  });
+
+  it("applies square radius as zero on every radius size", () => {
+    const store = freshThemeStore();
+    store.setRadiusStyle("square");
+    flushSync();
+    const style = document.documentElement.style;
+    for (const size of ["sm", "md", "lg", "xl", "full"]) {
+      expect(style.getPropertyValue(`--jb-radius-${size}`)).toBe("0");
+    }
+    expect(localStorage.getItem(StorageKeys.themeRadius)).toBe("square");
+
+    store.setRadiusStyle("default");
+    flushSync();
+    expect(style.getPropertyValue("--jb-radius-md")).toBe("");
   });
 
   it("applies radius and interface size overrides inline", () => {

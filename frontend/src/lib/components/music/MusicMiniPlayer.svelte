@@ -12,6 +12,7 @@
   import TrackMetaLinks from "./TrackMetaLinks.svelte";
   import ListenTogetherChip from "./ListenTogetherChip.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
+  import { reportPlayerBarHeight } from "$lib/music/player-height";
   import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
   import Link from "$lib/router/Link.svelte";
   import { router } from "$lib/router/router.svelte";
@@ -60,6 +61,7 @@
   <!-- svelte-ignore a11y_no_static_element_interactions -->
   <div
     class="mini-player"
+    use:reportPlayerBarHeight={{ bottomOffset: true }}
     class:mini-player--expanded={showExpanded}
     class:mini-player--touch={touchLayout}
     class:mini-player--together={deviceSync.inListenTogether}

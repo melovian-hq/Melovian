@@ -14,6 +14,8 @@ import (
 func TestStaticAssetCacheHeaders(t *testing.T) {
 	root := fstest.MapFS{
 		"index.html":           &fstest.MapFile{Data: []byte("<html>ok</html>")},
+		"sw.js":                &fstest.MapFile{Data: []byte("// sw")},
+		"manifest.webmanifest": &fstest.MapFile{Data: []byte("{}")},
 		"assets/app-abc123.js": &fstest.MapFile{Data: []byte("console.log(1)")},
 		"favicon.svg":          &fstest.MapFile{Data: []byte("<svg/>")},
 	}
@@ -25,6 +27,8 @@ func TestStaticAssetCacheHeaders(t *testing.T) {
 	}{
 		{path: "/", want: "no-cache"},
 		{path: "/index.html", want: "no-cache"},
+		{path: "/sw.js", want: "no-cache"},
+		{path: "/manifest.webmanifest", want: "no-cache"},
 		{path: "/assets/app-abc123.js", want: "public, max-age=31536000, immutable"},
 		{path: "/favicon.svg", want: "public, max-age=3600"},
 	}

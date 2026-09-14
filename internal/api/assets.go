@@ -23,8 +23,10 @@ func StaticAssetHandler(root fs.FS) http.Handler {
 func setStaticAssetCacheHeaders(w http.ResponseWriter, requestPath string) {
 	clean := path.Clean("/" + strings.TrimPrefix(requestPath, "/"))
 	switch {
-	case clean == "/" || clean == "/index.html":
-		// Always revalidate the shell so browsers pick up new hashed bundles.
+	case clean == "/" || clean == "/index.html" ||
+		clean == "/sw.js" || clean == "/manifest.webmanifest":
+		// Always revalidate the shell, service worker, and manifest so update
+		// checks and new hashed bundles are picked up immediately.
 		w.Header().Set("Cache-Control", "no-cache")
 	case strings.HasPrefix(clean, "/assets/"):
 		w.Header().Set("Cache-Control", "public, max-age=31536000, immutable")

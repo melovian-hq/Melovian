@@ -62,6 +62,15 @@ func (c SentryConfig) FrontendDSNEffective() string {
 	return strings.TrimSpace(c.DSN)
 }
 
+// FrontendDSNOrDefault returns the effective client DSN, falling back to the
+// built-in telemetry DSN so opt-in reporting works with no admin config.
+func (c SentryConfig) FrontendDSNOrDefault() string {
+	if d := c.FrontendDSNEffective(); d != "" {
+		return d
+	}
+	return strings.TrimSpace(brand.DefaultTelemetryDSN)
+}
+
 func LoadSentryEnvLocks() SentryEnvLocks {
 	return SentryEnvLocks{
 		DSN:              firstEnv("MELOVIAN_SENTRY_DSN", "SENTRY_DSN") != "",
@@ -105,6 +114,12 @@ func MergeStoredSentrySettings(raw json.RawMessage) (StoredSentrySettings, error
 	if err := json.Unmarshal(raw, &settings); err != nil {
 		return StoredSentrySettings{}, err
 	}
+	// Legacy installs carried a separate frontend DSN. Fold it into the
+	// single DSN field so one setting feeds backend and client reporting.
+	if strings.TrimSpace(settings.DSN) == "" {
+		settings.DSN = strings.TrimSpace(settings.FrontendDSN)
+	}
+	settings.FrontendDSN = ""
 	return settings, nil
 }
 
@@ -148,10 +163,9 @@ func MergeSentryConfig(env SentryConfig, stored StoredSentrySettings, envLocks S
 		}
 	}
 
-	if !merged.Enabled() {
-		merged.ClientReportingAllowed = false
-	}
-
+	// Client reporting is consent-gated per user and no longer requires a
+	// configured backend DSN. ClientReportingAllowed stays the admin policy
+	// switch and is not forced off when server tracking is disabled.
 	return merged
 }
 

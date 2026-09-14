@@ -115,6 +115,102 @@ func TestClientSentryPayloadRequiresClientOptIn(t *testing.T) {
 	}
 }
 
+func TestClientSentryPayloadUsesDefaultDSNWithOptIn(t *testing.T) {
+	srv, _ := newTestServer(t)
+	// Backend tracking stays off, the admin policy stays on, and the user
+	// opted in. The payload must carry the built-in telemetry DSN.
+	stored := appconfig.DefaultStoredSentrySettings()
+	if err := srv.refreshSentryRuntime(stored); err != nil {
+		t.Fatalf("refreshSentryRuntime: %v", err)
+	}
+	if err := srv.preferences.Set("local", store.PrefKeySentryClient, `{"enabled":true,"choice":"accepted"}`); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("config status %d", rec.Code)
+	}
+	var payload map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	sentryPayload, ok := payload["sentry"].(map[string]any)
+	if !ok {
+		t.Fatal("expected sentry payload for opted-in user")
+	}
+	if sentryPayload["clientReporting"] != true {
+		t.Fatalf("expected clientReporting, got %#v", sentryPayload)
+	}
+	dsn, _ := sentryPayload["dsn"].(string)
+	if dsn == "" {
+		t.Fatal("expected a default telemetry dsn")
+	}
+}
+
+func TestClientSentryPayloadOmitsDeclinedConsent(t *testing.T) {
+	srv, _ := newTestServer(t)
+	stored := appconfig.DefaultStoredSentrySettings()
+	stored.Enabled = true
+	stored.DSN = "https://deadbeefdeadbeefdeadbeefdeadbeef@glitchtip.example/1"
+	if err := srv.refreshSentryRuntime(stored); err != nil {
+		t.Fatalf("refreshSentryRuntime: %v", err)
+	}
+	if err := srv.preferences.Set("local", store.PrefKeySentryClient, `{"enabled":false,"choice":"declined"}`); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+
+	req := httptest.NewRequest(http.MethodGet, "/api/config", nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	var payload map[string]any
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if _, ok := payload["sentry"]; ok {
+		t.Fatal("expected no sentry payload for declined consent")
+	}
+}
+
+func TestSentryClientSettingsRoundTripChoice(t *testing.T) {
+	srv, _ := newTestServer(t)
+
+	putReq := httptest.NewRequest(
+		http.MethodPut,
+		"/api/music/settings/sentry-client",
+		bytes.NewBufferString(`{"enabled":true,"choice":"accepted"}`),
+	)
+	putRec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(putRec, putReq)
+	if putRec.Code != http.StatusOK {
+		t.Fatalf("put status %d: %s", putRec.Code, putRec.Body.String())
+	}
+
+	settings, err := srv.loadSentryClientSettings("local")
+	if err != nil {
+		t.Fatalf("loadSentryClientSettings: %v", err)
+	}
+	if !settings.Enabled || settings.Choice != store.SentryChoiceAccepted {
+		t.Fatalf("expected accepted consent, got %#v", settings)
+	}
+}
+
+func TestSentryClientSettingsLegacyEnabledCountsAsAccepted(t *testing.T) {
+	srv, _ := newTestServer(t)
+	if err := srv.preferences.Set("local", store.PrefKeySentryClient, `{"enabled":true}`); err != nil {
+		t.Fatalf("Set: %v", err)
+	}
+	settings, err := srv.loadSentryClientSettings("local")
+	if err != nil {
+		t.Fatalf("loadSentryClientSettings: %v", err)
+	}
+	if settings.Choice != store.SentryChoiceAccepted {
+		t.Fatalf("legacy enabled row should read accepted, got %#v", settings)
+	}
+}
+
 func TestSentryTestEventWhenDisabled(t *testing.T) {
 	srv, _ := newTestServer(t)
 	if err := srv.initSentryFromStore(); err != nil {

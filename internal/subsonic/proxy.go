@@ -72,6 +72,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	query := r.URL.Query()
 	query.Del("_instance")
+	cacheable := ShouldCacheRequest(r.Method, path) && !randomDraw(path, query)
 	if !isPublicSharePath(path) {
 		query = client.InjectAuth(query)
 	}
@@ -83,7 +84,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if p.enabled && ShouldCacheRequest(r.Method, path) {
+	if p.enabled && cacheable {
 		if entry, ok := p.cache.Get(key); ok {
 			cache.WriteCachedResponse(w, entry, "HIT")
 			return
@@ -120,7 +121,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	defer func() { _ = resp.Body.Close() }()
 	stripUpstreamCORS(resp.Header)
 
-	if !p.enabled || !ShouldCacheRequest(r.Method, path) || resp.StatusCode < 200 || resp.StatusCode >= 300 {
+	if !p.enabled || !cacheable || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if resp.StatusCode >= 400 {
 			slog.Warn("subsonic upstream error response",
 				"request_id", httputil.RequestIDFromContext(r.Context()),
@@ -130,7 +131,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			)
 		}
 		httputil.CopyHeaders(w.Header(), resp.Header)
-		if p.enabled && ShouldCacheRequest(r.Method, path) {
+		if p.enabled && cacheable {
 			w.Header().Set("X-Cache", "BYPASS")
 		}
 		w.WriteHeader(resp.StatusCode)
@@ -161,6 +162,16 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	p.cache.Set(key, entry)
 	cache.WriteCachedResponse(w, entry, "MISS")
+}
+
+// randomDraw reports whether the endpoint must return a fresh random result
+// on every call. Caching these serves the identical batch to continuous-mode
+// queue refills, which then dedupe to nothing and stall playback.
+func randomDraw(path string, query url.Values) bool {
+	if strings.Contains(path, "getRandomSongs") {
+		return true
+	}
+	return strings.Contains(path, "getAlbumList") && query.Get("type") == "random"
 }
 
 func stripUpstreamCORS(header http.Header) {

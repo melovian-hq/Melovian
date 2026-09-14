@@ -6,6 +6,7 @@ package democatalog
 import (
 	"encoding/json"
 	"maps"
+	"math/rand"
 	"net/http"
 	"strconv"
 	"strings"
@@ -257,11 +258,10 @@ func serveRandomSongs(w http.ResponseWriter, c *Catalog, size int) {
 	if size > len(songs) {
 		size = len(songs)
 	}
+	perm := rand.Perm(len(songs))
 	out := make([]map[string]any, 0, size)
-	step := 3
 	for i := 0; i < size; i++ {
-		idx := (i * step) % len(songs)
-		out = append(out, songMap(songs[idx]))
+		out = append(out, songMap(songs[perm[i]]))
 	}
 	writeOK(w, map[string]any{"randomSongs": map[string]any{"song": out}})
 }

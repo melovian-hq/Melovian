@@ -13,6 +13,7 @@
   import TrackMetaLinks from "./TrackMetaLinks.svelte";
   import ListenTogetherChip from "./ListenTogetherChip.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
+  import { reportPlayerBarHeight } from "$lib/music/player-height";
   import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
   import Link from "$lib/router/Link.svelte";
   import {
@@ -59,6 +60,7 @@
 {#if track && music.playerLayout === "full" && music.playerVisible}
   <div
     class="player"
+    use:reportPlayerBarHeight
     class:player--together={deviceSync.inListenTogether}
     role="group"
     oncontextmenu={(event) => {

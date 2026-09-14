@@ -360,16 +360,19 @@
     color: var(--jb-text);
   }
 
+  /* Raised rather than pressed: the active item lifts off the rail with a
+     drop shadow, a light top edge, and a thin accent hairline. */
   .sidebar :global(.sidebar__link--active) {
-    background: var(--jb-bg);
+    background: var(--jb-surface-raised);
     color: var(--jb-text);
     box-shadow:
-      inset 0 2px 6px rgb(0 0 0 / 0.28),
-      inset 0 0 0 1px rgb(0 0 0 / 0.1);
+      var(--jb-shadow-sm),
+      inset 0 0 0 1px color-mix(in srgb, var(--jb-accent) 28%, var(--jb-border)),
+      inset 0 1px 0 color-mix(in srgb, var(--jb-text) 9%, transparent);
   }
 
   .sidebar :global(.sidebar__link--active:hover) {
-    background: var(--jb-bg);
+    background: var(--jb-surface-raised);
     color: var(--jb-text);
   }
 

@@ -4,6 +4,7 @@
 package appconfig
 
 import (
+	"encoding/json"
 	"testing"
 )
 
@@ -73,6 +74,62 @@ func TestLoadSentryConfigFallbackDSN(t *testing.T) {
 	}
 	if cfg.FrontendDSNEffective() != "https://sentry.example/3" {
 		t.Fatalf("frontend dsn %q", cfg.FrontendDSNEffective())
+	}
+}
+
+func TestMergeStoredSentrySettingsMigratesFrontendDSN(t *testing.T) {
+	raw := json.RawMessage(`{
+		"enabled": true,
+		"dsn": "",
+		"frontendDsn": "https://abc123@glitchtip.example/2",
+		"clientReportingAllowed": true
+	}`)
+	stored, err := MergeStoredSentrySettings(raw)
+	if err != nil {
+		t.Fatalf("merge: %v", err)
+	}
+	if stored.DSN != "https://abc123@glitchtip.example/2" {
+		t.Fatalf("dsn %q", stored.DSN)
+	}
+	if stored.FrontendDSN != "" {
+		t.Fatalf("frontend dsn not migrated: %q", stored.FrontendDSN)
+	}
+}
+
+func TestMergeStoredSentrySettingsKeepsBackendDSN(t *testing.T) {
+	raw := json.RawMessage(`{
+		"enabled": true,
+		"dsn": "https://backend@glitchtip.example/1",
+		"frontendDsn": "https://frontend@glitchtip.example/2"
+	}`)
+	stored, err := MergeStoredSentrySettings(raw)
+	if err != nil {
+		t.Fatalf("merge: %v", err)
+	}
+	if stored.DSN != "https://backend@glitchtip.example/1" {
+		t.Fatalf("dsn %q", stored.DSN)
+	}
+	if stored.FrontendDSN != "" {
+		t.Fatalf("frontend dsn not cleared: %q", stored.FrontendDSN)
+	}
+}
+
+func TestFrontendDSNOrDefault(t *testing.T) {
+	cfg := SentryConfig{}
+	if cfg.FrontendDSNOrDefault() == "" {
+		t.Fatal("expected the built-in telemetry DSN when nothing configured")
+	}
+	cfg.DSN = "https://configured@glitchtip.example/1"
+	if cfg.FrontendDSNOrDefault() != "https://configured@glitchtip.example/1" {
+		t.Fatalf("expected configured dsn, got %q", cfg.FrontendDSNOrDefault())
+	}
+}
+
+func TestMergeSentryConfigKeepsClientPolicyWithoutBackendDSN(t *testing.T) {
+	stored := DefaultStoredSentrySettings()
+	merged := MergeSentryConfig(SentryConfig{}, stored, SentryEnvLocks{})
+	if !merged.ClientReportingAllowed {
+		t.Fatal("client reporting policy must survive a disabled backend DSN")
 	}
 }
 

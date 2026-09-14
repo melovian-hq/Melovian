@@ -178,10 +178,14 @@
   {:else}
     <SettingsToggleRow
       label="Report errors from this device"
-      description="When enabled, frontend crashes and unhandled errors are sent to your configured tracker."
+      description="When enabled, frontend crashes and unhandled errors are sent to your configured tracker. Server addresses, credentials, and tokens are stripped before anything is sent."
       checked={sentryClient.enabled}
       onchange={(enabled) => {
-        sentryClient = { ...sentryClient, enabled };
+        sentryClient = {
+          ...sentryClient,
+          enabled,
+          choice: enabled ? "accepted" : "declined",
+        };
         void handleSaveSentryClientSettings();
       }}
     />
@@ -203,10 +207,10 @@
         }}
       />
       <Field
-        label="Backend DSN"
+        label="Sentry DSN"
         hint={sentryEnvLocks.dsn
           ? "Locked by environment variable."
-          : "Sentry-compatible DSN for the Go backend."}
+          : "One DSN covers the Go backend and browser clients. Leave empty to use the built-in project."}
       >
         <input
           class="settings-input"
@@ -217,27 +221,6 @@
             sentryServer = {
               ...sentryServer,
               dsn: (e.currentTarget as HTMLInputElement).value,
-            };
-            queueServerSave();
-          }}
-        />
-      </Field>
-      <Field
-        label="Frontend DSN"
-        hint={sentryEnvLocks.frontendDsn
-          ? "Locked by environment variable."
-          : "Optional separate DSN for browsers. Leave empty to reuse the backend DSN."}
-      >
-        <input
-          class="settings-input"
-          type="url"
-          value={sentryServer.frontendDsn ?? ""}
-          disabled={sentryEnvLocks.frontendDsn === true ||
-            !sentryServer.enabled}
-          oninput={(e) => {
-            sentryServer = {
-              ...sentryServer,
-              frontendDsn: (e.currentTarget as HTMLInputElement).value,
             };
             queueServerSave();
           }}

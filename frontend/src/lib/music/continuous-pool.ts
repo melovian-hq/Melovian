@@ -60,14 +60,16 @@ export function continuousRefillCount(
   queueLength: number,
   maxQueueSize: number,
   mode: ContinuousMode,
+  upcoming = queueLength,
 ): number {
   const slots = remainingQueueSlots(queueLength, maxQueueSize);
   if (slots <= 0) return 0;
 
   if (mode === "random" || mode === "personal") {
-    const belowTarget = Math.max(0, CONTINUOUS_SOFT_TARGET - queueLength);
+    const deficit = Math.max(0, CONTINUOUS_SOFT_TARGET - upcoming);
+    if (deficit <= 0) return 0;
     return Math.min(
-      Math.max(belowTarget, CONTINUOUS_REFILL_BATCH),
+      Math.max(deficit, CONTINUOUS_REFILL_BATCH),
       slots,
       Number.isFinite(slots) ? slots : CONTINUOUS_REFILL_BATCH * 2,
     );
@@ -75,9 +77,10 @@ export function continuousRefillCount(
 
   if (mode === "library") {
     const target = continuousQueueTarget(maxQueueSize);
-    const belowTarget = Math.max(0, target - queueLength);
+    const deficit = Math.max(0, target - upcoming);
+    if (deficit <= 0) return 0;
     return Math.min(
-      Math.max(belowTarget, CONTINUOUS_REFILL_BATCH),
+      Math.max(deficit, CONTINUOUS_REFILL_BATCH),
       slots,
       Number.isFinite(slots) ? slots : LIBRARY_ALBUM_PAGE_SIZE * 4,
     );

@@ -36,6 +36,28 @@ func InitSentry(cfg appconfig.SentryConfig) error {
 		Release:          cfg.Release,
 		TracesSampleRate: cfg.TracesSampleRate,
 		AttachStacktrace: true,
+		// Never attach user PII, and scrub request secrets before send.
+		DataCollection: &sentry.DataCollection{
+			UserInfo:   sentry.Set(false),
+			HTTPBodies: []sentry.BodyType{},
+			Cookies:    &sentry.KeyValueCollectionBehavior{Mode: sentry.CollectionOff},
+			HTTPHeaders: &sentry.HeaderCollectionConfig{
+				Request: &sentry.KeyValueCollectionBehavior{
+					Mode:  sentry.CollectionDenyList,
+					Terms: []string{"forwarded", "-ip", "remote-", "via", "-user"},
+				},
+				Response: &sentry.KeyValueCollectionBehavior{
+					Mode:  sentry.CollectionDenyList,
+					Terms: []string{"forwarded", "-ip", "remote-", "via", "-user"},
+				},
+			},
+			QueryParams: &sentry.KeyValueCollectionBehavior{
+				Mode:  sentry.CollectionDenyList,
+				Terms: []string{"forwarded", "-ip", "remote-", "via", "-user"},
+			},
+		},
+		BeforeSend:       ScrubEvent,
+		BeforeBreadcrumb: ScrubBreadcrumb,
 	}
 	if err := sentry.Init(opts); err != nil {
 		enabled = false
@@ -112,7 +134,7 @@ func CaptureClientLog(level, message, source, stack, url, requestID string) {
 	hub := sentry.CurrentHub().Clone()
 	hub.Scope().SetTag("client_source", source)
 	if url != "" {
-		hub.Scope().SetTag("client_url", url)
+		hub.Scope().SetTag("client_url", ScrubURL(url))
 	}
 	if requestID != "" {
 		hub.Scope().SetTag("request_id", requestID)

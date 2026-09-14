@@ -146,7 +146,7 @@ func (h *Handler) handlePutSentryServerSettings(w http.ResponseWriter, r *http.R
 		return
 	}
 	stored.DSN = strings.TrimSpace(stored.DSN)
-	stored.FrontendDSN = strings.TrimSpace(stored.FrontendDSN)
+	stored.FrontendDSN = ""
 	stored.Environment = strings.TrimSpace(stored.Environment)
 	stored.Release = strings.TrimSpace(stored.Release)
 	if stored.TracesSampleRate < 0 {
@@ -157,7 +157,6 @@ func (h *Handler) handlePutSentryServerSettings(w http.ResponseWriter, r *http.R
 	}
 	if !stored.Enabled {
 		stored.DSN = ""
-		stored.FrontendDSN = ""
 	}
 
 	envLocks := h.sentryEnvLocks()
@@ -165,9 +164,6 @@ func (h *Handler) handlePutSentryServerSettings(w http.ResponseWriter, r *http.R
 		env := h.sentryEnvConfig()
 		stored.DSN = env.DSN
 		stored.Enabled = env.Enabled()
-	}
-	if envLocks.FrontendDSN {
-		stored.FrontendDSN = h.sentryEnvConfig().FrontendDSN
 	}
 	if envLocks.Environment {
 		stored.Environment = h.sentryEnvConfig().Environment
@@ -224,6 +220,7 @@ func (h *Handler) LoadSentryClientSettings(userID string) (store.SentryClientSet
 	if err := json.Unmarshal([]byte(raw), &settings); err != nil {
 		return store.SentryClientSettings{}, err
 	}
+	settings.Choice = store.NormalizeSentryChoice(settings)
 	return settings, nil
 }
 
@@ -249,6 +246,7 @@ func (h *Handler) handlePutSentryClientSettings(w http.ResponseWriter, r *http.R
 		httputil.WriteError(w, http.StatusBadRequest, "invalid_client_sentry_settings", "invalid client sentry settings")
 		return
 	}
+	settings.Choice = store.NormalizeSentryChoice(settings)
 	encoded, err := json.Marshal(settings)
 	if err != nil {
 		httputil.WriteError(w, http.StatusInternalServerError, "internal_error", "encode client sentry settings")
@@ -263,7 +261,7 @@ func (h *Handler) handlePutSentryClientSettings(w http.ResponseWriter, r *http.R
 
 func (h *Handler) ClientSentryPayload(r *http.Request) map[string]any {
 	effective := h.EffectiveSentryConfig()
-	if !effective.Enabled() || !effective.ClientReportingAllowed {
+	if !effective.ClientReportingAllowed {
 		return nil
 	}
 
@@ -273,7 +271,7 @@ func (h *Handler) ClientSentryPayload(r *http.Request) map[string]any {
 		return nil
 	}
 
-	frontendDSN := effective.FrontendDSNEffective()
+	frontendDSN := effective.FrontendDSNOrDefault()
 	if frontendDSN == "" {
 		return nil
 	}

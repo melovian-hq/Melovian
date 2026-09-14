@@ -36,6 +36,16 @@ describe("continuous-pool", () => {
     expect(continuousRefillCount(0, 100, "library")).toBe(100);
   });
 
+  it("targets upcoming tracks rather than total queue length", () => {
+    // A queue of 25 with only 4 tracks still upcoming has drained below the
+    // soft target and must top back up.
+    expect(continuousRefillCount(25, 500, "random", 4)).toBe(21);
+    // Upcoming already at the soft target means no refill.
+    expect(continuousRefillCount(40, 500, "random", 25)).toBe(0);
+    // Refills never grow the queue past the configured cap.
+    expect(continuousRefillCount(490, 500, "random", 4)).toBe(10);
+  });
+
   it("filters unique tracks against existing ids", () => {
     const unique = filterUniqueTracks(
       [song("a"), song("b"), song("a")],

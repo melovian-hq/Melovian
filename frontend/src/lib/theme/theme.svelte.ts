@@ -20,12 +20,15 @@ import {
   LIGHT_THEME_COLORS,
 } from "./contrast";
 import {
+  CUSTOM_PALETTE_ID,
+  DEFAULT_CUSTOM_PALETTE,
   DEFAULT_PALETTE_ID,
   DEFAULT_RADIUS_ID,
   DEFAULT_UI_SIZE_ID,
   isPaletteIdForMode,
   RADIUS_OVERRIDES,
   UI_SIZE_FONT_SCALE,
+  type CustomPaletteColors,
   type RadiusStyleId,
   type UiSizeId,
 } from "./palettes";
@@ -40,6 +43,7 @@ const CUSTOM_CSS_KEY = StorageKeys.customCss;
 const CUSTOM_STYLE_ID = StorageKeys.customCss;
 const PALETTE_DARK_KEY = StorageKeys.themePaletteDark;
 const PALETTE_LIGHT_KEY = StorageKeys.themePaletteLight;
+const CUSTOM_PALETTE_KEY = StorageKeys.themeCustomPalette;
 const RADIUS_KEY = StorageKeys.themeRadius;
 const UI_SIZE_KEY = StorageKeys.themeUiSize;
 
@@ -134,9 +138,52 @@ function loadStoredPalette(mode: ResolvedTheme): string {
     : DEFAULT_PALETTE_ID;
 }
 
+/** Normalize one custom palette field. Only #rrggbb hex passes through. */
+function sanitizeCustomColor(
+  value: unknown,
+  fallback: string,
+  allowEmpty: boolean,
+): string {
+  if (typeof value !== "string") return fallback;
+  const hex = value.trim();
+  if (allowEmpty && hex === "") return "";
+  return isHexColor(hex) ? hex.toLowerCase() : fallback;
+}
+
+function loadStoredCustomPalettes(): Record<
+  ResolvedTheme,
+  CustomPaletteColors
+> {
+  const fallback = structuredClone(DEFAULT_CUSTOM_PALETTE);
+  const raw = readStorage(CUSTOM_PALETTE_KEY);
+  if (!raw) return fallback;
+  try {
+    const parsed = JSON.parse(raw) as Partial<
+      Record<ResolvedTheme, Partial<CustomPaletteColors>>
+    >;
+    for (const mode of ["dark", "light"] as const) {
+      const stored = parsed?.[mode];
+      if (!stored) continue;
+      fallback[mode] = {
+        bg: sanitizeCustomColor(stored.bg, fallback[mode].bg, false),
+        surface: sanitizeCustomColor(
+          stored.surface,
+          fallback[mode].surface,
+          false,
+        ),
+        accent: sanitizeCustomColor(stored.accent, "", true),
+      };
+    }
+    return fallback;
+  } catch {
+    return fallback;
+  }
+}
+
 const RADIUS_STYLE_IDS: readonly RadiusStyleId[] = [
   "default",
   "sharp",
+  "square",
   "round",
 ];
 const UI_SIZE_IDS: readonly UiSizeId[] = ["default", "compact", "large"];
@@ -151,8 +198,25 @@ function loadStoredUiSize(): UiSizeId {
   return UI_SIZE_IDS.find((id) => id === stored) ?? DEFAULT_UI_SIZE_ID;
 }
 
-function applyPalette(palette: string) {
+function applyPalette(
+  palette: string,
+  custom: CustomPaletteColors | undefined,
+) {
   const root = document.documentElement;
+  if (palette === CUSTOM_PALETTE_ID && custom) {
+    root.dataset.palette = CUSTOM_PALETTE_ID;
+    root.style.setProperty("--jb-custom-bg", custom.bg);
+    root.style.setProperty("--jb-custom-surface", custom.surface);
+    if (custom.accent) {
+      root.style.setProperty("--jb-custom-accent", custom.accent);
+    } else {
+      root.style.removeProperty("--jb-custom-accent");
+    }
+    return;
+  }
+  root.style.removeProperty("--jb-custom-bg");
+  root.style.removeProperty("--jb-custom-surface");
+  root.style.removeProperty("--jb-custom-accent");
   if (palette === DEFAULT_PALETTE_ID) {
     delete root.dataset.palette;
     return;
@@ -162,14 +226,19 @@ function applyPalette(palette: string) {
 
 function applyRadiusStyle(style: RadiusStyleId) {
   const root = document.documentElement.style;
-  const sizes = ["sm", "md", "lg", "xl"] as const;
+  const sizes = ["sm", "md", "lg", "xl", "full"] as const;
   if (style === DEFAULT_RADIUS_ID) {
     for (const size of sizes) root.removeProperty(`--jb-radius-${size}`);
     return;
   }
   const overrides = RADIUS_OVERRIDES[style];
   for (const size of sizes) {
-    root.setProperty(`--jb-radius-${size}`, overrides[size]);
+    const value = overrides[size];
+    if (value === "9999px") {
+      root.removeProperty(`--jb-radius-${size}`);
+    } else {
+      root.setProperty(`--jb-radius-${size}`, value);
+    }
   }
 }
 
@@ -216,6 +285,9 @@ export class ThemeStore {
   customCss = $state(loadStoredCustomCss());
   darkPalette = $state<string>(loadStoredPalette("dark"));
   lightPalette = $state<string>(loadStoredPalette("light"));
+  customPalettes = $state<Record<ResolvedTheme, CustomPaletteColors>>(
+    loadStoredCustomPalettes(),
+  );
   radiusStyle = $state<RadiusStyleId>(loadStoredRadius());
   uiSize = $state<UiSizeId>(loadStoredUiSize());
   /** Palette id active for the resolved theme. */
@@ -285,13 +357,16 @@ export class ThemeStore {
       $effect(() => {
         const palette = this.palette;
         const mode = this.resolved;
-        const key = mode === "dark" ? PALETTE_DARK_KEY : PALETTE_LIGHT_KEY;
-        if (palette === DEFAULT_PALETTE_ID) {
-          removeStorage(key);
-        } else {
-          writeStorage(key, palette);
+        const custom = this.customPalettes[mode];
+        for (const [key, value] of [
+          [PALETTE_DARK_KEY, this.darkPalette],
+          [PALETTE_LIGHT_KEY, this.lightPalette],
+        ] as const) {
+          if (value === DEFAULT_PALETTE_ID) removeStorage(key);
+          else writeStorage(key, value);
         }
-        applyPalette(palette);
+        writeStorage(CUSTOM_PALETTE_KEY, JSON.stringify(this.customPalettes));
+        applyPalette(palette, custom);
       });
 
       $effect(() => {
@@ -344,13 +419,34 @@ export class ThemeStore {
     this.accentPreset = CUSTOM_ACCENT_ID;
   }
 
+  /** Every palette ships a dark and a light ramp, so one pick sets both. */
   setPalette(id: string) {
     if (!isPaletteIdForMode(id, this.resolved)) return;
-    if (this.resolved === "dark") {
-      this.darkPalette = id;
-    } else {
-      this.lightPalette = id;
+    this.darkPalette = id;
+    this.lightPalette = id;
+  }
+
+  /** Update one color of the custom palette for a resolved theme. */
+  setCustomPaletteColor(
+    mode: ResolvedTheme,
+    field: keyof CustomPaletteColors,
+    hex: string,
+  ) {
+    const trimmed = hex.trim();
+    if (field === "accent" && trimmed === "") {
+      this.customPalettes[mode] = {
+        ...this.customPalettes[mode],
+        accent: "",
+      };
+      return;
     }
+    if (!isHexColor(trimmed)) return;
+    this.customPalettes[mode] = {
+      ...this.customPalettes[mode],
+      [field]: trimmed.toLowerCase(),
+    };
+    this.darkPalette = CUSTOM_PALETTE_ID;
+    this.lightPalette = CUSTOM_PALETTE_ID;
   }
 
   setRadiusStyle(id: RadiusStyleId) {
@@ -371,6 +467,7 @@ export class ThemeStore {
     this.customCss = "";
     this.darkPalette = DEFAULT_PALETTE_ID;
     this.lightPalette = DEFAULT_PALETTE_ID;
+    this.customPalettes = structuredClone(DEFAULT_CUSTOM_PALETTE);
     this.radiusStyle = DEFAULT_RADIUS_ID;
     this.uiSize = DEFAULT_UI_SIZE_ID;
     clearAccentOverrides();
@@ -381,6 +478,7 @@ export class ThemeStore {
     removeStorage(CUSTOM_CSS_KEY);
     removeStorage(PALETTE_DARK_KEY);
     removeStorage(PALETTE_LIGHT_KEY);
+    removeStorage(CUSTOM_PALETTE_KEY);
     removeStorage(RADIUS_KEY);
     removeStorage(UI_SIZE_KEY);
   }

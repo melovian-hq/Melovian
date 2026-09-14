@@ -23,6 +23,12 @@ var (
 	Description = "Music player for local libraries and Subsonic-compatible servers"
 	// OGImage is the default Open Graph image path on the site root.
 	OGImage = "/og.png"
+	// DefaultTelemetryDSN is the built-in Sentry-compatible ingest endpoint
+	// used when a user opts in to crash reporting and no DSN is configured.
+	// DSNs are client-facing credentials by design, so shipping one is safe.
+	// Downstreams that want their own sink can override at link time:
+	// -X melovian/internal/brand.DefaultTelemetryDSN=https://key@host/1
+	DefaultTelemetryDSN = "https://b8c9db338b714b17ba9a704a298b16ea@bugs.quad4.io/5"
 )
 
 // ManifestName is the extension manifest file name.

@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
-import { defineConfig } from "vite";
+import { defineConfig, type Plugin } from "vite";
 import { svelte } from "@sveltejs/vite-plugin-svelte";
 import tailwindcss from "@tailwindcss/vite";
 import wails from "@wailsio/runtime/plugins/vite";
@@ -53,9 +53,96 @@ function resolveAppVersion(): string {
 
 const appVersion = resolveAppVersion();
 
+/**
+ * Emits the service worker and web app manifest at build time. The service
+ * worker gets the hashed precache list injected so each release is a distinct
+ * cache generation. No runtime plugin dependency, the SW is a static file.
+ */
+function pwaPlugin(): Plugin {
+  return {
+    name: "melovian-pwa",
+    apply: "build",
+    generateBundle(_options, bundle) {
+      const precache: string[] = [];
+      for (const [fileName, item] of Object.entries(bundle)) {
+        if (fileName === "index.html") {
+          precache.push(`${base}index.html`);
+          continue;
+        }
+        if (item.type !== "chunk" && item.type !== "asset") continue;
+        // Precache entry chunks and the global stylesheet only. Per-route
+        // chunks and styles stay lazy. Everything else under assets/ is
+        // cached by the service worker on first fetch.
+        const isEntry = item.type === "chunk" && item.isEntry;
+        const isGlobalCss = /(^|\/)index-[^/]*\.css$/.test(fileName);
+        if (isEntry || isGlobalCss) {
+          precache.push(`${base}${fileName}`);
+        }
+      }
+
+      const swTemplate = readFileSync(path.resolve("pwa/sw.js"), "utf8");
+      const swSource = swTemplate
+        .replaceAll("__VERSION__", appVersion)
+        .replaceAll("__PRECACHE__", JSON.stringify(precache))
+        .replaceAll("__BASE_URL__", base);
+      this.emitFile({
+        type: "asset",
+        fileName: "sw.js",
+        source: swSource,
+      });
+
+      const name = process.env.VITE_APP_NAME || "Melovian";
+      const manifest = {
+        name,
+        short_name: name,
+        description:
+          process.env.VITE_APP_DESCRIPTION ||
+          "Music player for local libraries and Subsonic-compatible servers",
+        id: base,
+        start_url: base,
+        scope: base,
+        display: "standalone",
+        orientation: "any",
+        background_color: "#0a0a0f",
+        theme_color: "#0a0a0f",
+        categories: ["music", "entertainment"],
+        icons: [
+          {
+            src: `${base}favicon-192.png`,
+            sizes: "192x192",
+            type: "image/png",
+          },
+          {
+            src: `${base}icon-512.png`,
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "any",
+          },
+          {
+            src: `${base}icon-512.png`,
+            sizes: "512x512",
+            type: "image/png",
+            purpose: "maskable",
+          },
+          {
+            src: `${base}favicon.svg`,
+            sizes: "any",
+            type: "image/svg+xml",
+          },
+        ],
+      };
+      this.emitFile({
+        type: "asset",
+        fileName: "manifest.webmanifest",
+        source: JSON.stringify(manifest, null, 2),
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base,
-  plugins: [svelte(), tailwindcss(), wails("./bindings")],
+  plugins: [svelte(), tailwindcss(), wails("./bindings"), pwaPlugin()],
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
     "import.meta.env.VITE_STATIC_DEMO": JSON.stringify(

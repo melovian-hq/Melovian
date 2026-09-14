@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { initSentryFromBuildEnv } from "$lib/core/sentry";
+import { registerServiceWorker } from "$lib/pwa/register-sw";
 import {
   markAppMounted,
   reportFatalError,
@@ -17,6 +18,19 @@ import { setStaticDemo } from "$lib/config/runtime";
 installInsecureContextPolyfills();
 initSentryFromBuildEnv();
 installGlobalErrorHandlers();
+
+// PWA shell + auto-update. The reload is deferred while audio is playing so
+// an update can never cut a track mid-stream.
+void import("$lib/config/music.svelte")
+  .then(({ music }) => {
+    registerServiceWorker({
+      isPlaying: () => music.playing,
+      onUpdateReady: () => {
+        // Applied automatically once playback stops, or on next launch
+      },
+    });
+  })
+  .catch(() => registerServiceWorker());
 
 async function boot() {
   if (import.meta.env.VITE_STATIC_DEMO === "true") {

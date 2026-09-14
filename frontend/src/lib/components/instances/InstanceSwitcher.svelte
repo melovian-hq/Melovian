@@ -22,6 +22,61 @@
   let { compact = false, class: className = "" }: Props = $props();
 
   let open = $state(false);
+  let triggerEl = $state<HTMLButtonElement | null>(null);
+  let menuPos = $state<{
+    top: number;
+    left: number;
+    width: number;
+    maxHeight: number;
+  } | null>(null);
+
+  // The sidebar clips descendants with clip-path, so an absolutely
+  // positioned menu can never escape it. Position the menu in viewport
+  // coordinates instead, recomputed when the trigger moves.
+  function syncMenuPosition() {
+    if (!triggerEl) return;
+    const rect = triggerEl.getBoundingClientRect();
+    menuPos = {
+      top: rect.bottom + 8,
+      left: rect.left,
+      width: rect.width,
+      maxHeight: Math.max(160, window.innerHeight - rect.bottom - 16),
+    };
+  }
+
+  function toggleOpen(event: MouseEvent) {
+    event.stopPropagation();
+    if (!open) syncMenuPosition();
+    open = !open;
+  }
+
+  let menuEl = $state<HTMLDivElement | null>(null);
+
+  $effect(() => {
+    if (!open) return;
+    const onKeydown = (event: KeyboardEvent) => {
+      if (event.key === "Escape") open = false;
+    };
+    const onDocClick = (event: MouseEvent) => {
+      const target = event.target;
+      if (!(target instanceof Node)) return;
+      if (menuEl?.contains(target) || triggerEl?.contains(target)) return;
+      open = false;
+    };
+    const close = () => {
+      open = false;
+    };
+    window.addEventListener("keydown", onKeydown);
+    document.addEventListener("click", onDocClick, true);
+    window.addEventListener("resize", close);
+    window.addEventListener("scroll", close, true);
+    return () => {
+      window.removeEventListener("keydown", onKeydown);
+      document.removeEventListener("click", onDocClick, true);
+      window.removeEventListener("resize", close);
+      window.removeEventListener("scroll", close, true);
+    };
+  });
 
   async function switchSubsonic(id: string) {
     if (
@@ -116,20 +171,27 @@
   <button
     type="button"
     class="instance-switcher__trigger"
+    bind:this={triggerEl}
     aria-haspopup="listbox"
     aria-expanded={open}
     disabled={instances.switching || localLibraries.switching}
-    onclick={() => {
-      open = !open;
-    }}
+    onclick={toggleOpen}
   >
     <SourceIcon kind="auto" size={16} />
     <span class="instance-switcher__label">{sources.activeLabel}</span>
     <MdiIcon name="chevronDown" size={16} />
   </button>
 
-  {#if open}
-    <div class="instance-switcher__menu" role="listbox">
+  {#if open && menuPos}
+    <div
+      class="instance-switcher__menu"
+      role="listbox"
+      bind:this={menuEl}
+      style:top="{menuPos.top}px"
+      style:left="{menuPos.left}px"
+      style:min-width="{menuPos.width}px"
+      style:max-height="{menuPos.maxHeight}px"
+    >
       {#if sources.canUseUnified}
         <p class="instance-switcher__section">All sources</p>
         <button
@@ -289,16 +351,16 @@
     font-size: 0.875rem;
   }
 
+  /* Fixed so the menu escapes the sidebar clip-path. Top and left come
+     from the trigger rect, computed when the menu opens. */
   .instance-switcher__menu {
-    position: absolute;
-    top: calc(100% + var(--jb-space-2));
-    left: 0;
-    z-index: 50;
+    position: fixed;
+    z-index: var(--jb-z-popover);
     display: grid;
     gap: var(--jb-space-1);
     width: max-content;
-    min-width: 100%;
-    max-width: 16rem;
+    max-width: min(16rem, calc(100vw - var(--jb-space-4)));
+    overflow-y: auto;
     padding: var(--jb-space-2);
     border: 1px solid var(--jb-border);
     border-radius: var(--jb-radius-lg);

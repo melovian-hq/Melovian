@@ -49,6 +49,8 @@ export const StorageKeys = {
   themeAccentHue: storageKey("theme-accent-hue"),
   themePaletteDark: storageKey("theme-palette-dark"),
   themePaletteLight: storageKey("theme-palette-light"),
+  /** User-authored custom palette colors, JSON per resolved theme. */
+  themeCustomPalette: storageKey("theme-palette-custom"),
   themeRadius: storageKey("theme-radius"),
   themeUiSize: storageKey("theme-ui-size"),
   customCss: storageKey("custom-css"),
@@ -94,6 +96,8 @@ export const StorageKeys = {
   artistInfoPrefix: "mel-artist-info:",
   compatMismatchPrefix: "mel-compat-mismatch-dismissed:",
   spaReloadPrefix: "mel-spa-reload:",
+  /** Cached telemetry consent so boot code can gate pre-config Sentry init. */
+  telemetryConsent: storageKey("telemetry-consent"),
 } as const;
 
 /**

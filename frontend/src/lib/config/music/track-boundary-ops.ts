@@ -2,6 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { connection } from "$lib/music/connection.svelte";
+import { cachedTrackUrl, resolvePlaybackUrl } from "$lib/music/media-cache";
 import {
   failuresSuggestOutage,
   playbackHoldActive,
@@ -130,6 +131,33 @@ export async function handlePlaybackNetworkFailure(
 
   const shouldResume = options.resume ?? ctx.playing;
 
+  // The IndexedDB media cache is the offline path for remote tracks. A blob
+  // URL survives a dead network entirely. Native engines fetch outside it.
+  const cachedUrl = ctx.nativePlayback ? null : await cachedTrackUrl(track);
+  if (cachedUrl) {
+    const positionSec = ctx.engine?.currentTime ?? ctx.currentTime;
+    try {
+      await ctx.loadTrackSource(token, track, cachedUrl);
+      if (token !== ctx.playbackEpoch) return;
+      if (positionSec > 1) {
+        ctx.engine!.currentTime = positionSec;
+        ctx.currentTime = positionSec;
+      }
+      if (shouldResume) {
+        await ctx.engine!.play();
+        if (token !== ctx.playbackEpoch) return;
+        ctx.playing = true;
+        ctx.startProgressTracking();
+        ctx.startSmoothProgress();
+        ctx.syncMediaSession();
+      }
+      connection.onServerDisconnected(undefined, { silent: true });
+      return;
+    } catch {
+      /* fall through to the downloaded-copy and reconnect paths */
+    }
+  }
+
   if (ctx.isDownloaded(track.id)) {
     const cacheUrl = ctx.trackStreamUrl(track);
     const positionSec = ctx.engine?.currentTime ?? ctx.currentTime;
@@ -168,9 +196,26 @@ export async function loadTrackSource(
   url: string,
 ): Promise<void> {
   if (!ctx.engine) return;
+  const playable =
+    url.startsWith("blob:") || ctx.nativePlayback
+      ? url
+      : resolvePlaybackUrl(track, url);
   try {
-    await ctx.engine.loadSource(url);
+    await ctx.engine.loadSource(playable);
   } catch (err) {
+    // A dead or flapping link fails the network load. Fall back to the
+    // cached blob before surfacing the error.
+    if (!playable.startsWith("blob:")) {
+      const fallback = await cachedTrackUrl(track);
+      if (fallback && fallback !== playable) {
+        try {
+          await ctx.engine.loadSource(fallback);
+          return;
+        } catch {
+          /* surface the original error below */
+        }
+      }
+    }
     if (token !== ctx.playbackEpoch) throw err;
     const msg = err instanceof Error ? err.message : "Failed to load track";
     if (ctx.isSupersededPlaybackError(msg)) return;
@@ -270,7 +315,17 @@ export async function onTrackEnded(ctx: MusicTrackBoundaryContext) {
       finished &&
       !isInternetRadioTrack(finished)
     ) {
-      queueExtended = await ctx.maybeRefillContinuousQueue();
+      // When an upcoming track already exists, refill in the background so
+      // the transition does not stall on a network fetch. Only block the
+      // advance when the queue is dry and the refill decides whether
+      // playback continues.
+      const hasUpcoming = ctx.shuffle ? ctx.shuffleUpcoming.length > 0 : !atEnd;
+      const refill = ctx.maybeRefillContinuousQueue().catch(() => false);
+      if (hasUpcoming || ctx.repeat === "all") {
+        void refill;
+      } else {
+        queueExtended = await refill;
+      }
     } else if (
       (atEnd || shuffleNeedsRefill) &&
       ctx.repeat === "off" &&
@@ -278,9 +333,15 @@ export async function onTrackEnded(ctx: MusicTrackBoundaryContext) {
       finished &&
       !isInternetRadioTrack(finished)
     ) {
-      queueExtended = await ctx.appendRandomSongsToQueue(
-        CONTINUOUS_REFILL_BATCH,
-      );
+      const hasUpcoming = ctx.shuffle ? ctx.shuffleUpcoming.length > 0 : !atEnd;
+      const refill = ctx
+        .appendRandomSongsToQueue(CONTINUOUS_REFILL_BATCH)
+        .catch(() => false);
+      if (hasUpcoming) {
+        void refill;
+      } else {
+        queueExtended = await refill;
+      }
     }
 
     const playbackExhausted = ctx.shuffle
@@ -306,10 +367,14 @@ export async function maybeRefillContinuousQueue(
   ctx: MusicTrackBoundaryContext,
 ): Promise<boolean> {
   if (ctx.continuousMode === "off" || !ctx.autoplay) return false;
+  const upcoming = ctx.shuffle
+    ? ctx.shuffleUpcoming.length
+    : Math.max(0, ctx.queue.length - ctx.queueIndex - 1);
   const count = continuousRefillCount(
     ctx.queue.length,
     ctx.queueSettings.maxQueueSize,
     ctx.continuousMode,
+    upcoming,
   );
   if (count <= 0) return false;
 
@@ -470,12 +535,26 @@ export async function appendRandomSongsToQueue(
     const batch = Math.min(count, slots);
     if (batch <= 0) return false;
 
-    const more = await ctx.library
-      .getRandomSongs(batch)
-      .catch(() => [] as SubsonicSong[]);
-    if (more.length === 0) return false;
+    // A random draw can repeat tracks already in the queue, and some
+    // servers hand back the same set on consecutive calls. Accumulate
+    // uniques over a few draws instead of letting one stale batch end the
+    // refill.
+    const seen = new Set(ctx.queue.map((track) => track.id));
+    const fresh: SubsonicSong[] = [];
+    for (let attempt = 0; attempt < 3 && fresh.length < batch; attempt += 1) {
+      const draw = await ctx.library
+        .getRandomSongs(batch)
+        .catch(() => [] as SubsonicSong[]);
+      if (draw.length === 0) break;
+      for (const track of draw) {
+        if (!track.id || seen.has(track.id)) continue;
+        seen.add(track.id);
+        fresh.push(track);
+      }
+    }
+    if (fresh.length === 0) return false;
 
-    return ctx.appendTracksToQueue(more);
+    return ctx.appendTracksToQueue(fresh);
   };
 
   ctx.continuousRefillInFlight = run().finally(() => {
@@ -559,7 +638,7 @@ export async function restorePlayback(ctx: MusicTrackBoundaryContext) {
       ? restoredIndex
       : Math.min(Math.max(0, saved.queueIndex), limited.length - 1);
   ctx.shuffle = saved.shuffle;
-  ctx.autoplay = saved.autoplay;
+  ctx.autoplay = saved.autoplay !== false;
   ctx.continuousMode = migrateContinuousMode(saved);
   ctx.shuffleHistory = [];
   if (ctx.shuffle) {

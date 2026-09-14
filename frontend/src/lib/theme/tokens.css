@@ -349,6 +349,115 @@
     --jb-raw-neutral-50: #f7f0e8;
   }
 
+  /* Paper dark: warm sepia companion to the light paper ramp. */
+  [data-theme="dark"][data-palette="paper"] {
+    --jb-raw-neutral-975: #0f0d0a;
+    --jb-raw-neutral-950: #141210;
+    --jb-raw-neutral-900: #1f1c18;
+    --jb-raw-neutral-875: #26221d;
+    --jb-raw-neutral-850: #2b2620;
+    --jb-raw-neutral-800: #37302a;
+    --jb-raw-neutral-700: #4a4239;
+    --jb-raw-neutral-600: #6b6154;
+    --jb-raw-neutral-400: #a89c8d;
+    --jb-raw-neutral-300: #cfc6b8;
+    --jb-raw-neutral-50: #f2ece1;
+  }
+
+  /* Forest: green-tinted dark. */
+  [data-theme="dark"][data-palette="forest"] {
+    --jb-raw-neutral-975: #070c08;
+    --jb-raw-neutral-950: #0b120c;
+    --jb-raw-neutral-900: #101a12;
+    --jb-raw-neutral-875: #142016;
+    --jb-raw-neutral-850: #18251a;
+    --jb-raw-neutral-800: #203020;
+    --jb-raw-neutral-700: #2a3f2b;
+    --jb-raw-neutral-600: #3f5a40;
+    --jb-raw-neutral-400: #8ba58c;
+    --jb-raw-neutral-300: #b5c8b6;
+    --jb-raw-neutral-50: #eef5ee;
+  }
+
+  /* Ocean: teal-tinted dark. */
+  [data-theme="dark"][data-palette="ocean"] {
+    --jb-raw-neutral-975: #060b0f;
+    --jb-raw-neutral-950: #0a1216;
+    --jb-raw-neutral-900: #0e1a20;
+    --jb-raw-neutral-875: #12222a;
+    --jb-raw-neutral-850: #162830;
+    --jb-raw-neutral-800: #1e3641;
+    --jb-raw-neutral-700: #28485a;
+    --jb-raw-neutral-600: #3a6680;
+    --jb-raw-neutral-400: #86a9bd;
+    --jb-raw-neutral-300: #b4cad8;
+    --jb-raw-neutral-50: #eef6fa;
+  }
+
+  /* Rose: warm pink-tinted dark. */
+  [data-theme="dark"][data-palette="rose"] {
+    --jb-raw-neutral-975: #0f070a;
+    --jb-raw-neutral-950: #170b10;
+    --jb-raw-neutral-900: #1f1016;
+    --jb-raw-neutral-875: #25141c;
+    --jb-raw-neutral-850: #2a1820;
+    --jb-raw-neutral-800: #38212b;
+    --jb-raw-neutral-700: #4a2e3a;
+    --jb-raw-neutral-600: #6a4356;
+    --jb-raw-neutral-400: #b08ba0;
+    --jb-raw-neutral-300: #cfb3c3;
+    --jb-raw-neutral-50: #f9eff5;
+  }
+
+  /* Custom dark: the ramp derives from the user's two colors via
+     color-mix, so any bg and surface pair still gets usable steps. */
+  [data-theme="dark"][data-palette="custom"] {
+    --jb-raw-neutral-975: var(--jb-custom-bg);
+    --jb-raw-neutral-950: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 72%,
+      var(--jb-custom-surface)
+    );
+    --jb-raw-neutral-900: var(--jb-custom-surface);
+    --jb-raw-neutral-875: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 86%,
+      #ffffff 14%
+    );
+    --jb-raw-neutral-850: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 76%,
+      #ffffff 24%
+    );
+    --jb-raw-neutral-800: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 58%,
+      #ffffff 42%
+    );
+    --jb-raw-neutral-700: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 38%,
+      #ffffff 62%
+    );
+    --jb-raw-neutral-600: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 22%,
+      #ffffff 78%
+    );
+    --jb-raw-neutral-400: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 8%,
+      #ffffff 92%
+    );
+    --jb-raw-neutral-300: color-mix(
+      in srgb,
+      #ffffff 96%,
+      var(--jb-custom-surface)
+    );
+    --jb-raw-neutral-50: color-mix(in srgb, #ffffff 98%, var(--jb-custom-bg));
+    --jb-raw-accent: var(--jb-custom-accent, #a468f3);
+  }
+
   /* Paper: warm paper-tinted light. */
   [data-theme="light"][data-palette="paper"] {
     --jb-raw-white: #fffdf7;
@@ -360,5 +469,125 @@
     --jb-raw-neutral-500: #7d7159;
     --jb-raw-neutral-600: #5c5341;
     --jb-raw-neutral-900: #2b251d;
+  }
+
+  /* Midnight light: cool blue-gray companion to the navy dark ramp. */
+  [data-theme="light"][data-palette="midnight"] {
+    --jb-raw-white: #ffffff;
+    --jb-raw-neutral-50: #f7f8fb;
+    --jb-raw-neutral-100: #eef1f8;
+    --jb-raw-neutral-200: #dde3ef;
+    --jb-raw-neutral-300: #c3cbdd;
+    --jb-raw-neutral-400: #93a0bb;
+    --jb-raw-neutral-500: #68748f;
+    --jb-raw-neutral-600: #4e5971;
+    --jb-raw-neutral-900: #1c2231;
+  }
+
+  /* OLED light: crisp neutral grays with maximum text contrast. */
+  [data-theme="light"][data-palette="oled"] {
+    --jb-raw-white: #ffffff;
+    --jb-raw-neutral-50: #fafafa;
+    --jb-raw-neutral-100: #f0f0f0;
+    --jb-raw-neutral-200: #e2e2e4;
+    --jb-raw-neutral-300: #cfcfd2;
+    --jb-raw-neutral-400: #9a9aa0;
+    --jb-raw-neutral-500: #71717a;
+    --jb-raw-neutral-600: #52525b;
+    --jb-raw-neutral-900: #121214;
+  }
+
+  /* Espresso light: warm latte companion to the brown dark ramp. */
+  [data-theme="light"][data-palette="espresso"] {
+    --jb-raw-white: #fffdfb;
+    --jb-raw-neutral-50: #faf6f1;
+    --jb-raw-neutral-100: #f7f2ec;
+    --jb-raw-neutral-200: #ece2d6;
+    --jb-raw-neutral-300: #d9c9b8;
+    --jb-raw-neutral-400: #a89684;
+    --jb-raw-neutral-500: #7d6c5a;
+    --jb-raw-neutral-600: #5d4f41;
+    --jb-raw-neutral-900: #241c15;
+  }
+
+  /* Forest light: sage-tinted companion to the green dark ramp. */
+  [data-theme="light"][data-palette="forest"] {
+    --jb-raw-white: #fdfffd;
+    --jb-raw-neutral-50: #f4f9f4;
+    --jb-raw-neutral-100: #eef4ec;
+    --jb-raw-neutral-200: #dce7da;
+    --jb-raw-neutral-300: #bfd2c2;
+    --jb-raw-neutral-400: #8fae97;
+    --jb-raw-neutral-500: #68866f;
+    --jb-raw-neutral-600: #4e6a55;
+    --jb-raw-neutral-900: #1d291f;
+  }
+
+  /* Ocean light: cool cyan-tinted companion to the teal dark ramp. */
+  [data-theme="light"][data-palette="ocean"] {
+    --jb-raw-white: #fcfeff;
+    --jb-raw-neutral-50: #f3f8fa;
+    --jb-raw-neutral-100: #ecf3f7;
+    --jb-raw-neutral-200: #d9e5ec;
+    --jb-raw-neutral-300: #bdd0da;
+    --jb-raw-neutral-400: #8ba9ba;
+    --jb-raw-neutral-500: #648290;
+    --jb-raw-neutral-600: #4a6573;
+    --jb-raw-neutral-900: #17242c;
+  }
+
+  /* Rose light: blush-tinted companion to the pink dark ramp. */
+  [data-theme="light"][data-palette="rose"] {
+    --jb-raw-white: #fffdfd;
+    --jb-raw-neutral-50: #faf4f6;
+    --jb-raw-neutral-100: #f8eef1;
+    --jb-raw-neutral-200: #eedbe1;
+    --jb-raw-neutral-300: #d9bfc8;
+    --jb-raw-neutral-400: #ad8e9c;
+    --jb-raw-neutral-500: #826576;
+    --jb-raw-neutral-600: #644a57;
+    --jb-raw-neutral-900: #2b2025;
+  }
+
+  /* Custom light: bg anchors the page, surface anchors elevated cards. */
+  [data-theme="light"][data-palette="custom"] {
+    --jb-raw-white: var(--jb-custom-surface);
+    --jb-raw-neutral-50: color-mix(
+      in srgb,
+      var(--jb-custom-surface) 65%,
+      var(--jb-custom-bg)
+    );
+    --jb-raw-neutral-100: var(--jb-custom-bg);
+    --jb-raw-neutral-200: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 90%,
+      #000000 10%
+    );
+    --jb-raw-neutral-300: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 78%,
+      #000000 22%
+    );
+    --jb-raw-neutral-400: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 56%,
+      #000000 44%
+    );
+    --jb-raw-neutral-500: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 40%,
+      #000000 60%
+    );
+    --jb-raw-neutral-600: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 28%,
+      #000000 72%
+    );
+    --jb-raw-neutral-900: color-mix(
+      in srgb,
+      var(--jb-custom-bg) 8%,
+      #000000 92%
+    );
+    --jb-raw-accent: var(--jb-custom-accent, #6f25d0);
   }
 }

@@ -167,6 +167,22 @@ const ACTION_COMMANDS: PaletteCommand[] = [
     run: () => void music.playLibraryShuffle(),
   },
   {
+    id: "random-radio",
+    label: "Play random radio",
+    group: "Playback",
+    icon: "radio",
+    keywords: ["radio", "random", "continuous", "refill"],
+    run: () => void music.playRandomRadio(),
+  },
+  {
+    id: "personal-radio",
+    label: "Play personal radio",
+    group: "Playback",
+    icon: "radio",
+    keywords: ["radio", "personal", "continuous", "refill"],
+    run: () => void music.playPersonalRadio(),
+  },
+  {
     id: "theme-light",
     label: "Use light theme",
     group: "Appearance",

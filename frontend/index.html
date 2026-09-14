@@ -16,6 +16,14 @@
       href="%BASE_URL%favicon-192.png"
     />
     <link rel="apple-touch-icon" href="%BASE_URL%apple-touch-icon.png" />
+    <link rel="manifest" href="%BASE_URL%manifest.webmanifest" />
+    <meta name="mobile-web-app-capable" content="yes" />
+    <meta name="apple-mobile-web-app-capable" content="yes" />
+    <meta
+      name="apple-mobile-web-app-status-bar-style"
+      content="black-translucent"
+    />
+    <meta name="apple-mobile-web-app-title" content="%VITE_APP_NAME%" />
     <meta
       name="viewport"
       content="width=device-width, initial-scale=1.0, viewport-fit=cover"
@@ -109,24 +117,56 @@
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", themeColor);
         // Palette, radius, and interface size mirror lib/theme/palettes.ts so
-        // stored choices apply before first paint.
+        // stored choices apply before first paint. Every palette id covers
+        // both themes.
         var palette = localStorage.getItem(
           "%VITE_APP_SLUG%-theme-palette-" + resolved,
         );
-        var palettes =
-          resolved === "dark"
-            ? { midnight: 1, oled: 1, espresso: 1 }
-            : { paper: 1 };
-        if (palette && palettes[palette]) root.dataset.palette = palette;
+        var palettes = {
+          midnight: 1,
+          oled: 1,
+          espresso: 1,
+          paper: 1,
+          forest: 1,
+          ocean: 1,
+          rose: 1,
+          custom: 1,
+        };
+        if (palette && palettes[palette]) {
+          if (palette === "custom") {
+            var custom = null;
+            try {
+              custom = JSON.parse(
+                localStorage.getItem("%VITE_APP_SLUG%-theme-palette-custom") ||
+                  "null",
+              );
+            } catch (e) {}
+            var colors = custom && custom[resolved];
+            if (colors && colors.bg && colors.surface) {
+              root.dataset.palette = "custom";
+              root.style.setProperty("--jb-custom-bg", colors.bg);
+              root.style.setProperty("--jb-custom-surface", colors.surface);
+              if (colors.accent) {
+                root.style.setProperty("--jb-custom-accent", colors.accent);
+              }
+            }
+          } else {
+            root.dataset.palette = palette;
+          }
+        }
         var radius = localStorage.getItem("%VITE_APP_SLUG%-theme-radius");
         var radii = {
           sharp: ["0.1875rem", "0.25rem", "0.375rem", "0.5rem"],
+          square: ["0", "0", "0", "0"],
           round: ["0.5625rem", "0.75rem", "1.125rem", "1.5rem"],
         }[radius];
         if (radii) {
           var sizes = ["sm", "md", "lg", "xl"];
           for (var i = 0; i < sizes.length; i++) {
             root.style.setProperty("--jb-radius-" + sizes[i], radii[i]);
+          }
+          if (radius === "square") {
+            root.style.setProperty("--jb-radius-full", "0");
           }
         }
         var uiSize = localStorage.getItem("%VITE_APP_SLUG%-theme-ui-size");

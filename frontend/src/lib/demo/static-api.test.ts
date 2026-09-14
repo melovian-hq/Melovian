@@ -243,4 +243,57 @@ describe("static-api", () => {
     const batch = await (await fetch("/api/music/batch?ids=s1")).json();
     expect(batch.favorites).toBeUndefined();
   });
+
+  it("keeps bundled metadata and lyrics extensions enabled", async () => {
+    const catalog = {
+      artists: [],
+      albums: [],
+      songs: [],
+      playlists: [],
+      genres: [],
+    };
+
+    const realFetch = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("catalog.json")) {
+        return new Response(JSON.stringify(catalog), {
+          status: 200,
+          headers: { "Content-Type": "application/json" },
+        });
+      }
+      return new Response("missing", { status: 404 });
+    });
+
+    vi.stubGlobal("fetch", realFetch);
+    vi.stubGlobal("window", {
+      location: { origin: "http://localhost" },
+      fetch: realFetch,
+    });
+
+    const { installStaticDemoApi } = await import("./static-api");
+    await installStaticDemoApi();
+
+    // loadExtensions replaces the enabled set with this payload. An empty
+    // items list would disable the metadata feature gate and stop artwork
+    // lookups entirely.
+    const res = await fetch("/api/extensions");
+    const body = await res.json();
+    const byId = new Map(
+      body.items.map((item: { id: string; enabled: boolean }) => [
+        item.id,
+        item,
+      ]),
+    );
+    expect(byId.get("metadata")).toMatchObject({
+      enabled: true,
+      installed: true,
+      bundled: true,
+    });
+    expect(byId.get("lyrics")).toMatchObject({ enabled: true, bundled: true });
+    expect(byId.get("lastfm")).toMatchObject({ enabled: false });
+    expect(body.manifests.map((m: { id: string }) => m.id).sort()).toEqual([
+      "lyrics",
+      "metadata",
+    ]);
+  });
 });

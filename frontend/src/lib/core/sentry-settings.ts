@@ -45,8 +45,11 @@ export type SentryServerSettingsResponse = {
   envLocks: SentryEnvLocks;
 };
 
+export type SentryConsentChoice = "unset" | "accepted" | "declined";
+
 export type SentryClientSettings = {
   enabled: boolean;
+  choice?: SentryConsentChoice | string;
 };
 
 export type SentryTestEventResponse = {
@@ -68,7 +71,7 @@ export function defaultStoredSentrySettings(): StoredSentrySettings {
 }
 
 export function defaultSentryClientSettings(): SentryClientSettings {
-  return { enabled: false };
+  return { enabled: false, choice: "unset" };
 }
 
 export function mergeStoredSentrySettings(

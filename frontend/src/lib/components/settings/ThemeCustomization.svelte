@@ -9,6 +9,7 @@
     type AccentPreset,
   } from "$lib/theme/accent";
   import {
+    CUSTOM_PALETTE_ID,
     DEFAULT_PALETTE_ID,
     palettesForMode,
     RADIUS_STYLES,
@@ -40,6 +41,9 @@
     const trimmed = value.trim();
     if (isHexColor(trimmed)) theme.setAccentColor(trimmed);
   }
+
+  const customPalette = $derived(theme.customPalettes[theme.resolved]);
+  const customAccentDraft = $derived(customPalette.accent || theme.accentColor);
 
   function resetCustomization() {
     theme.resetCustomization();
@@ -75,7 +79,7 @@
   <Field
     label="Palette"
     group
-    hint="Surface palette for the {theme.resolved} appearance."
+    hint="Surface palette. Each one covers both dark and light appearance."
   >
     <div
       class="theme-customization__swatches"
@@ -95,6 +99,7 @@
         <span class="theme-customization__swatch-label">Default</span>
       </button>
       {#each palettes as palette (palette.id)}
+        {@const preview = palette[theme.resolved]}
         <button
           type="button"
           class="theme-customization__swatch"
@@ -105,13 +110,83 @@
         >
           <span
             class="theme-customization__dot"
-            style="background: {palette.bg}; border-color: {palette.surface}"
+            style="background: {preview.bg}; border-color: {preview.surface}"
           ></span>
           <span class="theme-customization__swatch-label">{palette.label}</span>
         </button>
       {/each}
+      <button
+        type="button"
+        class="theme-customization__swatch"
+        class:theme-customization__swatch--active={theme.palette ===
+          CUSTOM_PALETTE_ID}
+        aria-pressed={theme.palette === CUSTOM_PALETTE_ID}
+        onclick={() => theme.setPalette(CUSTOM_PALETTE_ID)}
+      >
+        <span
+          class="theme-customization__dot"
+          style="background: {customPalette.bg}; border-color: {customPalette.surface}"
+        ></span>
+        <span class="theme-customization__swatch-label">Custom</span>
+      </button>
     </div>
   </Field>
+
+  {#if theme.palette === CUSTOM_PALETTE_ID}
+    <Field
+      label="Custom palette ({theme.resolved})"
+      group
+      hint="Background and surface anchor the ramp. Accent is optional and falls back to the accent above."
+    >
+      <div class="theme-customization__accent-row">
+        <label class="theme-customization__palette-field">
+          <input
+            type="color"
+            class="theme-customization__color"
+            value={customPalette.bg}
+            aria-label="Custom background color"
+            oninput={(e) =>
+              theme.setCustomPaletteColor(
+                theme.resolved,
+                "bg",
+                (e.currentTarget as HTMLInputElement).value,
+              )}
+          />
+          <span class="theme-customization__palette-label">Background</span>
+        </label>
+        <label class="theme-customization__palette-field">
+          <input
+            type="color"
+            class="theme-customization__color"
+            value={customPalette.surface}
+            aria-label="Custom surface color"
+            oninput={(e) =>
+              theme.setCustomPaletteColor(
+                theme.resolved,
+                "surface",
+                (e.currentTarget as HTMLInputElement).value,
+              )}
+          />
+          <span class="theme-customization__palette-label">Surface</span>
+        </label>
+        <label class="theme-customization__palette-field">
+          <input
+            type="color"
+            class="theme-customization__color"
+            value={customAccentDraft}
+            aria-label="Custom palette accent color"
+            oninput={(e) =>
+              theme.setCustomPaletteColor(
+                theme.resolved,
+                "accent",
+                (e.currentTarget as HTMLInputElement).value,
+              )}
+          />
+          <span class="theme-customization__palette-label">Accent</span>
+        </label>
+      </div>
+    </Field>
+  {/if}
 
   <Field
     label="Accent"
@@ -436,6 +511,19 @@
   }
 
   .theme-customization__hex-hint {
+    color: var(--jb-text-subtle);
+    font-size: 0.8125rem;
+  }
+
+  .theme-customization__palette-field {
+    display: inline-flex;
+    flex-direction: column;
+    align-items: center;
+    gap: var(--jb-space-2);
+    cursor: pointer;
+  }
+
+  .theme-customization__palette-label {
     color: var(--jb-text-subtle);
     font-size: 0.8125rem;
   }

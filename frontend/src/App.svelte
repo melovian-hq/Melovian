@@ -12,12 +12,15 @@
   import LocalLibraryScanBanner from "$lib/components/instances/LocalLibraryScanBanner.svelte";
   import ToastContainer from "$lib/components/ui/ToastContainer.svelte";
   import ConfirmDialog from "$lib/components/ui/ConfirmDialog.svelte";
+  import TelemetryOptIn from "$lib/components/telemetry/TelemetryOptIn.svelte";
+  import { telemetryConsent } from "$lib/core/telemetry-consent.svelte";
   import SourceSwitchOverlay from "$lib/components/ui/SourceSwitchOverlay.svelte";
   import ClosePrompt from "$lib/components/desktop/ClosePrompt.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import CompatBanner from "$lib/components/ui/CompatBanner.svelte";
 
   import RouteOutlet from "$lib/router/RouteOutlet.svelte";
+  import { outletState } from "$lib/router/outlet-state.svelte";
   import RouteBoundary from "$lib/router/RouteBoundary.svelte";
   import AppShell from "$lib/components/layout/AppShell.svelte";
   import { getCompatState } from "$lib/compat";
@@ -110,6 +113,12 @@
     syncAuthRouting(bootstrapped);
   });
 
+  $effect(() => {
+    if (bootstrapped && !auth.needsAccountLogin) {
+      void telemetryConsent.init();
+    }
+  });
+
   const match = $derived(router.match(routes));
 
   $effect(() => {
@@ -178,16 +187,15 @@
     class:app-root--mobile-nav={showMobileNav}
     class:app-root--now-playing-mobile={nowPlayingMobile}
   >
-    <AppShell
-      bare={match.route.bare ?? false}
-      content={match.route.content ?? "default"}
-    >
+    <AppShell bare={outletState.bare} content={outletState.content}>
       <RouteBoundary>
         <RouteOutlet
           load={match.route.load}
           component={match.route.component}
           path={match.route.path}
           params={match.match.params}
+          content={match.route.content ?? "default"}
+          bare={match.route.bare ?? false}
         />
       </RouteBoundary>
     </AppShell>
@@ -203,6 +211,7 @@
 <CommandPalette />
 <ClosePrompt />
 <ConfirmDialog />
+<TelemetryOptIn />
 <SourceSwitchOverlay />
 <ToastContainer />
 

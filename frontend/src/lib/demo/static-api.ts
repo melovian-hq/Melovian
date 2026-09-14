@@ -338,7 +338,12 @@ async function handleSubsonic(
     }
     case "getRandomSongs": {
       const size = Number(q.get("size") || 20);
-      const songs = [...c.songs].slice(0, size).map(songMap);
+      const pool = [...c.songs];
+      for (let i = pool.length - 1; i > 0; i--) {
+        const j = Math.floor(Math.random() * (i + 1));
+        [pool[i], pool[j]] = [pool[j], pool[i]];
+      }
+      const songs = pool.slice(0, size).map(songMap);
       return subsonicOK({ randomSongs: { song: songs } });
     }
     case "getGenres":
@@ -692,8 +697,64 @@ async function handleApi(
     case ApiPaths.localLibrariesActive:
       // The real endpoint returns {} when no library is active.
       return jsonResponse({});
-    case ApiPaths.extensions:
-      return jsonResponse({ items: [], manifests: [], dir: "" });
+    case ApiPaths.extensions: {
+      // Mirror a fresh server: auto-installed bundled extensions enabled,
+      // optional bundled listed but not installed. The metadata feature gate
+      // is derived from this list, so an empty list would silently disable
+      // artwork lookups in the demo.
+      const bundledItem = (
+        id: string,
+        name: string,
+        version: string,
+        description: string,
+        enabled: boolean,
+      ) => ({
+        id,
+        name,
+        version,
+        description,
+        author: "Melovian",
+        enabled,
+        installed: enabled,
+        bundled: true,
+        hasScript: false,
+        scriptSafe: false,
+        hasWasm: false,
+      });
+      const enabled = [
+        bundledItem(
+          "lyrics",
+          "Lyrics",
+          "0.1.1",
+          "Lyrics panel, providers, settings, and now-playing lyrics tab.",
+          true,
+        ),
+        bundledItem(
+          "metadata",
+          "Metadata",
+          "0.1.1",
+          "Local metadata editor, catalog lookups (iTunes, MusicBrainz, Deezer, TheAudioDB), and library metadata tools.",
+          true,
+        ),
+      ];
+      const optional = [
+        bundledItem("rocksky", "Rocksky", "0.1.0", "", false),
+        bundledItem("lastfm", "Last.fm", "0.1.0", "", false),
+        bundledItem("listenbrainz", "ListenBrainz", "0.1.0", "", false),
+        bundledItem("lyrics-whisper", "Lyrics Whisper", "0.1.0", "", false),
+      ];
+      return jsonResponse({
+        items: [...enabled, ...optional],
+        manifests: enabled.map((e) => ({
+          id: e.id,
+          name: e.name,
+          version: e.version,
+          description: e.description,
+          author: e.author,
+        })),
+        dir: "",
+      });
+    }
     case ApiPaths.musicStatus:
       return jsonResponse({
         enabled: true,

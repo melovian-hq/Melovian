@@ -49,8 +49,12 @@ vi.mock("$lib/core/logger", () => ({
 
 import { router } from "$lib/router/router.svelte";
 import type { RouteDefinition } from "$lib/router/router.svelte";
+import { outletState } from "$lib/router/outlet-state.svelte";
 import ShellHarness from "../../../test-fixtures/ShellHarness.svelte";
 import RoutePage from "../../../test-fixtures/RoutePage.svelte";
+import RoutePageAlt from "../../../test-fixtures/RoutePageAlt.svelte";
+
+let lazyFillResolve: ((mod: { default: never }) => void) | null = null;
 
 const routes: RouteDefinition[] = [
   { path: "/a", component: RoutePage, content: "compact" },
@@ -60,6 +64,14 @@ const routes: RouteDefinition[] = [
   {
     path: "/lazy",
     load: () => Promise.resolve({ default: RoutePage }),
+  },
+  {
+    path: "/lazy-fill",
+    content: "fill",
+    load: () =>
+      new Promise((resolve) => {
+        lazyFillResolve = resolve as typeof lazyFillResolve;
+      }),
   },
 ];
 
@@ -84,6 +96,9 @@ describe("app shell persistence", () => {
   beforeEach(() => {
     router.pathname = "/a";
     router.search = "";
+    lazyFillResolve = null;
+    outletState.content = "default";
+    outletState.bare = false;
   });
 
   it("keeps the sidebar and content scroller mounted across navigation", async () => {
@@ -191,6 +206,35 @@ describe("app shell persistence", () => {
     });
 
     expect(target.querySelector(".sidebar-stub")).toBe(sidebar);
+    cleanup();
+  });
+
+  it("keeps the outgoing layout while a lazy fill route loads", async () => {
+    const { target, cleanup } = mountHarness();
+    flushSync();
+    expect(target.querySelector(".app-shell__content--compact")).not.toBeNull();
+    expect(target.querySelector(".route-page-fixture")?.textContent).toBe("/a");
+
+    // Navigating to a fill route must not re-lay-out the shell while its
+    // chunk is still loading. The old page keeps compact padding.
+    router.navigate("/lazy-fill");
+    flushSync();
+    await Promise.resolve();
+
+    expect(target.querySelector(".route-page-alt-fixture")).toBeNull();
+    expect(target.querySelector(".route-page-fixture")).not.toBeNull();
+    expect(target.querySelector(".app-shell__content--compact")).not.toBeNull();
+    expect(target.querySelector(".app-shell__content--fill")).toBeNull();
+    expect(outletState.content).toBe("compact");
+    expect(lazyFillResolve).not.toBeNull();
+
+    lazyFillResolve!({ default: RoutePageAlt as never });
+    await vi.waitFor(() => {
+      expect(target.querySelector(".route-page-alt-fixture")).not.toBeNull();
+    });
+    expect(target.querySelector(".app-shell__content--fill")).not.toBeNull();
+    expect(target.querySelector(".app-shell__content--compact")).toBeNull();
+    expect(outletState.content).toBe("fill");
     cleanup();
   });
 });

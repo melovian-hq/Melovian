@@ -703,26 +703,6 @@
   ],
   "genres": [
     {
-      "Name": "Reggaeton",
-      "SongCount": 26,
-      "AlbumCount": 2
-    },
-    {
-      "Name": "Electronic",
-      "SongCount": 42,
-      "AlbumCount": 4
-    },
-    {
-      "Name": "Hip-Hop",
-      "SongCount": 22,
-      "AlbumCount": 2
-    },
-    {
-      "Name": "Country",
-      "SongCount": 13,
-      "AlbumCount": 1
-    },
-    {
       "Name": "K-Pop",
       "SongCount": 10,
       "AlbumCount": 1
@@ -740,6 +720,26 @@
     {
       "Name": "Alt Pop",
       "SongCount": 10,
+      "AlbumCount": 1
+    },
+    {
+      "Name": "Reggaeton",
+      "SongCount": 26,
+      "AlbumCount": 2
+    },
+    {
+      "Name": "Electronic",
+      "SongCount": 42,
+      "AlbumCount": 4
+    },
+    {
+      "Name": "Hip-Hop",
+      "SongCount": 22,
+      "AlbumCount": 2
+    },
+    {
+      "Name": "Country",
+      "SongCount": 13,
       "AlbumCount": 1
     }
   ],

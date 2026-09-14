@@ -48,6 +48,7 @@ import {
   updateMediaSessionPosition,
 } from "$lib/music/media-session";
 import { requestNativeMediaSync } from "$lib/media/native-media-sync";
+import { resolvePlaybackUrl } from "$lib/music/media-cache";
 import {
   defaultEqSettings,
   loadEqFromLocalStorage,
@@ -1089,6 +1090,18 @@ class MusicStore {
     return this.playbackCoreOps.trackStreamUrl(track);
   }
 
+  /**
+   * playableStreamUrl resolves the stream URL through the IndexedDB media
+   * cache. The returned string is stable per track per session so the
+   * engine's prepared-URL comparisons keep working.
+   */
+  playableStreamUrl(track: QueueTrack): string {
+    const url = this.trackStreamUrl(track);
+    // Native engines (mpv/vlc) fetch outside the web cache entirely
+    if (this.nativePlayback) return url;
+    return resolvePlaybackUrl(track, url);
+  }
+
   isDownloaded(trackId: string): boolean {
     return this.cacheOps.isDownloaded(trackId);
   }
@@ -1179,7 +1192,7 @@ class MusicStore {
     if (this.cacheSettings.enabled || this.shuffle || this.repeat === "one") {
       this.engine.prefetch([]);
     } else {
-      this.engine.prefetch(prev ? [this.trackStreamUrl(prev)] : []);
+      this.engine.prefetch(prev ? [this.playableStreamUrl(prev)] : []);
     }
   }
 
@@ -1209,7 +1222,7 @@ class MusicStore {
 
     const nextIdx = this.sequentialNextIndex();
     const nextTrack = nextIdx >= 0 ? this.queue[nextIdx] : undefined;
-    this.engine.prepareNext(nextTrack ? this.trackStreamUrl(nextTrack) : "");
+    this.engine.prepareNext(nextTrack ? this.playableStreamUrl(nextTrack) : "");
     this.nextTrackPrepared = true;
   }
 
@@ -1237,7 +1250,7 @@ class MusicStore {
     if (nextIdx < 0) return;
     const nextTrack = this.queue[nextIdx];
     if (!nextTrack) return;
-    const nextUrl = this.trackStreamUrl(nextTrack);
+    const nextUrl = this.playableStreamUrl(nextTrack);
     if (!this.engine.hasPrepared(nextUrl)) return;
 
     this.crossfadeHandled = true;
@@ -1260,6 +1273,9 @@ class MusicStore {
       this.nextTrackPrepared = false;
       this.engine?.prepareNext("");
       this.prefetchAround();
+      // Crossfades bypass onTrackEnded, so continuous modes would never
+      // refill without an explicit kick here.
+      void this.maybeRefillContinuousQueue();
       if (finished) void this.recordPlayCompletion(finished);
       const track = this.currentTrack;
       if (track && this.playing) {

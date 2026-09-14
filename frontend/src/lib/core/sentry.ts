@@ -2,6 +2,12 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import * as Sentry from "@sentry/svelte";
+import { StorageKeys } from "$lib/brand";
+import {
+  scrubTelemetryHeaders,
+  scrubTelemetryQuery,
+  scrubTelemetryUrl,
+} from "./telemetry-scrub";
 
 export type SentryRuntimeConfig = {
   dsn?: string;
@@ -19,6 +25,48 @@ export function resetSentryForTests(): void {
   clientReportingEnabled = false;
 }
 
+function scrubEvent<T extends { request?: unknown; user?: unknown }>(
+  event: T,
+): T {
+  const request = event.request;
+  if (request && typeof request === "object") {
+    const req = request as {
+      url?: unknown;
+      query_string?: unknown;
+      cookies?: unknown;
+      headers?: unknown;
+      data?: unknown;
+    };
+    if (typeof req.url === "string") {
+      req.url = scrubTelemetryUrl(req.url);
+    }
+    if (typeof req.query_string === "string") {
+      req.query_string = scrubTelemetryQuery(req.query_string);
+    }
+    const headers = scrubTelemetryHeaders(req.headers);
+    if (headers) req.headers = headers;
+    // Bodies and cookies can carry session material. Drop them entirely.
+    delete req.cookies;
+    delete req.data;
+  }
+  // Never send PII. Keep a stable anonymous id only.
+  if (event.user && typeof event.user === "object") {
+    const id = (event.user as { id?: unknown }).id;
+    event.user = typeof id === "string" || typeof id === "number" ? { id } : {};
+  }
+  return event;
+}
+
+function scrubBreadcrumb(crumb: Sentry.Breadcrumb): Sentry.Breadcrumb | null {
+  if (crumb.data && typeof crumb.data === "object") {
+    const data = crumb.data as Record<string, unknown>;
+    if (typeof data.url === "string") {
+      data.url = scrubTelemetryUrl(data.url);
+    }
+  }
+  return crumb;
+}
+
 function buildOptions(cfg: SentryRuntimeConfig): Sentry.BrowserOptions | null {
   const dsn = cfg.dsn?.trim() ?? "";
   if (!dsn || !cfg.clientReporting) return null;
@@ -27,6 +75,9 @@ function buildOptions(cfg: SentryRuntimeConfig): Sentry.BrowserOptions | null {
     environment: cfg.environment?.trim() || undefined,
     release: cfg.release?.trim() || undefined,
     tracesSampleRate: cfg.tracesSampleRate ?? 0,
+    sendDefaultPii: false,
+    beforeSend: (event) => scrubEvent(event),
+    beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb),
   };
 }
 
@@ -45,6 +96,15 @@ function initOptions(opts: Sentry.BrowserOptions, reporting: boolean): void {
 export function initSentryFromBuildEnv(): void {
   const dsn = import.meta.env.VITE_SENTRY_DSN?.trim();
   if (!dsn) return;
+  // Telemetry is opt-in. A build-embedded DSN still waits for an accepted
+  // consent answer, cached locally by telemetry-consent.
+  try {
+    if (localStorage.getItem(StorageKeys.telemetryConsent) !== "accepted") {
+      return;
+    }
+  } catch {
+    return;
+  }
   const tracesRaw = import.meta.env.VITE_SENTRY_TRACES_SAMPLE_RATE;
   const tracesSampleRate =
     tracesRaw === undefined || tracesRaw === "" ? 0 : Number(tracesRaw);

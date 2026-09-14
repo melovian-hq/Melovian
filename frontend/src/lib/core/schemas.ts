@@ -35,6 +35,7 @@ export const sentryServerSettingsResponseSchema = v.looseObject({
 
 export const sentryClientSettingsSchema = v.looseObject({
   enabled: v.boolean(),
+  choice: v.optional(v.string()),
 });
 
 // The test-event endpoint reports ok/eventId on success and may add an error

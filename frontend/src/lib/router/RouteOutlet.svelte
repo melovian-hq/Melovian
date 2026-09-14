@@ -14,15 +14,26 @@
     routeViewKey,
     type PinnedViewSnapshot,
   } from "./page-motion";
+  import { outletState } from "./outlet-state.svelte";
+  import type { RouteContentLayout } from "./router.svelte";
 
   interface Props {
     load?: RouteLoader;
     component?: RouteComponent;
     path: string;
     params: Record<string, string>;
+    content?: RouteContentLayout;
+    bare?: boolean;
   }
 
-  let { load, component, path, params }: Props = $props();
+  let {
+    load,
+    component,
+    path,
+    params,
+    content = "default",
+    bare = false,
+  }: Props = $props();
 
   let Page = $state<Component | null>(null);
   let shownPath = $state("");
@@ -86,10 +97,23 @@
     const activeParams = { ...params };
     const activeLoad = load;
     const activeComponent = component;
+    const activeContent = content;
+    const activeBare = bare;
     void retryToken;
     let cancelled = false;
 
     loadError = null;
+
+    const commit = (next: Component) => {
+      Page = next;
+      shownPath = activePath;
+      shownParams = activeParams;
+      // The shell only re-lays-out once the incoming page is ready, so the
+      // old view keeps its compact/fill padding while a lazy chunk loads.
+      outletState.content = activeContent;
+      outletState.bare = activeBare;
+      coldLoading = false;
+    };
 
     const nextKey = routeViewKey(activePath, activeParams);
     if (Page !== null && routeViewKey(shownPath, shownParams) === nextKey) {
@@ -98,17 +122,15 @@
         shownParams = activeParams;
       }
       if (activeComponent && Page !== activeComponent) {
-        Page = activeComponent;
+        commit(activeComponent);
+      } else {
+        coldLoading = false;
       }
-      coldLoading = false;
       return;
     }
 
     if (activeComponent) {
-      Page = activeComponent;
-      shownPath = activePath;
-      shownParams = activeParams;
-      coldLoading = false;
+      commit(activeComponent);
       return;
     }
 
@@ -123,10 +145,7 @@
     void activeLoad()
       .then((mod) => {
         if (cancelled) return;
-        Page = mod.default;
-        shownPath = activePath;
-        shownParams = activeParams;
-        coldLoading = false;
+        commit(mod.default);
       })
       .catch((err) => {
         if (cancelled) return;

@@ -2,6 +2,7 @@
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import EnhancedCoverArt from "$lib/components/ui/EnhancedCoverArt.svelte";
   import ProgressSeek from "./ProgressSeek.svelte";
+  import { reportPlayerBarHeight } from "$lib/music/player-height";
   import { music } from "$lib/config/music.svelte";
   import { deviceSync } from "$lib/music/device-sync.svelte";
   import {
@@ -31,7 +32,12 @@
 </script>
 
 {#if track && music.playerLayout === "full" && music.playerVisible}
-  <div class="slim-player" role="group" aria-label="Now playing">
+  <div
+    class="slim-player"
+    role="group"
+    aria-label="Now playing"
+    use:reportPlayerBarHeight
+  >
     <ProgressSeek
       class="slim-player__progress"
       size="sm"

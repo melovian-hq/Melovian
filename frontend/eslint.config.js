@@ -10,7 +10,14 @@ import svelteConfig from "./svelte.config.js";
 
 export default ts.config(
   {
-    ignores: ["dist/**", "node_modules/**", "bindings/**", "coverage/**"],
+    ignores: [
+      "dist/**",
+      "node_modules/**",
+      "bindings/**",
+      "coverage/**",
+      // Build-time service worker template with injected placeholders
+      "pwa/**",
+    ],
   },
   js.configs.recommended,
   ...ts.configs.recommended,
