@@ -156,7 +156,7 @@ func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, err
 	for _, inst := range items {
 		if IsFakeURL(inst.ServerURL) {
 			_ = instances.SetActive(inst.ID)
-			return inst, nil
+			return normalizeDemoInstance(instances, inst), nil
 		}
 	}
 	if len(items) > 0 {
@@ -169,10 +169,11 @@ func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, err
 		}
 	}
 	inst, err := instances.Create(store.CreateInstanceInput{
-		Name:      "Home Library",
-		ServerURL: ServerURL,
-		Username:  Username,
-		Password:  Password,
+		Name:       "Home Library",
+		ServerURL:  ServerURL,
+		Username:   Username,
+		Password:   Password,
+		ServerName: ServerName,
 	})
 	if err != nil {
 		return store.SubsonicInstance{}, err
@@ -180,6 +181,31 @@ func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, err
 	if err := instances.SetActive(inst.ID); err != nil {
 		return store.SubsonicInstance{}, err
 	}
-	inst.ServerName = ServerName
 	return inst, nil
+}
+
+// normalizeDemoInstance repairs display fields on a provisioned fake instance.
+// Config provisioning names the row "Default" and leaves serverName empty,
+// which shows up in the instance switcher instead of the demo library name.
+func normalizeDemoInstance(instances *store.InstanceStore, inst store.SubsonicInstance) store.SubsonicInstance {
+	name := inst.Name
+	if name == "Default" {
+		name = ServerName
+	}
+	if inst.ServerName == ServerName && name == inst.Name {
+		return inst
+	}
+	updated, err := instances.Update(inst.ID, store.UpdateInstanceInput{
+		Name:       name,
+		ServerURL:  inst.ServerURL,
+		Username:   inst.Username,
+		Password:   inst.Password,
+		ServerName: ServerName,
+	})
+	if err != nil {
+		slog.Warn("demo instance rename failed", "err", err)
+		inst.ServerName = ServerName
+		return inst
+	}
+	return updated
 }

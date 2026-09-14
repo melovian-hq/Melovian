@@ -88,6 +88,7 @@ const DEMO_INSTANCE = {
 
 let catalog: DemoCatalog | null = null;
 let installed = false;
+let installPromise: Promise<void> | null = null;
 let originalFetch: typeof fetch | null = null;
 
 function baseUrl(): string {
@@ -454,18 +455,123 @@ async function handleSubsonic(
   }
 }
 
+function playlistTrackEntry(c: DemoCatalog, sid: string, position: number) {
+  const s = findSong(c, sid);
+  if (!s) return null;
+  return {
+    trackId: s.ID,
+    trackTitle: s.Title,
+    artistName: s.Artist,
+    albumId: s.AlbumID,
+    albumTitle: s.Album,
+    durationMs: s.Duration * 1000,
+    coverArtId: s.CoverArt,
+    position,
+  };
+}
+
 function playlistApiPayload(c: DemoCatalog) {
   return c.playlists.map((p) => ({
     id: p.ID,
     name: p.Name,
-    comment: p.Comment,
-    owner: p.Owner,
-    public: p.Public,
-    songCount: p.SongIDs.length,
+    kind: "static",
+    rulesJson: "",
     createdAt: p.Created,
     updatedAt: p.Changed,
-    trackIds: p.SongIDs,
+    trackCount: p.SongIDs.length,
+    durationMs: p.SongIDs.reduce(
+      (ms, sid) => ms + (findSong(c, sid)?.Duration ?? 0) * 1000,
+      0,
+    ),
+    coverArtIds: p.SongIDs.slice(0, 4)
+      .map((sid) => findSong(c, sid)?.CoverArt)
+      .filter((id): id is string => Boolean(id)),
   }));
+}
+
+function listenEntry(
+  s: DemoSong,
+  overrides: {
+    positionMs?: number;
+    played?: boolean;
+    playCount?: number;
+    listenedMs?: number;
+    lastPlayedAt: string;
+  },
+) {
+  return {
+    trackId: s.ID,
+    trackTitle: s.Title,
+    artistName: s.Artist,
+    albumId: s.AlbumID,
+    albumTitle: s.Album,
+    positionMs: overrides.positionMs ?? 0,
+    durationMs: s.Duration * 1000,
+    played: overrides.played ?? true,
+    playCount: overrides.playCount ?? Math.max(1, s.PlayCount),
+    listenedMs: overrides.listenedMs ?? s.Duration * 1000,
+    lastPlayedAt: overrides.lastPlayedAt,
+    coverArtId: s.CoverArt,
+  };
+}
+
+// Recent-history fixtures so the static demo shows the same populated home
+// shelves the seeded server demo produces.
+function seededListenHistory(c: DemoCatalog) {
+  const sorted = [...c.songs].sort((a, b) => b.PlayCount - a.PlayCount);
+  const base = Date.UTC(2025, 7, 1, 12, 0, 0);
+  return sorted.slice(0, 20).map((s, i) =>
+    listenEntry(s, {
+      lastPlayedAt: new Date(base - i * 30 * 60 * 1000).toISOString(),
+    }),
+  );
+}
+
+function seededResumeItems(c: DemoCatalog) {
+  const top = [...c.songs].sort((a, b) => b.PlayCount - a.PlayCount)[0];
+  if (!top) return [];
+  return [
+    listenEntry(top, {
+      positionMs: Math.floor(top.Duration * 1000 * 0.45),
+      played: false,
+      listenedMs: Math.floor(top.Duration * 1000 * 0.45),
+      lastPlayedAt: new Date(Date.UTC(2025, 7, 1, 12, 0, 0)).toISOString(),
+    }),
+  ];
+}
+
+function seededListenStats(c: DemoCatalog) {
+  const byArtist = new Map<string, number>();
+  const byAlbum = new Map<string, number>();
+  let totalPlays = 0;
+  let totalListeningMs = 0;
+  let uniqueTracks = 0;
+  for (const s of c.songs) {
+    if (s.PlayCount <= 0) continue;
+    uniqueTracks += 1;
+    totalPlays += s.PlayCount;
+    totalListeningMs += s.PlayCount * s.Duration * 1000;
+    byArtist.set(s.Artist, (byArtist.get(s.Artist) ?? 0) + s.PlayCount);
+    byAlbum.set(s.Album, (byAlbum.get(s.Album) ?? 0) + s.PlayCount);
+  }
+  const toEntries = (m: Map<string, number>) =>
+    [...m.entries()]
+      .sort((a, b) => b[1] - a[1])
+      .slice(0, 8)
+      .map(([label, count]) => ({ key: label, label, count }));
+  const topTracks = [...c.songs]
+    .filter((s) => s.PlayCount > 0)
+    .sort((a, b) => b.PlayCount - a.PlayCount)
+    .slice(0, 8)
+    .map((s) => ({ key: s.ID, label: s.Title, count: s.PlayCount }));
+  return {
+    totalPlays,
+    uniqueTracks,
+    totalListeningMs,
+    topArtists: toEntries(byArtist),
+    topTracks,
+    topAlbums: toEntries(byAlbum),
+  };
 }
 
 async function handleApi(
@@ -559,7 +665,8 @@ async function handleApi(
     case ApiPaths.instances:
       return jsonResponse({ instances: [DEMO_INSTANCE] });
     case ApiPaths.instancesActive:
-      return jsonResponse({ instance: DEMO_INSTANCE });
+      // The real endpoint returns the bare instance object, or {} when unset.
+      return jsonResponse(DEMO_INSTANCE);
     case ApiPaths.sourcesStatus:
       return jsonResponse({
         mode: "subsonic",
@@ -571,7 +678,8 @@ async function handleApi(
     case ApiPaths.localLibraries:
       return jsonResponse({ libraries: [] });
     case ApiPaths.localLibrariesActive:
-      return jsonResponse({ library: null });
+      // The real endpoint returns {} when no library is active.
+      return jsonResponse({});
     case ApiPaths.extensions:
       return jsonResponse({ items: [], manifests: [], dir: "" });
     case ApiPaths.musicStatus:
@@ -584,32 +692,55 @@ async function handleApi(
       });
     case ApiPaths.musicLibraryStats:
       return jsonResponse({
-        artists: c.artists.length,
-        albums: c.albums.length,
-        songs: c.songs.length,
-        playlists: c.playlists.length,
+        songCount: c.songs.length,
+        albumCount: c.albums.length,
+        artistCount: c.artists.length,
+        folderCount: 1,
+        scanning: false,
+        lastScan: "2025-08-01T00:00:00Z",
       });
     case ApiPaths.musicHistory:
-      return jsonResponse({ entries: [] });
+      return jsonResponse({ items: seededListenHistory(c) });
     case ApiPaths.musicListenEvents:
-      return jsonResponse({ events: [] });
-    case ApiPaths.musicListenEventYears:
-      return jsonResponse({ years: [] });
-    case ApiPaths.musicResume:
-      return jsonResponse({ track: null });
-    case ApiPaths.musicStats:
-      return jsonResponse({ plays: 0, minutes: 0 });
-    case ApiPaths.musicBatch:
       return jsonResponse({
-        favorites: c.songs.filter((s) => s.Starred).map((s) => ({ id: s.ID })),
-        playlists: playlistApiPayload(c),
-        history: [],
+        items: seededListenHistory(c).map((entry, i) => ({
+          id: i + 1,
+          trackId: entry.trackId,
+          trackTitle: entry.trackTitle,
+          artistName: entry.artistName,
+          albumId: entry.albumId,
+          albumTitle: entry.albumTitle,
+          durationMs: entry.durationMs,
+          coverArtId: entry.coverArtId,
+          playedAt: entry.lastPlayedAt,
+        })),
+        hasMore: false,
       });
+    case ApiPaths.musicListenEventYears:
+      return jsonResponse({ years: [2025] });
+    case ApiPaths.musicResume:
+      return jsonResponse({ items: seededResumeItems(c) });
+    case ApiPaths.musicStats:
+      return jsonResponse(seededListenStats(c));
+    case ApiPaths.musicBatch:
+      // The real endpoint is a trackId -> listen entry map.
+      return jsonResponse({});
     case ApiPaths.musicPlaylists:
       return jsonResponse({ playlists: playlistApiPayload(c) });
     case ApiPaths.musicFavorites:
       return jsonResponse({
-        tracks: c.songs.filter((s) => s.Starred).map((s) => songMap(s)),
+        items: c.songs
+          .filter((s) => s.Starred)
+          .map((s) => ({
+            trackId: s.ID,
+            trackTitle: s.Title,
+            artistName: s.Artist,
+            albumId: s.AlbumID,
+            albumTitle: s.Album,
+            durationMs: s.Duration * 1000,
+            coverArtId: s.CoverArt,
+            favoritedAt: "2025-01-01T00:00:00Z",
+          })),
       });
     case ApiPaths.devices:
       return jsonResponse({ devices: [] });
@@ -622,17 +753,16 @@ async function handleApi(
         const id = decodeURIComponent(path.split("/").pop() || "");
         const p = findPlaylist(c, id);
         if (!p) return jsonResponse({ error: "not_found" }, 404);
+        // The real endpoint returns the bare playlist object with tracks.
         return jsonResponse({
-          playlist: {
-            ...playlistApiPayload(c).find((x) => x.id === id),
-            tracks: p.SongIDs.map((sid) => findSong(c, sid))
-              .filter(Boolean)
-              .map((s) => songMap(s as DemoSong)),
-          },
+          ...playlistApiPayload(c).find((x) => x.id === id),
+          tracks: p.SongIDs.map((sid, i) =>
+            playlistTrackEntry(c, sid, i),
+          ).filter(Boolean),
         });
       }
       if (path.startsWith(ApiPaths.musicItemsPrefix)) {
-        return jsonResponse({ item: null });
+        return jsonResponse({});
       }
       if (path.startsWith(`${ApiPaths.instances}/`) && path.endsWith("/ping")) {
         return jsonResponse({
@@ -692,10 +822,23 @@ function shouldIntercept(path: string): boolean {
   );
 }
 
-/** Install the static demo fetch shim. Safe to call once. */
+/**
+ * Install the static demo fetch shim. Safe to call more than once: the
+ * in-flight promise dedupes concurrent callers (so a second caller never
+ * captures the shim itself as the "original" fetch), and installed only
+ * latches after the shim is live so a failed catalog load stays retryable.
+ */
 export async function installStaticDemoApi(): Promise<void> {
   if (installed || typeof window === "undefined") return;
-  installed = true;
+  if (!installPromise) {
+    installPromise = doInstall().finally(() => {
+      if (!installed) installPromise = null;
+    });
+  }
+  return installPromise;
+}
+
+async function doInstall(): Promise<void> {
   originalFetch = window.fetch.bind(window);
 
   await loadCatalog();
@@ -724,6 +867,7 @@ export async function installStaticDemoApi(): Promise<void> {
 
   window.fetch = shim;
   globalThis.fetch = shim;
+  installed = true;
 }
 
 export function isStaticDemoInstalled(): boolean {
