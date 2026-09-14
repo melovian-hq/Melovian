@@ -114,12 +114,23 @@ export async function reinstallExtension(
   return parseExtensionsPayload(response);
 }
 
+export type RegistryChangelogEntry = {
+  version: string;
+  date?: string;
+  notes?: string;
+};
+
 export type RegistryItem = {
   id: string;
   name: string;
   version: string;
   description?: string;
   author?: string;
+  homepage?: string;
+  license?: string;
+  tags?: string[];
+  risk?: string;
+  externalUrls?: string[];
   iconUrl?: string;
   imageUrl?: string;
   packageUrl?: string;
@@ -133,6 +144,7 @@ export type RegistryItem = {
   playerHooks?: number;
   auditStatus?: string;
   auditWarnings?: string[];
+  changelog?: RegistryChangelogEntry[];
   installed: boolean;
   installedVersion?: string;
   enabled: boolean;
@@ -142,6 +154,7 @@ export type RegistryItem = {
 export type ExtensionRegistryPayload = {
   url: string;
   generatedAt: string;
+  signed: boolean;
   items: RegistryItem[];
 };
 
@@ -160,6 +173,7 @@ export async function fetchExtensionRegistry(): Promise<ExtensionRegistryPayload
   return {
     url: payload.url ?? "",
     generatedAt: payload.generatedAt ?? "",
+    signed: payload.signed ?? false,
     items: payload.items ?? [],
   };
 }

@@ -83,10 +83,22 @@ func main() {
 	updateSvc := services.NewUpdateService()
 	wireUpdatePrefs(updateSvc, db)
 
+	var mainWindow application.Window
 	app := application.New(application.Options{
 		Name:        brand.Name,
 		Description: brand.Description,
 		Icon:        appIcon,
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: "com.melovian.app",
+			OnSecondInstanceLaunch: func(data application.SecondInstanceData) {
+				if id := desktop.DeepLinkArgs(data.Args); id != "" {
+					desktop.ShowMainWindow(mainWindow)
+					if w, ok := mainWindow.(*application.WebviewWindow); ok && w != nil {
+						w.EmitEvent("melovian:extension:install", map[string]string{"id": id})
+					}
+				}
+			},
+		},
 		Services: []application.Service{
 			application.NewService(mediaSvc),
 			application.NewService(audioSvc),
@@ -136,8 +148,12 @@ func main() {
 		BackgroundColour: application.NewRGB(9, 9, 9),
 		URL:              "/music",
 	}
+	if id := desktop.DeepLinkArgs(os.Args[1:]); id != "" {
+		windowOpts.URL = "/settings/extensions?install-extension=" + id
+	}
 	desktop.ApplyWindowState(&windowOpts, savedWindowState, restoredWindowState)
 	window := app.Window.NewWithOptions(windowOpts)
+	mainWindow = window
 
 	windowStateStore.Attach(window)
 	desktop.RegisterCloseHandler(window)

@@ -108,6 +108,7 @@
     margin: 0;
     color: var(--jb-text-muted);
     line-height: 1.6;
+    white-space: pre-line;
   }
 
   .confirm__actions {

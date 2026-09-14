@@ -5,7 +5,9 @@ package extensions
 
 import (
 	"context"
+	"crypto/ed25519"
 	"crypto/sha256"
+	"encoding/base64"
 	"encoding/hex"
 	"encoding/json"
 	"fmt"
@@ -23,7 +25,13 @@ const (
 	// MELOVIAN_EXTENSION_REGISTRY_URL environment variable.
 	DefaultRegistryURL = "https://melovian-hq.github.io/Melovian-Extensions/registry.json"
 
+	// DefaultRegistryKey is the Ed25519 public key (hex) that signs the
+	// official registry and its packages. Override with
+	// MELOVIAN_EXTENSION_REGISTRY_KEY for a self-hosted registry.
+	DefaultRegistryKey = "240f4df79f4ce2e137e29d223f11458b63d04c2f456031b12b139a992719a75e"
+
 	maxRegistryBytes = 2 << 20 // 2 MiB for the index
+	maxSignatureBytes = 4 << 10
 )
 
 // RegistryEntry is one extension in the remote index.
@@ -33,17 +41,44 @@ type RegistryEntry struct {
 	Version      string               `json:"version"`
 	Description  string               `json:"description,omitempty"`
 	Author       string               `json:"author,omitempty"`
+	Homepage     string               `json:"homepage,omitempty"`
+	License      string               `json:"license,omitempty"`
+	Tags         []string             `json:"tags,omitempty"`
 	Icon         string               `json:"icon,omitempty"`
 	Image        string               `json:"image,omitempty"`
+	Screenshots  []string             `json:"screenshots,omitempty"`
+	Risk         string               `json:"risk,omitempty"`
+	ExternalURLs []string             `json:"externalUrls,omitempty"`
+	Versions     []RegistryVersion    `json:"versions,omitempty"`
+	Changelog    []RegistryChangelog  `json:"changelog,omitempty"`
 	Package      RegistryPackage      `json:"package"`
 	Capabilities RegistryCapabilities `json:"capabilities"`
 	Audit        RegistryAudit        `json:"audit"`
 }
 
 type RegistryPackage struct {
-	URL    string `json:"url"`
-	SHA256 string `json:"sha256"`
-	Bytes  int64  `json:"bytes"`
+	URL       string `json:"url"`
+	SHA256    string `json:"sha256"`
+	Bytes     int64  `json:"bytes"`
+	Signature string `json:"signature,omitempty"`
+}
+
+// RegistryVersion is one released version of an extension.
+type RegistryVersion struct {
+	Version   string `json:"version"`
+	URL       string `json:"url"`
+	SHA256    string `json:"sha256"`
+	Bytes     int64  `json:"bytes"`
+	Signature string `json:"signature,omitempty"`
+	ReleasedAt string `json:"releasedAt,omitempty"`
+	Notes     string `json:"notes,omitempty"`
+}
+
+// RegistryChangelog is one changelog entry.
+type RegistryChangelog struct {
+	Version string `json:"version"`
+	Date    string `json:"date,omitempty"`
+	Notes   string `json:"notes,omitempty"`
 }
 
 type RegistryCapabilities struct {
@@ -163,19 +198,61 @@ func fetchRemote(ctx context.Context, rawURL string, maxBytes int64) ([]byte, er
 	return data, nil
 }
 
-// FetchRegistry downloads and parses the registry index.
-func FetchRegistry(ctx context.Context) (RegistryIndex, string, error) {
+// registryKeyHex returns the configured Ed25519 public key for the active
+// registry. The official registry always uses the compiled-in key. A custom
+// registry URL pairs with MELOVIAN_EXTENSION_REGISTRY_KEY.
+func registryKeyHex(indexURL string) string {
+	if indexURL == DefaultRegistryURL {
+		return DefaultRegistryKey
+	}
+	return strings.TrimSpace(os.Getenv("MELOVIAN_EXTENSION_REGISTRY_KEY"))
+}
+
+// registrySigURL returns the sidecar signature URL for an index URL.
+func registrySigURL(indexURL string) string {
+	return strings.TrimSuffix(indexURL, ".json") + ".sig"
+}
+
+func decodeRegistryKey(hexKey string) (ed25519.PublicKey, error) {
+	raw, err := hex.DecodeString(strings.TrimSpace(hexKey))
+	if err != nil || len(raw) != ed25519.PublicKeySize {
+		return nil, fmt.Errorf("invalid registry public key")
+	}
+	return ed25519.PublicKey(raw), nil
+}
+
+// FetchRegistry downloads and parses the registry index. When a signing key
+// is configured for the registry, the index must carry a valid registry.sig
+// signature. For the official registry this check cannot be disabled.
+// The returned bool reports whether the signature was verified.
+func FetchRegistry(ctx context.Context) (RegistryIndex, string, bool, error) {
 	indexURL := RegistryURL()
 	data, err := fetchRemote(ctx, indexURL, maxRegistryBytes)
 	if err != nil {
-		return RegistryIndex{}, indexURL, err
+		return RegistryIndex{}, indexURL, false, err
+	}
+	verified := false
+	if keyHex := registryKeyHex(indexURL); keyHex != "" {
+		pub, err := decodeRegistryKey(keyHex)
+		if err != nil {
+			return RegistryIndex{}, indexURL, false, err
+		}
+		sigData, err := fetchRemote(ctx, registrySigURL(indexURL), maxSignatureBytes)
+		if err != nil {
+			return RegistryIndex{}, indexURL, false, fmt.Errorf("registry signature unavailable: %w", err)
+		}
+		sig, err := base64.StdEncoding.DecodeString(strings.TrimSpace(string(sigData)))
+		if err != nil || !ed25519.Verify(pub, data, sig) {
+			return RegistryIndex{}, indexURL, false, fmt.Errorf("registry signature verification failed")
+		}
+		verified = true
 	}
 	var index RegistryIndex
 	if err := json.Unmarshal(data, &index); err != nil {
-		return RegistryIndex{}, indexURL, fmt.Errorf("invalid registry index: %w", err)
+		return RegistryIndex{}, indexURL, false, fmt.Errorf("invalid registry index: %w", err)
 	}
 	if index.Version != 1 {
-		return RegistryIndex{}, indexURL, fmt.Errorf("unsupported registry version %d", index.Version)
+		return RegistryIndex{}, indexURL, false, fmt.Errorf("unsupported registry version %d", index.Version)
 	}
 	out := make([]RegistryEntry, 0, len(index.Extensions))
 	seen := map[string]bool{}
@@ -188,7 +265,7 @@ func FetchRegistry(ctx context.Context) (RegistryIndex, string, error) {
 		out = append(out, entry)
 	}
 	index.Extensions = out
-	return index, indexURL, nil
+	return index, indexURL, verified, nil
 }
 
 // FindRegistryEntry returns the index entry for id.
@@ -201,19 +278,86 @@ func FindRegistryEntry(index RegistryIndex, id string) (RegistryEntry, bool) {
 	return RegistryEntry{}, false
 }
 
+// CompareVersions compares dotted numeric versions, ignoring prerelease
+// tags. Returns 1 when a is newer, -1 when older, 0 when equal.
+func CompareVersions(a, b string) int {
+	parts := func(v string) [3]int {
+		var out [3]int
+		v = strings.SplitN(strings.TrimSpace(v), "-", 2)[0]
+		for i, seg := range strings.SplitN(v, ".", 4) {
+			if i > 2 {
+				break
+			}
+			n := 0
+			for _, c := range seg {
+				if c < '0' || c > '9' {
+					break
+				}
+				n = n*10 + int(c-'0')
+			}
+			out[i] = n
+		}
+		return out
+	}
+	pa, pb := parts(a), parts(b)
+	for i := range pa {
+		if pa[i] != pb[i] {
+			if pa[i] > pb[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	return 0
+}
+
+// verifyPackageSignature checks the zip against the Ed25519 signature in the
+// registry entry. When the registry signature verified, a package signature
+// is mandatory. For unsigned registries a present signature is still checked.
+func verifyPackageSignature(indexURL string, verified bool, entry RegistryEntry, data []byte) error {
+	keyHex := registryKeyHex(indexURL)
+	sig64 := strings.TrimSpace(entry.Package.Signature)
+	if sig64 == "" {
+		if verified {
+			return fmt.Errorf("package has no signature")
+		}
+		return nil
+	}
+	if keyHex == "" {
+		return nil
+	}
+	pub, err := decodeRegistryKey(keyHex)
+	if err != nil {
+		return err
+	}
+	sig, err := base64.StdEncoding.DecodeString(sig64)
+	if err != nil || !ed25519.Verify(pub, data, sig) {
+		return fmt.Errorf("package signature verification failed")
+	}
+	return nil
+}
+
 // InstallFromRegistry downloads the package for id from the registry index,
-// verifies its sha256, and installs it like an uploaded zip.
+// verifies its sha256 and signature, and installs it like an uploaded zip.
+// It refuses to install a version older than the installed one.
 func InstallFromRegistry(ctx context.Context, dataDir, id string) (Manifest, error) {
 	if !IsValidExtensionID(id) {
 		return Manifest{}, fmt.Errorf("invalid extension id")
 	}
-	index, _, err := FetchRegistry(ctx)
+	index, indexURL, verified, err := FetchRegistry(ctx)
 	if err != nil {
 		return Manifest{}, err
 	}
 	entry, ok := FindRegistryEntry(index, id)
 	if !ok {
 		return Manifest{}, fmt.Errorf("extension not found in registry")
+	}
+	if cur, err := findByID(dataDir, id); err == nil {
+		if CompareVersions(entry.Version, cur.Manifest.Version) < 0 {
+			return Manifest{}, fmt.Errorf(
+				"registry version %s is older than installed %s",
+				entry.Version, cur.Manifest.Version)
+		}
 	}
 	pkgURL := strings.TrimSpace(entry.Package.URL)
 	if pkgURL == "" {
@@ -235,6 +379,9 @@ func InstallFromRegistry(ctx context.Context, dataDir, id string) (Manifest, err
 		if hex.EncodeToString(sum[:]) != want {
 			return Manifest{}, fmt.Errorf("package checksum mismatch")
 		}
+	}
+	if err := verifyPackageSignature(indexURL, verified, entry, data); err != nil {
+		return Manifest{}, err
 	}
 	return InstallFromZip(dataDir, data)
 }

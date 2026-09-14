@@ -27,6 +27,7 @@
   import {
     bindAndroidMediaActions,
     bindDesktopIntegrationEffect,
+    bindExtensionDeepLinksEffect,
     bindKeyboardShortcutsEffect,
     bindNativeMediaEffect,
     bindPlaybackLifecycleEffect,
@@ -99,6 +100,10 @@
 
   $effect(() => {
     return bindWindowCloseEffect(bootstrapped);
+  });
+
+  $effect(() => {
+    return bindExtensionDeepLinksEffect(bootstrapped);
   });
 
   $effect(() => {

@@ -27,6 +27,7 @@ var allowedPackageExts = map[string]bool{
 	".json":  true,
 	".js":    true,
 	".mjs":   true,
+	".ts":    true,
 	".wasm":  true,
 	".css":   true,
 	".txt":   true,

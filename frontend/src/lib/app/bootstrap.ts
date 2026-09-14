@@ -33,6 +33,7 @@ import {
   applyWindowChromeDocumentState,
   bindNativeTitleBarSettings,
 } from "$lib/desktop/window-chrome";
+import { bindExtensionDeepLinks } from "$lib/desktop/deep-link";
 import { bindPlaybackLifecycle } from "$lib/music/playback-lifecycle";
 import { connection } from "$lib/music/connection.svelte";
 import { toast } from "$lib/ui/toast.svelte";
@@ -224,6 +225,13 @@ export function bindWindowCloseEffect(
   if (!bootstrapped) return;
   if (!nativeDesktopAvailable()) return;
   return bindWindowCloseHandler();
+}
+
+export function bindExtensionDeepLinksEffect(
+  bootstrapped: boolean,
+): (() => void) | undefined {
+  if (!bootstrapped) return;
+  return bindExtensionDeepLinks();
 }
 
 export function bindAndroidMediaActions(

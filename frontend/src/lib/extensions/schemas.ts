@@ -81,6 +81,11 @@ export const registryItemSchema = v.looseObject({
   version: v.string(),
   description: v.optional(v.string()),
   author: v.optional(v.string()),
+  homepage: v.optional(v.string()),
+  license: v.optional(v.string()),
+  tags: v.optional(v.array(v.string())),
+  risk: v.optional(v.string()),
+  externalUrls: v.optional(v.array(v.string())),
   iconUrl: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
   packageUrl: v.optional(v.string()),
@@ -94,6 +99,15 @@ export const registryItemSchema = v.looseObject({
   playerHooks: v.optional(v.number()),
   auditStatus: v.optional(v.string()),
   auditWarnings: v.optional(v.array(v.string())),
+  changelog: v.optional(
+    v.array(
+      v.looseObject({
+        version: v.string(),
+        date: v.optional(v.string()),
+        notes: v.optional(v.string()),
+      }),
+    ),
+  ),
   installed: v.boolean(),
   installedVersion: v.optional(v.string()),
   enabled: v.boolean(),
@@ -103,5 +117,6 @@ export const registryItemSchema = v.looseObject({
 export const registryPayloadSchema = v.looseObject({
   url: v.optional(v.string()),
   generatedAt: v.optional(v.string()),
+  signed: v.optional(v.boolean()),
   items: v.optional(v.nullable(v.array(registryItemSchema))),
 });

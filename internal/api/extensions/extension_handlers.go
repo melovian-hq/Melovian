@@ -269,68 +269,42 @@ func (h *Handler) handleInstallExtension(w http.ResponseWriter, r *http.Request)
 }
 
 type registryListItem struct {
-	ID              string   `json:"id"`
-	Name            string   `json:"name"`
-	Version         string   `json:"version"`
-	Description     string   `json:"description,omitempty"`
-	Author          string   `json:"author,omitempty"`
-	IconURL         string   `json:"iconUrl,omitempty"`
-	ImageURL        string   `json:"imageUrl,omitempty"`
-	PackageURL      string   `json:"packageUrl,omitempty"`
-	SHA256          string   `json:"sha256,omitempty"`
-	Bytes           int64    `json:"bytes,omitempty"`
-	HasScript       bool     `json:"hasScript"`
-	HasWasm         bool     `json:"hasWasm"`
-	Styles          int      `json:"styles,omitempty"`
-	AppTheme        bool     `json:"appTheme,omitempty"`
-	TrackRules      int      `json:"trackRules,omitempty"`
-	PlayerHooks     int      `json:"playerHooks,omitempty"`
-	AuditStatus     string   `json:"auditStatus,omitempty"`
-	AuditWarnings   []string `json:"auditWarnings,omitempty"`
-	Installed       bool     `json:"installed"`
-	InstalledVer    string   `json:"installedVersion,omitempty"`
-	Enabled         bool     `json:"enabled"`
-	UpdateAvailable bool     `json:"updateAvailable"`
+	ID              string               `json:"id"`
+	Name            string               `json:"name"`
+	Version         string               `json:"version"`
+	Description     string               `json:"description,omitempty"`
+	Author          string               `json:"author,omitempty"`
+	Homepage        string               `json:"homepage,omitempty"`
+	License         string               `json:"license,omitempty"`
+	Tags            []string             `json:"tags,omitempty"`
+	Risk            string               `json:"risk,omitempty"`
+	ExternalURLs    []string             `json:"externalUrls,omitempty"`
+	IconURL         string               `json:"iconUrl,omitempty"`
+	ImageURL        string               `json:"imageUrl,omitempty"`
+	PackageURL      string               `json:"packageUrl,omitempty"`
+	SHA256          string               `json:"sha256,omitempty"`
+	Bytes           int64                `json:"bytes,omitempty"`
+	HasScript       bool                 `json:"hasScript"`
+	HasWasm         bool                 `json:"hasWasm"`
+	Styles          int                  `json:"styles,omitempty"`
+	AppTheme        bool                 `json:"appTheme,omitempty"`
+	TrackRules      int                  `json:"trackRules,omitempty"`
+	PlayerHooks     int                  `json:"playerHooks,omitempty"`
+	AuditStatus     string               `json:"auditStatus,omitempty"`
+	AuditWarnings   []string             `json:"auditWarnings,omitempty"`
+	Changelog       []ext.RegistryChangelog `json:"changelog,omitempty"`
+	Installed       bool                 `json:"installed"`
+	InstalledVer    string               `json:"installedVersion,omitempty"`
+	Enabled         bool                 `json:"enabled"`
+	UpdateAvailable bool                 `json:"updateAvailable"`
 }
 
 type installRemoteRequest struct {
 	ID string `json:"id"`
 }
 
-// compareSemver compares dotted numeric versions, ignoring prerelease tags.
-func compareSemver(a, b string) int {
-	parts := func(v string) [3]int {
-		var out [3]int
-		v = strings.SplitN(strings.TrimSpace(v), "-", 2)[0]
-		for i, seg := range strings.SplitN(v, ".", 4) {
-			if i > 2 {
-				break
-			}
-			n := 0
-			for _, c := range seg {
-				if c < '0' || c > '9' {
-					break
-				}
-				n = n*10 + int(c-'0')
-			}
-			out[i] = n
-		}
-		return out
-	}
-	pa, pb := parts(a), parts(b)
-	for i := range pa {
-		if pa[i] != pb[i] {
-			if pa[i] > pb[i] {
-				return 1
-			}
-			return -1
-		}
-	}
-	return 0
-}
-
 func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request) {
-	index, indexURL, err := ext.FetchRegistry(r.Context())
+	index, indexURL, verified, err := ext.FetchRegistry(r.Context())
 	if err != nil {
 		httputil.WriteError(w, http.StatusBadGateway, "registry_unavailable", err.Error())
 		return
@@ -349,6 +323,11 @@ func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request
 			Version:       entry.Version,
 			Description:   entry.Description,
 			Author:        entry.Author,
+			Homepage:      entry.Homepage,
+			License:       entry.License,
+			Tags:          entry.Tags,
+			Risk:          entry.Risk,
+			ExternalURLs:  entry.ExternalURLs,
 			IconURL:       ext.ResolveRegistryAsset(indexURL, entry.Icon),
 			ImageURL:      ext.ResolveRegistryAsset(indexURL, entry.Image),
 			PackageURL:    entry.Package.URL,
@@ -362,18 +341,20 @@ func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request
 			PlayerHooks:   entry.Capabilities.PlayerHooks,
 			AuditStatus:   entry.Audit.Status,
 			AuditWarnings: entry.Audit.Warnings,
+			Changelog:     entry.Changelog,
 		}
 		if cur, ok := installed[entry.ID]; ok {
 			item.Installed = true
 			item.Enabled = cur.Enabled
 			item.InstalledVer = cur.Manifest.Version
-			item.UpdateAvailable = compareSemver(entry.Version, cur.Manifest.Version) > 0
+			item.UpdateAvailable = ext.CompareVersions(entry.Version, cur.Manifest.Version) > 0
 		}
 		items = append(items, item)
 	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"url":         indexURL,
 		"generatedAt": index.GeneratedAt,
+		"signed":      verified,
 		"items":       items,
 	})
 }

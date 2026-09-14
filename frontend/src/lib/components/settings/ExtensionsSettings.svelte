@@ -17,7 +17,10 @@
     type ExtensionListItem,
     type RegistryItem,
   } from "$lib/extensions/api";
+  import { confirmDialog } from "$lib/ui/confirm.svelte";
   import { toast } from "$lib/ui/toast.svelte";
+  import { router } from "$lib/router/router.svelte";
+  import { extensionDeepLinkId } from "$lib/desktop/deep-link";
 
   let items = $state<ExtensionListItem[]>([]);
   let extensionsDir = $state("");
@@ -30,6 +33,8 @@
   let registryItems = $state<RegistryItem[]>([]);
   let registryLoading = $state(false);
   let registryError = $state<string | null>(null);
+  let registrySigned = $state(false);
+  let handledDeepLink = $state("");
 
   async function applyPayload(payload: {
     items: ExtensionListItem[];
@@ -63,6 +68,7 @@
     try {
       const payload = await fetchExtensionRegistry();
       registryItems = payload.items;
+      registrySigned = payload.signed;
     } catch (err) {
       registryItems = [];
       registryError =
@@ -72,7 +78,37 @@
     }
   }
 
+  function installConfirmMessage(item: RegistryItem): string {
+    const lines = [`Install ${item.name} v${item.version}?`];
+    if (item.author) lines.push(`Author: ${item.author}`);
+    const caps: string[] = [];
+    if (item.hasScript) caps.push("runs a sandboxed script");
+    if (item.hasWasm) caps.push("ships WASM");
+    if (item.styles) caps.push(`${item.styles} stylesheet(s)`);
+    if (item.appTheme) caps.push("app theme");
+    if (item.trackRules) caps.push(`${item.trackRules} track rule(s)`);
+    if (caps.length) lines.push(`It ${caps.join(", ")}.`);
+    if (item.risk && item.risk !== "low") {
+      lines.push(`Audit risk rating: ${item.risk}.`);
+    }
+    if (item.externalUrls?.length) {
+      lines.push(
+        `References ${item.externalUrls.length} external URL(s), listed on the extension page.`,
+      );
+    }
+    if (!registrySigned) {
+      lines.push("This registry did not provide a verified signature.");
+    }
+    return lines.join("\n\n");
+  }
+
   async function handleInstallRemote(item: RegistryItem) {
+    const confirmed = await confirmDialog.confirm({
+      title: `Install ${item.name}`,
+      message: installConfirmMessage(item),
+      confirmLabel: item.installed ? "Update" : "Install",
+    });
+    if (!confirmed) return;
     busyId = item.id;
     try {
       const payload = await installRemoteExtension(item.id);
@@ -86,6 +122,29 @@
     } finally {
       busyId = null;
     }
+  }
+
+  // A melovian://install-extension/<id> deep link or
+  // ?install-extension=<id> query lands here. Prompt once per id, then
+  // strip the param so reloads do not re-prompt.
+  async function handleDeepLink(search: string) {
+    const id = extensionDeepLinkId(search);
+    if (!id || id === handledDeepLink) return;
+    handledDeepLink = id;
+    router.navigate("/settings/extensions", true);
+    if (registryLoading) return;
+    const item = registryItems.find((entry) => entry.id === id);
+    if (!item) {
+      if (!registryError) await loadRegistry();
+      const retry = registryItems.find((entry) => entry.id === id);
+      if (!retry) {
+        toast.error(`Extension ${id} is not in the registry`);
+        return;
+      }
+      await handleInstallRemote(retry);
+      return;
+    }
+    await handleInstallRemote(item);
   }
 
   async function toggle(item: ExtensionListItem, enabled: boolean) {
@@ -248,7 +307,11 @@
 
   onMount(() => {
     void refresh();
-    void loadRegistry();
+    void loadRegistry().then(() => handleDeepLink(window.location.search));
+  });
+
+  $effect(() => {
+    void handleDeepLink(router.search);
   });
 </script>
 
@@ -396,18 +459,19 @@
     {/if}
 
     <div class="extensions-settings__browse">
-      <p class="extensions-settings__browse-title">Browse the registry</p>
+      <p class="extensions-settings__browse-title">
+        Browse the registry
+        {#if registrySigned}
+          <span class="extensions-settings__signed">signed</span>
+        {/if}
+      </p>
       {#if registryLoading}
         <Spinner class="extensions-settings__spinner" />
       {:else if registryError}
         <p class="extensions-settings__browse-note">
           Could not reach the extension registry: {registryError}
         </p>
-        <Button
-          size="sm"
-          variant="ghost"
-          onclick={() => void loadRegistry()}
-        >
+        <Button size="sm" variant="ghost" onclick={() => void loadRegistry()}>
           Retry
         </Button>
       {:else if registryItems.length === 0}
@@ -675,5 +739,21 @@
     background: color-mix(in srgb, var(--jb-success) 18%, transparent);
     color: var(--jb-success);
     border: 1px solid color-mix(in srgb, var(--jb-success) 40%, transparent);
+  }
+
+  .extensions-settings__signed {
+    display: inline-flex;
+    align-items: center;
+    margin-left: var(--jb-space-2);
+    padding: 0.1rem 0.45rem;
+    border-radius: var(--jb-radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    vertical-align: middle;
+    background: color-mix(in srgb, var(--jb-accent) 18%, transparent);
+    color: var(--jb-accent);
+    border: 1px solid color-mix(in srgb, var(--jb-accent) 40%, transparent);
   }
 </style>
