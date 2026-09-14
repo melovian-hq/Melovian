@@ -16,7 +16,11 @@ vi.mock("$lib/components/layout/BottomNav.svelte", async () => ({
   default: (await import("../../../test-fixtures/ChromeStub.svelte")).default,
 }));
 
-vi.mock("$lib/components/ui/OfflineBanner.svelte", async () => ({
+vi.mock("$lib/components/connection/OfflineBanner.svelte", async () => ({
+  default: (await import("../../../test-fixtures/ChromeStub.svelte")).default,
+}));
+
+vi.mock("$lib/demo/DemoBanner.svelte", async () => ({
   default: (await import("../../../test-fixtures/ChromeStub.svelte")).default,
 }));
 

@@ -117,7 +117,7 @@
     align-items: start;
     justify-content: flex-end;
     gap: var(--jb-space-3);
-    z-index: 30;
+    z-index: var(--jb-z-topbar);
     pointer-events: none;
     transition: left var(--jb-transition);
   }

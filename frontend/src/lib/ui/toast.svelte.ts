@@ -56,6 +56,21 @@ class ToastStore {
     const kind = opts.kind ?? "info";
     const resolvedDuration =
       opts.duration ?? duration ?? DEFAULT_DURATION[kind];
+    // An identical visible toast gets its timer restarted instead of
+    // stacking a duplicate.
+    const existing = this.items.find(
+      (t) => t.kind === kind && t.message === message,
+    );
+    if (existing) {
+      if (existing.duration > 0) {
+        if (this.#paused.has(existing.id)) {
+          this.#remaining.set(existing.id, existing.duration);
+        } else {
+          this.armTimer(existing.id, existing.duration);
+        }
+      }
+      return existing.id;
+    }
     const id = randomUUID();
     const actions =
       opts.actions && opts.actions.length > 0

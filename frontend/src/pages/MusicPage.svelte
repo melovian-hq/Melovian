@@ -359,6 +359,9 @@
     justify-content: space-between;
     gap: var(--jb-space-3);
     flex-wrap: wrap;
+    /* Keep the Customize button clear of the fixed TopBar islands when
+       this row scrolls under them. */
+    padding-right: var(--jb-topbar-islands-inset, 0px);
   }
 
   .metadata-alert {

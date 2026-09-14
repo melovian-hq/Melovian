@@ -57,4 +57,64 @@ describe("toast store", () => {
     ]);
     expect(toast.items[0]?.action?.label).toBe("Copy link");
   });
+
+  it("sets the kind through the helper methods", () => {
+    toast.success("a", { duration: 0 });
+    toast.error("b", { duration: 0 });
+    toast.warning("c", { duration: 0 });
+    toast.info("d", { duration: 0 });
+    expect(toast.items.map((t) => t.kind)).toEqual([
+      "success",
+      "error",
+      "warning",
+      "info",
+    ]);
+  });
+
+  it("dedupes a visible toast with the same kind and message", () => {
+    const first = toast.info("Saved", { duration: 0 });
+    const second = toast.info("Saved", { duration: 0 });
+    expect(second).toBe(first);
+    expect(toast.items).toHaveLength(1);
+  });
+
+  it("does not dedupe across kinds", () => {
+    toast.error("Saved", { duration: 0 });
+    toast.info("Saved", { duration: 0 });
+    expect(toast.items).toHaveLength(2);
+  });
+
+  it("restarts the timer on a duplicate", () => {
+    vi.useFakeTimers();
+    try {
+      const first = toast.info("Saved");
+      vi.advanceTimersByTime(3900);
+      const second = toast.info("Saved");
+      expect(second).toBe(first);
+      expect(toast.items).toHaveLength(1);
+      vi.advanceTimersByTime(3900);
+      expect(toast.items).toHaveLength(1);
+      vi.advanceTimersByTime(200);
+      expect(toast.items).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
+
+  it("keeps a paused duplicate paused while resetting its remaining time", () => {
+    vi.useFakeTimers();
+    try {
+      const id = toast.info("Saved");
+      vi.advanceTimersByTime(3900);
+      toast.pause(id);
+      expect(toast.info("Saved")).toBe(id);
+      toast.resume(id);
+      vi.advanceTimersByTime(3900);
+      expect(toast.items).toHaveLength(1);
+      vi.advanceTimersByTime(200);
+      expect(toast.items).toHaveLength(0);
+    } finally {
+      vi.useRealTimers();
+    }
+  });
 });

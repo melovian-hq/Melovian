@@ -2,7 +2,8 @@
   import Sidebar from "./Sidebar.svelte";
   import TopBar from "./TopBar.svelte";
   import BottomNav from "./BottomNav.svelte";
-  import OfflineBanner from "$lib/components/ui/OfflineBanner.svelte";
+  import OfflineBanner from "$lib/components/connection/OfflineBanner.svelte";
+  import DemoBanner from "$lib/demo/DemoBanner.svelte";
   import { music } from "$lib/config/music.svelte";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
   import { decorateTrack } from "$lib/extensions/registry";
@@ -39,7 +40,14 @@
   function onKeydown(event: KeyboardEvent) {
     if (event.key !== "Escape") return;
     if (!layout.sidebarOpen) return;
+    closeDrawer();
+  }
+
+  // Closing the drawer returns focus to its trigger so keyboard users are not
+  // left on a detached or invisible element.
+  function closeDrawer() {
     layout.closeSidebar();
+    document.querySelector<HTMLElement>(".topbar__menu-btn")?.focus();
   }
 </script>
 
@@ -57,12 +65,15 @@
       <button
         type="button"
         class="app-shell__backdrop"
-        onclick={() => layout.closeSidebar()}
+        onclick={closeDrawer}
         aria-label="Close navigation"
       ></button>
     {/if}
 
-    <aside class="app-shell__sidebar jb-no-drag">
+    <aside
+      class="app-shell__sidebar jb-no-drag"
+      inert={layout.isMobileViewport && !layout.sidebarOpen}
+    >
       <Sidebar collapsed={sidebarCollapsed} />
     </aside>
   {/if}
@@ -73,6 +84,7 @@
     {/if}
     {#if !bare}
       <OfflineBanner />
+      <DemoBanner />
     {/if}
     <main
       class="app-shell__content"
@@ -107,18 +119,40 @@
     --jb-sidebar-current-width: var(--jb-sidebar-width-collapsed);
   }
 
+  /* The border lives on the clip container so it rides the animated edge.
+     The sidebar inside stays at fixed expanded width and never reflows. */
   .app-shell__sidebar {
+    position: relative;
     flex-shrink: 0;
     width: var(--jb-sidebar-current-width);
     height: 100%;
     min-height: 0;
     overflow: hidden;
+    border-right: 1px solid var(--jb-border);
     transition: width var(--jb-transition);
-    z-index: 55;
+    z-index: var(--jb-z-sidebar);
   }
 
   :global(html[data-custom-window-chrome="true"]) .app-shell__sidebar {
     overflow: visible;
+    border-right: none;
+  }
+
+  :global(html[data-custom-window-chrome="true"]) .app-shell__sidebar::after {
+    content: "";
+    position: absolute;
+    top: calc(var(--jb-window-chrome-height, 2rem));
+    right: 0;
+    bottom: 0;
+    width: 1px;
+    background: var(--jb-border);
+    pointer-events: none;
+  }
+
+  @media (prefers-reduced-motion: reduce) {
+    .app-shell__sidebar {
+      transition: none;
+    }
   }
 
   .app-shell__main {
@@ -134,6 +168,12 @@
   .app-shell__content {
     --jb-page-pad-x: var(--jb-space-6);
     --jb-page-pad-top: calc(var(--jb-topbar-height) + var(--jb-space-2));
+    /* Right-side room reserved for the fixed TopBar islands (2.75rem bell
+       pill plus a gap). Page headers can pad right by this so controls
+       stay clear of the islands while scrolling. */
+    --jb-topbar-islands-inset: calc(
+      3.25rem + var(--jb-window-controls-inset, 0px)
+    );
     flex: 1;
     min-height: 0;
     overflow-x: hidden;
@@ -212,9 +252,9 @@
       position: fixed;
       inset: 0;
       border: none;
-      background: rgb(0 0 0 / 0.35);
+      background: var(--jb-scrim-subtle);
       backdrop-filter: blur(2px);
-      z-index: 35;
+      z-index: var(--jb-z-mobile-backdrop);
       cursor: pointer;
     }
 

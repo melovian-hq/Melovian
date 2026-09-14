@@ -167,7 +167,7 @@
   .notif-root {
     position: fixed;
     inset: 0;
-    z-index: 120;
+    z-index: var(--jb-z-popover);
     pointer-events: none;
   }
 
@@ -182,13 +182,15 @@
 
   .notif-panel {
     position: absolute;
+    /* Drops below the home header block (eyebrow plus title row, about
+       4.5rem) so the open panel does not cover the Customize button. */
     top: calc(
-      var(--jb-window-chrome-offset, 0px) + var(--jb-space-4) + 3.25rem +
-        env(safe-area-inset-top, 0px)
+      var(--jb-window-chrome-offset, 0px) + var(--jb-topbar-height) +
+        var(--jb-space-2) + 4.5rem + env(safe-area-inset-top, 0px)
     );
     right: calc(var(--jb-space-4) + var(--jb-window-controls-inset, 0px));
     width: min(22rem, calc(100vw - var(--jb-space-6)));
-    max-height: min(28rem, calc(100vh - 6rem));
+    max-height: min(28rem, calc(100vh - 13rem));
     display: flex;
     flex-direction: column;
     border: 1px solid var(--jb-border);
@@ -370,8 +372,8 @@
   @media (max-width: 768px) {
     .notif-panel {
       top: calc(
-        var(--jb-window-chrome-offset, 0px) + var(--jb-space-2) + 3rem +
-          env(safe-area-inset-top, 0px)
+        var(--jb-window-chrome-offset, 0px) + var(--jb-topbar-height) +
+          var(--jb-space-2) + 3.75rem + env(safe-area-inset-top, 0px)
       );
       right: var(--jb-space-3);
       left: var(--jb-space-3);

@@ -92,7 +92,7 @@
   .compat-banner {
     position: sticky;
     top: 0;
-    z-index: 40;
+    z-index: var(--jb-z-banner);
     display: flex;
     align-items: center;
     justify-content: center;
