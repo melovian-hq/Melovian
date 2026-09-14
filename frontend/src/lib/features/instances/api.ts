@@ -7,12 +7,13 @@ import { readAPIError, requireOk } from "$lib/core/http/errors";
 import { parseJson, parsePayload } from "$lib/core/http/parse";
 import {
   activeInstanceProbeSchema,
+  detectServersResponseSchema,
   instancePingSchema,
   instanceTestResponseSchema,
   instancesResponseSchema,
   subsonicInstanceSchema,
 } from "./schemas";
-import type { InstanceInput, SubsonicInstance } from "./types";
+import type { DetectedServer, InstanceInput, SubsonicInstance } from "./types";
 
 export async function listInstances(): Promise<SubsonicInstance[]> {
   const response = await fetchWithRetry(ApiPaths.instances, {
@@ -49,6 +50,19 @@ export async function createInstance(
   });
   await requireOk(response, "Failed to create instance");
   return parseJson(subsonicInstanceSchema, response, "instance");
+}
+
+export async function detectServers(): Promise<DetectedServer[]> {
+  const response = await fetchWithRetry(ApiPaths.instancesDetect, {
+    headers: apiHeaders(),
+  });
+  await requireOk(response, "Failed to detect servers");
+  const payload = await parseJson(
+    detectServersResponseSchema,
+    response,
+    "detected servers",
+  );
+  return (payload.servers ?? []).filter((server) => server.reachable);
 }
 
 export async function testInstance(input: InstanceInput): Promise<string> {

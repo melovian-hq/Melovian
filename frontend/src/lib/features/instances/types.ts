@@ -18,3 +18,10 @@ export interface InstanceInput {
   username: string;
   password: string;
 }
+
+export interface DetectedServer {
+  url: string;
+  serverName: string;
+  version: string;
+  reachable: boolean;
+}

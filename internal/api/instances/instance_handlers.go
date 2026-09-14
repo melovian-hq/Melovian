@@ -52,6 +52,7 @@ func (h *Handler) registerInstanceRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/instances", h.handleCreateInstance)
 	mux.HandleFunc("POST /api/instances/test", h.handleTestInstance)
 	mux.HandleFunc("GET /api/instances/active", h.handleGetActiveInstance)
+	mux.HandleFunc("GET /api/instances/detect", h.handleDetectInstances)
 	mux.HandleFunc("POST /api/instances/{id}/activate", h.handleActivateInstance)
 	mux.HandleFunc("GET /api/instances/{id}/ping", h.handlePingInstance)
 	mux.HandleFunc("PUT /api/instances/{id}", h.handleUpdateInstance)

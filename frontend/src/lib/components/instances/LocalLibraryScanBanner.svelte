@@ -28,10 +28,12 @@
 <style>
   .scan-banner {
     position: fixed;
-    top: calc(var(--jb-topbar-height) + var(--jb-space-2));
+    /* Sits below the home header block so it cannot cover the Customize
+       button or the TopBar islands. */
+    top: calc(var(--jb-topbar-height) + var(--jb-space-2) + 4.5rem);
     left: 50%;
     transform: translateX(-50%);
-    z-index: 70;
+    z-index: var(--jb-z-scan-banner);
     display: flex;
     flex-direction: column;
     gap: var(--jb-space-2);
@@ -66,7 +68,10 @@
 
   @media (max-width: 768px) {
     .scan-banner {
-      top: calc(var(--jb-topbar-height) + env(safe-area-inset-top, 0px));
+      top: calc(
+        var(--jb-topbar-height) + var(--jb-space-2) + 3.75rem +
+          env(safe-area-inset-top, 0px)
+      );
       left: var(--jb-space-3);
       right: var(--jb-space-3);
       transform: none;

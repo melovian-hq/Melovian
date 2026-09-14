@@ -318,7 +318,7 @@
   }
 
   .ping-dot--online {
-    background: #22c55e;
+    background: var(--jb-success);
   }
 
   .ping-dot--offline {

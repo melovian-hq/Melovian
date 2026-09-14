@@ -4,6 +4,14 @@
 import { describe, expect, it, vi, beforeEach, afterEach } from "vitest";
 import { flushSync, mount, unmount } from "svelte";
 import InstanceForm from "./InstanceForm.svelte";
+import { detectServers } from "$lib/features/instances/api";
+import type { InstanceInput } from "$lib/features/instances/types";
+
+vi.mock("$lib/features/instances/api", () => ({
+  detectServers: vi.fn(),
+}));
+
+const detectServersMock = vi.mocked(detectServers);
 
 function mockMatchMedia(matches: boolean) {
   globalThis.matchMedia = ((query: string) => ({
@@ -20,6 +28,7 @@ function mockMatchMedia(matches: boolean) {
 
 function renderForm(props: {
   stickyActions?: boolean;
+  initial?: Partial<InstanceInput>;
   ontest?: () => void;
   oncancel?: () => void;
 }) {
@@ -29,6 +38,7 @@ function renderForm(props: {
     target,
     props: {
       stickyActions: props.stickyActions ?? true,
+      initial: props.initial,
       ontest: props.ontest,
       oncancel: props.oncancel,
       onsubmit: vi.fn(),
@@ -46,6 +56,7 @@ function renderForm(props: {
 
 describe("InstanceForm sticky actions", () => {
   beforeEach(() => {
+    detectServersMock.mockReset().mockResolvedValue([]);
     mockMatchMedia(true);
     Object.defineProperty(window, "innerWidth", {
       configurable: true,
@@ -128,6 +139,79 @@ describe("InstanceForm sticky actions", () => {
       // Sticky clearance is applied via CSS on --sticky forms. jsdom does not
       // resolve scroll-margin, so assert structural contract instead.
       expect(form.querySelector(".instance-form__actions")).not.toBeNull();
+    } finally {
+      cleanup();
+    }
+  });
+});
+
+describe("InstanceForm detected servers", () => {
+  beforeEach(() => {
+    detectServersMock.mockReset();
+  });
+
+  it("lists detected servers and fills the form on click", async () => {
+    detectServersMock.mockResolvedValue([
+      {
+        url: "http://127.0.0.1:4533",
+        serverName: "navidrome",
+        version: "0.55.2",
+        reachable: true,
+      },
+    ]);
+    const { target, cleanup } = renderForm({});
+    try {
+      await vi.waitFor(() => {
+        expect(
+          target.querySelector(".instance-form__detect-row"),
+        ).not.toBeNull();
+      });
+      const row = target.querySelector(
+        ".instance-form__detect-row",
+      ) as HTMLElement;
+      expect(row.textContent).toContain("navidrome");
+      expect(row.textContent).toContain("0.55.2");
+      expect(row.textContent).toContain("http://127.0.0.1:4533");
+
+      row.click();
+      flushSync();
+      const urlInput = target.querySelector(
+        'input[type="url"]',
+      ) as HTMLInputElement;
+      expect(urlInput.value).toBe("http://127.0.0.1:4533");
+      const usernameInput = target.querySelector(
+        'input[name="username"]',
+      ) as HTMLInputElement;
+      expect(document.activeElement).toBe(usernameInput);
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("hides the section when no servers are found", async () => {
+    detectServersMock.mockResolvedValue([]);
+    const { target, cleanup } = renderForm({});
+    try {
+      await vi.waitFor(() => {
+        expect(target.querySelector(".instance-form__detect")).toBeNull();
+      });
+    } finally {
+      cleanup();
+    }
+  });
+
+  it("does not probe in edit mode", async () => {
+    const { target, cleanup } = renderForm({
+      initial: {
+        name: "Home",
+        serverUrl: "http://192.168.1.10:4533",
+        username: "alice",
+      },
+    });
+    try {
+      flushSync();
+      expect(detectServersMock).not.toHaveBeenCalled();
+      expect(target.querySelector(".instance-form__detect")).toBeNull();
     } finally {
       cleanup();
     }

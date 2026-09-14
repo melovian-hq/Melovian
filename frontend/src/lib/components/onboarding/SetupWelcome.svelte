@@ -2,6 +2,7 @@
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import { isWailsMobile } from "$lib/config/runtime";
+  import { localLibraries } from "$lib/features/local-libraries/store.svelte";
   import { APP_NAME, APP_SLUG } from "$lib/brand";
   import { router } from "$lib/router/router.svelte";
 
@@ -12,6 +13,7 @@
   let { class: className = "" }: Props = $props();
 
   const mobile = $derived(isWailsMobile());
+  const localAvailable = $derived(localLibraries.enabled && !mobile);
 </script>
 
 <div class="setup-welcome {className}">
@@ -23,7 +25,7 @@
     <p class="setup-welcome__lead">
       {mobile
         ? `Connect your ${APP_NAME} server (Docker or ${APP_SLUG}-server), or add a Subsonic server on this device.`
-        : "Connect a Subsonic server or index a local music folder to start listening."}
+        : "Index a local music folder or connect a Subsonic server to start listening."}
     </p>
   </div>
 
@@ -44,18 +46,23 @@
         <MdiIcon name="server" size={18} />
         Add Subsonic on this device
       </Button>
-    {:else}
-      <Button size="lg" onclick={() => router.navigate("/setup")}>
-        <MdiIcon name="server" size={18} />
-        Set up a music source
+    {:else if localAvailable}
+      <Button size="lg" onclick={() => router.navigate("/setup?source=local")}>
+        <MdiIcon name="folderMusic" size={18} />
+        Add local folder
       </Button>
       <Button
         size="lg"
         variant="surface"
-        onclick={() => router.navigate("/setup?source=local")}
+        onclick={() => router.navigate("/setup?source=server")}
       >
-        <MdiIcon name="folderMusic" size={18} />
-        Add local folder
+        <MdiIcon name="server" size={18} />
+        Connect a Subsonic server
+      </Button>
+    {:else}
+      <Button size="lg" onclick={() => router.navigate("/setup")}>
+        <MdiIcon name="server" size={18} />
+        Set up a music source
       </Button>
     {/if}
   </div>

@@ -93,6 +93,7 @@
   {#if localLibraries.config.allowCustomPath}
     <Field
       label="Folder path"
+      group
       hint={canBrowse
         ? "Browse for a folder, or type an absolute path."
         : "Absolute path to a directory of audio files on this machine."}
@@ -102,6 +103,7 @@
           bind:value={path}
           placeholder="/home/user/Music"
           autocomplete="off"
+          aria-label="Folder path"
         />
         {#if canBrowse}
           <Button

@@ -33,6 +33,7 @@ export const ApiPaths = {
 
   instances: "/api/instances",
   instancesActive: "/api/instances/active",
+  instancesDetect: "/api/instances/detect",
   instancesTest: "/api/instances/test",
   instanceById: (id: string) => `/api/instances/${id}`,
   instancePing: (id: string) => `/api/instances/${id}/ping`,

@@ -126,6 +126,23 @@
     </header>
 
     <div class="add-source__choices">
+      {#if localAvailable}
+        <button
+          type="button"
+          class="add-source__choice"
+          onclick={() => (path = "local")}
+        >
+          <span class="add-source__choice-icon" aria-hidden="true">
+            <MdiIcon name="folderMusic" size={24} />
+          </span>
+          <span class="add-source__choice-copy">
+            <strong>This device</strong>
+            <span>Index audio on this machine. {APP_NAME} is the server.</span>
+          </span>
+          <MdiIcon name="chevronRight" size={20} />
+        </button>
+      {/if}
+
       <button
         type="button"
         class="add-source__choice"
@@ -142,25 +159,6 @@
         </span>
         <MdiIcon name="chevronRight" size={20} />
       </button>
-
-      {#if localAvailable}
-        <button
-          type="button"
-          class="add-source__choice"
-          onclick={() => (path = "local")}
-        >
-          <span class="add-source__choice-icon" aria-hidden="true">
-            <MdiIcon name="folderMusic" size={24} />
-          </span>
-          <span class="add-source__choice-copy">
-            <strong>Local folder</strong>
-            <span
-              >Index audio on this machine. You can play while it scans.</span
-            >
-          </span>
-          <MdiIcon name="chevronRight" size={20} />
-        </button>
-      {/if}
     </div>
   {:else if path === "server"}
     <header class="add-source__header">

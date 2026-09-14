@@ -27,6 +27,17 @@ export const instanceTestResponseSchema = v.looseObject({
   serverName: v.optional(v.string()),
 });
 
+export const detectedServerSchema = v.looseObject({
+  url: v.string(),
+  serverName: v.optional(v.string(), ""),
+  version: v.optional(v.string(), ""),
+  reachable: v.optional(v.boolean(), true),
+});
+
+export const detectServersResponseSchema = v.looseObject({
+  servers: v.optional(v.nullable(v.array(detectedServerSchema))),
+});
+
 export const instancePingSchema = v.looseObject({
   online: v.boolean(),
   latencyMs: v.number(),

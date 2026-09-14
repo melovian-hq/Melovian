@@ -1,13 +1,19 @@
 <script lang="ts">
+  import { onMount } from "svelte";
   import Button from "$lib/components/ui/Button.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import Input from "$lib/components/ui/Input.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
+  import Spinner from "$lib/components/ui/Spinner.svelte";
+  import { detectServers } from "$lib/features/instances/api";
   import {
     displayNameFromServerUrl,
     normalizeServerUrl,
   } from "$lib/features/instances/normalize-url";
-  import type { InstanceInput } from "$lib/features/instances/types";
+  import type {
+    DetectedServer,
+    InstanceInput,
+  } from "$lib/features/instances/types";
 
   interface Props {
     submitLabel?: string;
@@ -39,8 +45,12 @@
   let password = $state("");
   let showPassword = $state(false);
   let nameTouched = $state(false);
+  let formEl = $state<HTMLFormElement | null>(null);
+  let detecting = $state(false);
+  let detected = $state<DetectedServer[]>([]);
 
   const actionCount = $derived((ontest ? 1 : 0) + (oncancel ? 1 : 0) + 1);
+  const isEdit = $derived(Boolean(initial.serverUrl));
 
   $effect(() => {
     name = initial.name ?? "";
@@ -49,6 +59,29 @@
     password = initial.password ?? "";
     nameTouched = Boolean(initial.name?.trim());
   });
+
+  onMount(() => {
+    if (isEdit) return;
+    detecting = true;
+    detectServers()
+      .then((servers) => {
+        detected = servers;
+      })
+      .catch(() => {
+        detected = [];
+      })
+      .finally(() => {
+        detecting = false;
+      });
+  });
+
+  function pickDetected(server: DetectedServer) {
+    serverUrl = server.url;
+    if (!nameTouched && !name.trim()) {
+      name = displayNameFromServerUrl(server.url);
+    }
+    formEl?.querySelector<HTMLInputElement>('input[name="username"]')?.focus();
+  }
 
   function payload(): InstanceInput {
     const normalizedUrl = normalizeServerUrl(serverUrl);
@@ -77,6 +110,7 @@
 </script>
 
 <form
+  bind:this={formEl}
   class="instance-form"
   class:instance-form--sticky={stickyActions}
   class:instance-form--stack-actions={actionCount >= 3}
@@ -86,6 +120,40 @@
   }}
 >
   <div class="instance-form__fields">
+    {#if !isEdit && (detecting || detected.length > 0)}
+      <div class="instance-form__detect">
+        <span class="instance-form__detect-title">
+          Detected on this network
+        </span>
+        {#if detecting}
+          <span class="instance-form__detect-status">
+            <Spinner class="instance-form__detect-spinner" />
+            Looking for servers...
+          </span>
+        {:else}
+          <ul class="instance-form__detect-list">
+            {#each detected as server (server.url)}
+              <li>
+                <button
+                  type="button"
+                  class="instance-form__detect-row"
+                  onclick={() => pickDetected(server)}
+                >
+                  <MdiIcon name="server" size={18} />
+                  <span class="instance-form__detect-name">
+                    {server.serverName}{server.version
+                      ? ` ${server.version}`
+                      : ""}
+                  </span>
+                  <span class="instance-form__detect-url">{server.url}</span>
+                </button>
+              </li>
+            {/each}
+          </ul>
+        {/if}
+      </div>
+    {/if}
+
     <Field
       label="Server URL"
       hint="Navidrome or any Subsonic API base. https:// is added if you leave it off."
@@ -118,6 +186,7 @@
     <Field label="Username">
       <Input
         bind:value={username}
+        name="username"
         autocomplete="username"
         enterkeyhint="next"
         autocapitalize="off"
@@ -126,7 +195,7 @@
       />
     </Field>
 
-    <Field label="Password">
+    <Field label="Password" group>
       <div class="instance-form__password">
         <Input
           bind:value={password}
@@ -135,6 +204,7 @@
           enterkeyhint="go"
           required={!initial.serverUrl}
           class="instance-form__password-input"
+          aria-label="Password"
         />
         <button
           type="button"
@@ -180,6 +250,83 @@
   .instance-form__fields {
     display: grid;
     gap: var(--jb-space-4);
+  }
+
+  .instance-form__detect {
+    display: grid;
+    gap: var(--jb-space-2);
+    padding: var(--jb-space-3);
+    border: 1px dashed var(--jb-border);
+    border-radius: var(--jb-radius-md);
+    background: var(--jb-bg-subtle);
+  }
+
+  .instance-form__detect-title {
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--jb-text-muted);
+  }
+
+  .instance-form__detect-status {
+    display: inline-flex;
+    align-items: center;
+    gap: var(--jb-space-2);
+    color: var(--jb-text-subtle);
+    font-size: 0.8125rem;
+  }
+
+  .instance-form__detect-status :global(.spinner__ring) {
+    width: 0.875rem;
+    height: 0.875rem;
+  }
+
+  .instance-form__detect-list {
+    display: grid;
+    gap: var(--jb-space-1);
+    margin: 0;
+    padding: 0;
+    list-style: none;
+  }
+
+  .instance-form__detect-row {
+    display: grid;
+    grid-template-columns: auto 1fr;
+    align-items: center;
+    column-gap: var(--jb-space-2);
+    width: 100%;
+    padding: var(--jb-space-2) var(--jb-space-3);
+    border: none;
+    border-radius: var(--jb-radius-md);
+    background: transparent;
+    color: var(--jb-text);
+    font: inherit;
+    text-align: left;
+    cursor: pointer;
+  }
+
+  .instance-form__detect-row:hover,
+  .instance-form__detect-row:focus-visible {
+    background: var(--jb-accent-muted);
+    color: var(--jb-accent);
+    outline: none;
+  }
+
+  .instance-form__detect-name {
+    min-width: 0;
+    overflow: hidden;
+    font-weight: 600;
+    text-overflow: ellipsis;
+    white-space: nowrap;
+  }
+
+  .instance-form__detect-url {
+    grid-column: 2;
+    min-width: 0;
+    overflow: hidden;
+    color: var(--jb-text-subtle);
+    font-size: 0.8125rem;
+    text-overflow: ellipsis;
+    white-space: nowrap;
   }
 
   .instance-form__password {

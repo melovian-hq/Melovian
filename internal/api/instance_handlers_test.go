@@ -65,3 +65,27 @@ func TestTestInstancePingsServer(t *testing.T) {
 		t.Fatalf("serverName %q", payload.ServerName)
 	}
 }
+
+func TestDetectInstancesRouteRegistered(t *testing.T) {
+	srv, _ := newTestServer(t)
+	req := httptest.NewRequest(http.MethodGet, "/api/instances/detect", nil)
+	rec := httptest.NewRecorder()
+	srv.Handler().ServeHTTP(rec, req)
+	if rec.Code != http.StatusOK {
+		t.Fatalf("status %d: %s", rec.Code, rec.Body.String())
+	}
+	var payload struct {
+		Servers []struct {
+			URL        string `json:"url"`
+			ServerName string `json:"serverName"`
+			Version    string `json:"version"`
+			Reachable  bool   `json:"reachable"`
+		} `json:"servers"`
+	}
+	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
+		t.Fatalf("decode: %v", err)
+	}
+	if payload.Servers == nil {
+		t.Fatal("servers should serialize as an array")
+	}
+}
