@@ -89,6 +89,7 @@ The local `no-ai-slop` files carry additions beyond upstream: the `.agents/rules
 | Settings tab UI | `frontend/src/lib/components/settings/panels/Settings*Panel.svelte`, register in `frontend/src/lib/settings/tabs.ts` |
 | Subsonic API call | `frontend/src/lib/subsonic/api.ts` or the library adapter |
 | Persistent setting | Go handler in `internal/api/`, mirror in frontend prefs if needed |
+| config.toml key | `internal/appconfig/configfile.go` key map, see `docs/en/configuration.md` |
 | Desktop-only behavior | `internal/desktop/`, `services/`, `frontend/src/lib/desktop/` |
 | Wails service method | `services/`, register in `main.go`, then `task generate:bindings` |
 | Mix or radio algorithm | `frontend/src/lib/music/mix-generator/`, `personal-radio.ts`, `taste-score.ts` |

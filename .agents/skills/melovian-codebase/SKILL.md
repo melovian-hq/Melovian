@@ -63,14 +63,18 @@ frontend/src/lib/desktop/            window-chrome, window-close, graphics-setti
 frontend/src/lib/extensions/         Extension registry, assets, styles, features
 frontend/src/lib/ui/                 toast.svelte.ts, confirm, command-palette,
   keyboard-help, boot-error, focus-trap, client-error
-frontend/src/lib/theme/              tokens.css (--jb-* custom properties), custom.css,
-  theme.svelte.ts, contrast.ts
+frontend/src/lib/theme/              tokens.css (--jb-raw-* primitives per theme +
+  --jb-* semantic layer components consume, --jb-z-* z scale), accent.ts
+  (presets + custom hue), theme.svelte.ts (mode light/dark/system),
+  contrast.ts, custom.css
 frontend/src/lib/media/              native.svelte.ts, native-media-sync.ts
 frontend/src/lib/notifications/      notifications.svelte.ts + api.ts
 frontend/src/lib/profile/            profile.svelte.ts, profile-settings.ts
 frontend/src/lib/backup/             backup.ts (export/import user data)
 frontend/src/lib/video/              video feature state + api
-frontend/src/lib/settings/           settings tabs.ts, settings-page.css
+frontend/src/lib/settings/           tabs.ts (ids + tiers), nav-state.svelte.ts
+  (collapsible Advanced group), save-status.svelte.ts (SaveStatus auto-save
+  lifecycle), schemas.ts, settings-page.css (.settings-loading)
 frontend/src/lib/tasks/              tasks.svelte.ts (background task tracking)
 frontend/src/lib/app/bootstrap.ts    App.svelte lifecycle effects
 frontend/src/lib/demo/               static-api.ts (static demo mode)
@@ -89,7 +93,10 @@ services/              Wails services: MediaService (per-OS files), AudioService
                        UpdateService, tray hooks, window chrome, graphics models
 internal/api/          HTTP handlers, auth, middleware, assets, Last.fm /
                        ListenBrainz / Rocksky submit endpoints, api-routes
-                       contract testdata
+                       contract testdata. Subpackage instances/ owns instance
+                       and source handlers plus GET /api/instances/detect,
+                       which probes loopback 4533/4040 for Subsonic servers
+                       (extras via MELOVIAN_DETECT_EXTRA_URLS)
 internal/subsonic/     Upstream Subsonic proxy + cache
 internal/subsonicserver/ Melovian serving a Subsonic-compatible /rest API itself
                        (exposes the local library to other Subsonic clients)
@@ -115,7 +122,12 @@ internal/extensions/   Bundled extension install. Bundles: lastfm,
 internal/video/        YouTube Data API + Invidious search
 internal/update/       Self-update pipeline: discovery, delta, apply
 internal/sandbox/      Landlock filesystem sandbox (Linux), MELOVIAN_LANDLOCK toggle
-internal/appconfig/    Env loading, dotenv, Sentry config
+internal/appconfig/    Env loading, dotenv, config.toml support
+                       (configfile.go maps TOML keys to env vars, precedence
+                       flags > env incl .env > config.toml > defaults, file
+                       located via --config or MELOVIAN_CONFIG), Sentry config.
+                       Configured sources auto-provision in
+                       internal/store/db.go provisionConfiguredSources
 internal/brand/        brand.Name / brand.Slug (ldflags-overridable)
 internal/compat/       X-Melovian-* wire protocol headers and version contracts
 internal/democatalog/  Built-in fake Subsonic catalog for demo mode

@@ -52,6 +52,26 @@ There is no `tailwind.config.js`. Config lives in CSS.
 - New utilities available from 4.1+: `text-shadow-*`, `mask-*`, `pointer-*`/`any-pointer-*` variants, `items-baseline-last`, extra logical-property utilities (`pbs-*`, `pbe-*`, `mbs-*`, `mbe-*`, `inline-*`, `block-*`, `inset-s/e/bs/be-*`), `@container-size`, `zoom-*`, scrollbar utilities. (`ps-*`/`pe-*`/`ms-*`/`me-*`/`start-*`/`end-*` already existed in late v3.)
 - The Vite plugin `@tailwindcss/vite` is registered in `frontend/vite.config.ts`; no PostCSS config exists.
 
+## Semantic color tokens (the `--jb-*` contract)
+
+`tokens.css` has two layers per theme: a private `--jb-raw-*` primitive ramp and the semantic `--jb-*` layer. Components may only consume the semantic layer. Never reference `--jb-raw-*` or write literal colors (hex, `rgb()`/`hsl()`/`oklch()`, named colors) in a `.svelte` file. `src/lib/theme/color-tokens.hygiene.test.ts` enforces this and fails on new literals outside its baseline allowlist.
+
+- Themes: dark is the default, declared on both `:root` and `[data-theme="dark"]`. Light lives on `[data-theme="light"]`. `theme.svelte.ts` exposes `mode` (`"light" | "dark" | "system"`) and `resolved`. `applyThemeDataset` sets `data-theme` on `<html>` and the `theme` storage key persists the mode.
+- Accent presets live in `lib/theme/accent.ts`: aurora (default), ocean, forest, amber, rose, graphite, plus `custom` driven by a hue slider. Non-default presets write `--jb-accent`/`--jb-accent-text` inline on `<html>`. The default preset applies no override so tokens.css keeps control. Storage keys: `theme-accent-preset`, `theme-accent-hue`. The legacy `theme-accent` hex key migrates once into the custom hue.
+- Semantic groups: `--jb-bg{,-elevated,-muted,-subtle}`, `--jb-surface{,-raised,-2,-hover,-active}`, `--jb-border{,-strong}`, `--jb-text{,-muted,-subtle}`, `--jb-accent{,-hover,-muted,-text}`, `--jb-music-accent*`, `--jb-{success,warning,danger,info}` plus `*-muted` variants and `--jb-danger-hover`, `--jb-shadow-{sm,md,lg}`, `--jb-island-{bg,border}`, `--jb-pill-{bg,border}`, `--jb-focus-ring`.
+- Scrims and over-art chrome are theme-aware too: `--jb-scrim{,-subtle,-strong}` for backdrops, and the overlay family `--jb-overlay-{text,text-muted,shadow,surface,surface-hover,border,chip,chip-hover}` plus `--jb-media-surface` for controls and text painted over artwork, video, or media surfaces. These stay dark/white regardless of theme on purpose. `--jb-favorite{,-hover}` covers star and heart accents.
+- Z-index is tokenized: `--jb-z-topbar` (30) up through `--jb-z-toast` (200). Use the scale instead of literal z-index values.
+- `transparent`, `currentColor`, `none`, and `color-mix()` built on token vars are always legal.
+
+## Settings panels: auto-save and nav state
+
+- Tab metadata lives in `lib/settings/tabs.ts`. `SETTINGS_TAB_IDS` mirrors `SETTINGS_TABS` order and each tab carries a `tier` of `"recommended"` or `"advanced"`. `visibleSettingsTabs` filters by extension features and server capabilities, `filterSettingsTabs` powers nav search.
+- Panels auto-save instead of using a save button. Track each card with `SaveStatus` from `lib/settings/save-status.svelte.ts` (`createSaveStatus()`): call `begin()` before the write, then `saved()` or `failed(message)`. The `saved` state flashes for about 1.5s and returns to `idle`.
+- Most saves should go through `saveWithStatus(status, failureMessage, work, onFailure)` in the same module: it runs begin/saved/failed around the work, accepts a fixed message or `(err) => string`, and passes the resolved message to `onFailure` for toasting. Only drop to manual begin/saved/failed when the flow needs mid-save checks (for example `applyNativeBackend` inspecting `music.nativeInitError`).
+- Render the indicator with `components/settings/SettingsSaveStatus.svelte` inside the `status` snippet of `SettingsCard`.
+- The Advanced nav group collapses via `lib/settings/nav-state.svelte.ts`, persisted at storage key `settings-nav-advanced-collapsed` and defaulting to collapsed. It force-opens while the active tab is advanced without writing the stored preference, so deep links are never hidden.
+- `.settings-loading` in `lib/settings/settings-page.css` is the shared pending block for panels still fetching their settings.
+
 ## bits-ui v2
 
 UI primitives in `frontend/src/lib/components/ui/` and dialogs/menus elsewhere are bits-ui. Compound components under a namespace:

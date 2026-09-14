@@ -22,7 +22,7 @@ Suffix on `*.test.ts` decides which suite picks it up:
 | `.leak.test.ts`, `.memory.test.ts` | Leak and memory regression | `bounded-cache.leak.test.ts` |
 | `.perf.test.ts` | Performance smoke | `bounded-cache.perf.test.ts` |
 | `.regression.test.ts`, `.crash.test.ts` | Bug/crash regression pins | |
-| `.smoke.test.ts`, `.mount.test.ts`, `.hygiene.test.ts` | Component mount/markup sanity | `App.mount.test.ts` |
+| `.smoke.test.ts`, `.mount.test.ts`, `.hygiene.test.ts` | Component mount/markup sanity, repo-wide source scans | `App.mount.test.ts`, `color-tokens.hygiene.test.ts` |
 
 Naming guidance: default to `.test.ts`. Use `.property` for pure functions with invariants, `.oracle` when a second implementation or hand-computed truth exists, `.acceptance` for multi-step flows through `music.svelte.ts`, `.regression`/`.crash` to pin a fixed bug.
 
@@ -64,6 +64,15 @@ vi.mock("@wailsio/runtime", () => ({ Events: { On: vi.fn() }, Dialogs: {...} }))
 - `mockReset` resets to a no-op in Vitest 4. Use `mockRestore` when the original implementation matters.
 - Property tests use `fast-check` (`fc.record`, `fc.option`, `fc.nat`, domain arbitraries). See `album-dedup.oracle.test.ts` for the house style.
 - The api-routes contract test scans `frontend/src` for `/api/...` literals and diffs them against `internal/api/testdata/api-routes.json`. New frontend API calls must land in `api-paths.ts` and the manifest must match the Go routes.
+- Persisted state (`runed` `PersistedState`, storage keys): `lib/settings/nav-state.test.ts` toggles the value, asserts the `localStorage` write, then `vi.resetModules()` plus a fresh dynamic import to prove the stored value survives module recreation. Timed UI state like `SaveStatus` uses `vi.useFakeTimers()` and `advanceTimersByTime`. `save-status.test.ts` also covers a stale timer not resetting an in-progress save.
+
+## Source scanning tests
+
+Two suites read files with node fs instead of importing them:
+
+- `src/lib/components/svelte-markup.hygiene.test.ts` walks every `.svelte` file and fails on `// SPDX` comments placed before `<script>` (they render as text).
+- Both hygiene tests share `listSvelteFiles` from `src/test-fixtures/svelte-files.ts`. New repo-wide source scans should reuse it instead of re-implementing the walk.
+- `src/lib/theme/color-tokens.hygiene.test.ts` scans every `.svelte` file for hard-coded colors: hex, `rgb()`/`hsl()`/`oklch()`-family functions, named CSS colors inside `<style>`/`style=`/`style:` contexts, and named SVG paint attributes. Components must use `--jb-*` tokens from `lib/theme/tokens.css`. `transparent`, `currentColor`, and `color-mix()` on token vars stay legal. Pre-existing violations live in an `ALLOWLIST` map keyed by src-relative path with a reason per entry. The test fails on new violations and on allowlisted files that no longer exist. Files that come back clean print a console note so the list can be pruned.
 
 ## Backend (Go) tests
 
