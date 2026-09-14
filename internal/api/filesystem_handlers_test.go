@@ -78,8 +78,14 @@ func TestListDirectoriesListsChildren(t *testing.T) {
 	if err := json.Unmarshal(rec.Body.Bytes(), &payload); err != nil {
 		t.Fatal(err)
 	}
-	if payload.Path != root {
-		t.Fatalf("path=%q want %q", payload.Path, root)
+	// The handler resolves symlinks, so on macOS the /var temp root comes
+	// back as /private/var.
+	wantRoot, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", root, err)
+	}
+	if payload.Path != wantRoot {
+		t.Fatalf("path=%q want %q", payload.Path, wantRoot)
 	}
 	if len(payload.Entries) != 1 || payload.Entries[0].Name != "Music" {
 		t.Fatalf("entries=%+v", payload.Entries)

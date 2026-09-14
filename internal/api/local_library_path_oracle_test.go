@@ -21,8 +21,14 @@ func TestResolveLibraryPathAllowsDotDotInDirectoryNameOracle(t *testing.T) {
 	if err != nil {
 		t.Fatalf("resolveLibraryPath(%q): %v", dir, err)
 	}
-	if got != filepath.Clean(dir) {
-		t.Fatalf("got %q want %q", got, filepath.Clean(dir))
+	// EvalSymlinks matches the resolver: on macOS t.TempDir() lives under
+	// /var which is a symlink to /private/var.
+	want, err := filepath.EvalSymlinks(dir)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", dir, err)
+	}
+	if got != want {
+		t.Fatalf("got %q want %q", got, want)
 	}
 }
 
