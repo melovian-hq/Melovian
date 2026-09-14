@@ -36,16 +36,12 @@ test.describe("sidebar collapse", () => {
       name: "Main navigation",
     });
     await expect(sidebarAfter).toHaveClass(/sidebar--collapsed/);
-    await expect(
-      sidebarAfter.locator(".sidebar__label").first(),
-    ).toBeHidden();
+    await expect(sidebarAfter.locator(".sidebar__label").first()).toBeHidden();
 
     await page.getByRole("button", { name: "Expand sidebar" }).click();
 
     await expect(sidebarAfter).not.toHaveClass(/sidebar--collapsed/);
-    await expect(
-      sidebarAfter.locator(".sidebar__label").first(),
-    ).toBeVisible();
+    await expect(sidebarAfter.locator(".sidebar__label").first()).toBeVisible();
     expect(
       await page.evaluate((key) => localStorage.getItem(key), COLLAPSED_KEY),
     ).toBe("false");

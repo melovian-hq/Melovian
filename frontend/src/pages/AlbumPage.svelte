@@ -278,7 +278,12 @@
               {formatDuration(totalDuration)}
             </p>
             {#if album.album.genre}
-              <p class="album-hero__genre">{album.album.genre}</p>
+              <p class="album-hero__genre">
+                <Link
+                  href="/music/genre/{encodeURIComponent(album.album.genre)}"
+                  >{album.album.genre}</Link
+                >
+              </p>
             {/if}
 
             <div class="album-hero__actions">
@@ -538,6 +543,15 @@
     opacity: 0.7;
     text-transform: uppercase;
     letter-spacing: 0.06em;
+  }
+
+  .album-hero__genre :global(a) {
+    color: inherit;
+    text-decoration: none;
+  }
+
+  .album-hero__genre :global(a:hover) {
+    text-decoration: underline;
   }
 
   .album-hero__actions {

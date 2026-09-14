@@ -389,9 +389,13 @@
   .sidebar__footer-tools {
     display: flex;
     align-items: center;
+    justify-content: center;
     gap: var(--jb-space-2);
     min-width: 0;
     flex: 1;
+    /* Keep the centered group clear of the absolutely positioned collapse
+       button so it stays optically centered in the sidebar. */
+    padding-right: calc(2.25rem + var(--jb-space-2));
   }
 
   /* The toggle rides the aside edge via transform, staying in sync with the
