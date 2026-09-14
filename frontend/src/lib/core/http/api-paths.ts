@@ -144,6 +144,8 @@ export const ApiPaths = {
 
   extensions: "/api/extensions",
   extensionsInstall: "/api/extensions/install",
+  extensionsRegistry: "/api/extensions/registry",
+  extensionsInstallRemote: "/api/extensions/install-remote",
   extensionById: (id: string) => `/api/extensions/${id}`,
   extensionScript: (id: string) => `/api/extensions/${id}/script`,
   extensionEnabled: (id: string) => `/api/extensions/${id}/enabled`,

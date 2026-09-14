@@ -556,6 +556,14 @@
     },
     {
       "method": "GET",
+      "pattern": "/api/extensions/registry"
+    },
+    {
+      "method": "POST",
+      "pattern": "/api/extensions/install-remote"
+    },
+    {
+      "method": "GET",
       "pattern": "/api/extensions/{id}/script"
     },
     {

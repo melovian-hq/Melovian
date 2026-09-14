@@ -74,3 +74,34 @@ export const extensionsPayloadSchema = v.looseObject({
   manifests: v.optional(v.nullable(v.array(extensionManifestSchema))),
   dir: v.optional(v.string()),
 });
+
+export const registryItemSchema = v.looseObject({
+  id: v.string(),
+  name: v.string(),
+  version: v.string(),
+  description: v.optional(v.string()),
+  author: v.optional(v.string()),
+  iconUrl: v.optional(v.string()),
+  imageUrl: v.optional(v.string()),
+  packageUrl: v.optional(v.string()),
+  sha256: v.optional(v.string()),
+  bytes: v.optional(v.number()),
+  hasScript: v.boolean(),
+  hasWasm: v.boolean(),
+  styles: v.optional(v.number()),
+  appTheme: v.optional(v.boolean()),
+  trackRules: v.optional(v.number()),
+  playerHooks: v.optional(v.number()),
+  auditStatus: v.optional(v.string()),
+  auditWarnings: v.optional(v.array(v.string())),
+  installed: v.boolean(),
+  installedVersion: v.optional(v.string()),
+  enabled: v.boolean(),
+  updateAvailable: v.boolean(),
+});
+
+export const registryPayloadSchema = v.looseObject({
+  url: v.optional(v.string()),
+  generatedAt: v.optional(v.string()),
+  items: v.optional(v.nullable(v.array(registryItemSchema))),
+});

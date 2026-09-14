@@ -7,12 +7,15 @@
   import { loadExtensions } from "$lib/extensions/registry";
   import { APP_NAME, EXTENSION_MANIFEST } from "$lib/brand";
   import {
+    fetchExtensionRegistry,
     fetchExtensions,
     installExtension,
+    installRemoteExtension,
     reinstallExtension,
     setExtensionEnabled,
     uninstallExtension,
     type ExtensionListItem,
+    type RegistryItem,
   } from "$lib/extensions/api";
   import { toast } from "$lib/ui/toast.svelte";
 
@@ -24,6 +27,9 @@
   let uploading = $state(false);
   let fileInput = $state<HTMLInputElement | undefined>();
   let dragOver = $state(false);
+  let registryItems = $state<RegistryItem[]>([]);
+  let registryLoading = $state(false);
+  let registryError = $state<string | null>(null);
 
   async function applyPayload(payload: {
     items: ExtensionListItem[];
@@ -48,6 +54,37 @@
         err instanceof Error ? err.message : "Could not load extensions";
     } finally {
       loading = false;
+    }
+  }
+
+  async function loadRegistry() {
+    registryLoading = true;
+    registryError = null;
+    try {
+      const payload = await fetchExtensionRegistry();
+      registryItems = payload.items;
+    } catch (err) {
+      registryItems = [];
+      registryError =
+        err instanceof Error ? err.message : "Could not load registry";
+    } finally {
+      registryLoading = false;
+    }
+  }
+
+  async function handleInstallRemote(item: RegistryItem) {
+    busyId = item.id;
+    try {
+      const payload = await installRemoteExtension(item.id);
+      await applyPayload(payload);
+      toast.success(`Installed ${item.name}`);
+      await loadRegistry();
+    } catch (err) {
+      toast.error(
+        err instanceof Error ? err.message : "Could not install extension",
+      );
+    } finally {
+      busyId = null;
     }
   }
 
@@ -198,8 +235,20 @@
     return trimmed ? trimmed[0]!.toUpperCase() : "?";
   }
 
+  function registryMeta(item: RegistryItem): string {
+    const parts: string[] = [];
+    if (item.author) parts.push(item.author);
+    if (item.trackRules) parts.push(`${item.trackRules} rules`);
+    if (item.styles) parts.push(`${item.styles} styles`);
+    if (item.hasScript) parts.push("script");
+    if (item.hasWasm) parts.push("WASM");
+    if (item.appTheme) parts.push("theme");
+    return parts.join(" · ");
+  }
+
   onMount(() => {
     void refresh();
+    void loadRegistry();
   });
 </script>
 
@@ -345,6 +394,95 @@
         {/each}
       </div>
     {/if}
+
+    <div class="extensions-settings__browse">
+      <p class="extensions-settings__browse-title">Browse the registry</p>
+      {#if registryLoading}
+        <Spinner class="extensions-settings__spinner" />
+      {:else if registryError}
+        <p class="extensions-settings__browse-note">
+          Could not reach the extension registry: {registryError}
+        </p>
+        <Button
+          size="sm"
+          variant="ghost"
+          onclick={() => void loadRegistry()}
+        >
+          Retry
+        </Button>
+      {:else if registryItems.length === 0}
+        <p class="extensions-settings__browse-note">
+          The registry returned no extensions.
+        </p>
+      {:else}
+        <div class="extensions-settings__list">
+          {#each registryItems as item (item.id)}
+            <div class="extensions-settings__row">
+              <div class="extensions-settings__body">
+                {#if item.iconUrl}
+                  <img
+                    class="extensions-settings__icon"
+                    src={item.iconUrl}
+                    alt=""
+                    draggable="false"
+                  />
+                {:else}
+                  <span class="extensions-settings__letter" aria-hidden="true">
+                    {letterAvatar(item.name)}
+                  </span>
+                {/if}
+                <div class="extensions-settings__copy">
+                  <div class="extensions-settings__name-row">
+                    <p class="extensions-settings__name">{item.name}</p>
+                    <span class="extensions-settings__version"
+                      >v{item.version}</span
+                    >
+                    {#if item.auditStatus === "pass"}
+                      <span class="extensions-settings__audited">audited</span>
+                    {/if}
+                  </div>
+                  {#if item.description}
+                    <p class="extensions-settings__description">
+                      {item.description}
+                    </p>
+                  {/if}
+                  {#if registryMeta(item)}
+                    <p class="extensions-settings__meta">
+                      {registryMeta(item)}
+                    </p>
+                  {/if}
+                  <div class="extensions-settings__actions">
+                    {#if item.installed && item.updateAvailable}
+                      <Button
+                        size="sm"
+                        disabled={busyId === item.id || uploading}
+                        onclick={() => void handleInstallRemote(item)}
+                      >
+                        Update to v{item.version}
+                      </Button>
+                    {:else if item.installed}
+                      <span class="extensions-settings__installed">
+                        Installed{item.installedVersion
+                          ? ` v${item.installedVersion}`
+                          : ""}
+                      </span>
+                    {:else}
+                      <Button
+                        size="sm"
+                        disabled={busyId === item.id || uploading}
+                        onclick={() => void handleInstallRemote(item)}
+                      >
+                        Install
+                      </Button>
+                    {/if}
+                  </div>
+                </div>
+              </div>
+            </div>
+          {/each}
+        </div>
+      {/if}
+    </div>
   </div>
 {/if}
 
@@ -501,5 +639,41 @@
     flex-wrap: wrap;
     gap: var(--jb-space-2);
     margin-top: var(--jb-space-1);
+  }
+
+  .extensions-settings__browse {
+    display: grid;
+    gap: var(--jb-space-2);
+    padding-top: var(--jb-space-3);
+    border-top: 1px solid
+      color-mix(in srgb, var(--jb-border, currentColor) 50%, transparent);
+  }
+
+  .extensions-settings__browse-title {
+    margin: 0;
+    font-size: 0.8125rem;
+    font-weight: 600;
+    color: var(--jb-text);
+  }
+
+  .extensions-settings__browse-note {
+    margin: 0;
+    font-size: 0.8125rem;
+    line-height: 1.5;
+    color: var(--jb-text-muted);
+  }
+
+  .extensions-settings__audited {
+    display: inline-flex;
+    align-items: center;
+    padding: 0.15rem 0.5rem;
+    border-radius: var(--jb-radius-sm);
+    font-size: 0.6875rem;
+    font-weight: 700;
+    letter-spacing: 0.02em;
+    line-height: 1.2;
+    background: color-mix(in srgb, var(--jb-success) 18%, transparent);
+    color: var(--jb-success);
+    border: 1px solid color-mix(in srgb, var(--jb-success) 40%, transparent);
   }
 </style>

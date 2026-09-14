@@ -29,6 +29,8 @@ func (h *Handler) Register(mux *http.ServeMux) {
 func (h *Handler) registerExtensionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/extensions", h.handleListExtensions)
 	mux.HandleFunc("POST /api/extensions/install", h.handleInstallExtension)
+	mux.HandleFunc("GET /api/extensions/registry", h.handleExtensionRegistry)
+	mux.HandleFunc("POST /api/extensions/install-remote", h.handleInstallRemoteExtension)
 	mux.HandleFunc("GET /api/extensions/{id}/script", h.handleExtensionScript)
 	mux.HandleFunc("GET /api/extensions/{id}/assets/{path...}", h.handleExtensionAsset)
 	mux.HandleFunc("PUT /api/extensions/{id}/enabled", h.handleSetExtensionEnabled)
@@ -260,6 +262,136 @@ func (h *Handler) handleInstallExtension(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	if _, err := ext.InstallFromZip(h.cfg.DataDir, data); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "install_failed", err.Error())
+		return
+	}
+	h.writeExtensionList(w, r)
+}
+
+type registryListItem struct {
+	ID              string   `json:"id"`
+	Name            string   `json:"name"`
+	Version         string   `json:"version"`
+	Description     string   `json:"description,omitempty"`
+	Author          string   `json:"author,omitempty"`
+	IconURL         string   `json:"iconUrl,omitempty"`
+	ImageURL        string   `json:"imageUrl,omitempty"`
+	PackageURL      string   `json:"packageUrl,omitempty"`
+	SHA256          string   `json:"sha256,omitempty"`
+	Bytes           int64    `json:"bytes,omitempty"`
+	HasScript       bool     `json:"hasScript"`
+	HasWasm         bool     `json:"hasWasm"`
+	Styles          int      `json:"styles,omitempty"`
+	AppTheme        bool     `json:"appTheme,omitempty"`
+	TrackRules      int      `json:"trackRules,omitempty"`
+	PlayerHooks     int      `json:"playerHooks,omitempty"`
+	AuditStatus     string   `json:"auditStatus,omitempty"`
+	AuditWarnings   []string `json:"auditWarnings,omitempty"`
+	Installed       bool     `json:"installed"`
+	InstalledVer    string   `json:"installedVersion,omitempty"`
+	Enabled         bool     `json:"enabled"`
+	UpdateAvailable bool     `json:"updateAvailable"`
+}
+
+type installRemoteRequest struct {
+	ID string `json:"id"`
+}
+
+// compareSemver compares dotted numeric versions, ignoring prerelease tags.
+func compareSemver(a, b string) int {
+	parts := func(v string) [3]int {
+		var out [3]int
+		v = strings.SplitN(strings.TrimSpace(v), "-", 2)[0]
+		for i, seg := range strings.SplitN(v, ".", 4) {
+			if i > 2 {
+				break
+			}
+			n := 0
+			for _, c := range seg {
+				if c < '0' || c > '9' {
+					break
+				}
+				n = n*10 + int(c-'0')
+			}
+			out[i] = n
+		}
+		return out
+	}
+	pa, pb := parts(a), parts(b)
+	for i := range pa {
+		if pa[i] != pb[i] {
+			if pa[i] > pb[i] {
+				return 1
+			}
+			return -1
+		}
+	}
+	return 0
+}
+
+func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request) {
+	index, indexURL, err := ext.FetchRegistry(r.Context())
+	if err != nil {
+		httputil.WriteError(w, http.StatusBadGateway, "registry_unavailable", err.Error())
+		return
+	}
+	installed := map[string]ext.Entry{}
+	if items, err := ext.List(h.cfg.DataDir); err == nil {
+		for _, item := range items {
+			installed[item.Manifest.ID] = item
+		}
+	}
+	items := make([]registryListItem, 0, len(index.Extensions))
+	for _, entry := range index.Extensions {
+		item := registryListItem{
+			ID:            entry.ID,
+			Name:          entry.Name,
+			Version:       entry.Version,
+			Description:   entry.Description,
+			Author:        entry.Author,
+			IconURL:       ext.ResolveRegistryAsset(indexURL, entry.Icon),
+			ImageURL:      ext.ResolveRegistryAsset(indexURL, entry.Image),
+			PackageURL:    entry.Package.URL,
+			SHA256:        entry.Package.SHA256,
+			Bytes:         entry.Package.Bytes,
+			HasScript:     entry.Capabilities.Script,
+			HasWasm:       entry.Capabilities.Wasm,
+			Styles:        entry.Capabilities.Styles,
+			AppTheme:      entry.Capabilities.AppTheme,
+			TrackRules:    entry.Capabilities.TrackRules,
+			PlayerHooks:   entry.Capabilities.PlayerHooks,
+			AuditStatus:   entry.Audit.Status,
+			AuditWarnings: entry.Audit.Warnings,
+		}
+		if cur, ok := installed[entry.ID]; ok {
+			item.Installed = true
+			item.Enabled = cur.Enabled
+			item.InstalledVer = cur.Manifest.Version
+			item.UpdateAvailable = compareSemver(entry.Version, cur.Manifest.Version) > 0
+		}
+		items = append(items, item)
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"url":         indexURL,
+		"generatedAt": index.GeneratedAt,
+		"items":       items,
+	})
+}
+
+func (h *Handler) handleInstallRemoteExtension(w http.ResponseWriter, r *http.Request) {
+	var req installRemoteRequest
+	if err := httputil.DecodeJSONBody(r, &req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", err.Error())
+		return
+	}
+	id := strings.TrimSpace(req.ID)
+	if !ext.IsValidExtensionID(id) {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_id", "invalid extension id")
+		return
+	}
+	// The package URL comes from the trusted index, not the request, so
+	// clients cannot turn this endpoint into an arbitrary fetch.
+	if _, err := ext.InstallFromRegistry(r.Context(), h.cfg.DataDir, id); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "install_failed", err.Error())
 		return
 	}
