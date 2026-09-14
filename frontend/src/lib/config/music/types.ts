@@ -27,6 +27,7 @@ export interface MusicStoreHost {
   artistsLoadedAt: MusicStore["artistsLoadedAt"];
   authEnabled: MusicStore["authEnabled"];
   autoplay: MusicStore["autoplay"];
+  beginHomeFeedSettling: MusicStore["beginHomeFeedSettling"];
   bootstrapOfflinePlayback: MusicStore["bootstrapOfflinePlayback"];
   cacheInFlight: MusicStore["cacheInFlight"];
   cacheOps: MusicStore["cacheOps"];
@@ -70,6 +71,7 @@ export interface MusicStoreHost {
   handlePlaybackNetworkFailure: MusicStore["handlePlaybackNetworkFailure"];
   hideUnknownMetadata: MusicStore["hideUnknownMetadata"];
   homeCoreFetchedAt: MusicStore["homeCoreFetchedAt"];
+  homeFeedSettling: MusicStore["homeFeedSettling"];
   immersiveAudioSettings: MusicStore["immersiveAudioSettings"];
   initEngine: MusicStore["initEngine"];
   internetRadios: MusicStore["internetRadios"];

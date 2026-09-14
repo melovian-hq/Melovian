@@ -99,7 +99,14 @@ export function createConnectContext(
     get homeStaleMs() {
       return homeStaleMs;
     },
+    get homeFeedSettling() {
+      return store.homeFeedSettling;
+    },
+    set homeFeedSettling(v) {
+      store.homeFeedSettling = v;
+    },
     restoreCachedMixes: () => store.restoreCachedMixes(),
+    beginHomeFeedSettling: () => store.beginHomeFeedSettling(),
     initEngine: () => store.initEngine(),
     loadEqSettings: (authEnabled) => store.loadEqSettings(authEnabled),
     refreshHomeCore: () => store.refreshHomeCore(),

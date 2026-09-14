@@ -37,7 +37,9 @@ export interface MusicConnectContext {
   playbackEpoch: number;
   homeCoreFetchedAt: number;
   homeStaleMs: number;
+  homeFeedSettling: boolean;
   restoreCachedMixes(): void;
+  beginHomeFeedSettling(): void;
   initEngine(): Promise<void>;
   loadEqSettings(authEnabled: boolean): Promise<void>;
   refreshHomeCore(): Promise<void>;
@@ -122,6 +124,7 @@ export async function doConnect(
 
     ctx.connected = true;
     ctx.libraryWarmup = true;
+    ctx.beginHomeFeedSettling();
     ctx.restoreCachedMixes();
     await ctx.initEngine();
     await ctx.loadEqSettings(options.authEnabled ?? false).catch(() => {});
@@ -371,6 +374,7 @@ export async function selfHeal(ctx: MusicConnectContext) {
 export function disconnect(ctx: MusicConnectContext) {
   connection.cancelScheduledReconnect();
   ctx.connected = false;
+  ctx.homeFeedSettling = false;
   clearRelatedTracksCache();
   resetSubsonicDetailCaches();
   clearMetadataEnhancementMemoryCache();

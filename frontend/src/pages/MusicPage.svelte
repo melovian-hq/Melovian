@@ -51,7 +51,11 @@
   let customizeOpen = $state(false);
   let metadataSummary = $state<MetadataSummary | null>(null);
 
-  const loading = $derived(!music.libraryReady || music.loading);
+  const loading = $derived(
+    !music.libraryReady ||
+      music.loading ||
+      (music.connected && music.homeFeedSettling),
+  );
   const unavailable = $derived(libraryUnavailable());
 
   const hideUnknown = $derived(music.hideUnknownMetadata);

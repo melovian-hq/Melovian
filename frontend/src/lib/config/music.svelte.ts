@@ -487,6 +487,14 @@ class MusicStore {
 
   private connectInFlight: Promise<boolean> | null = null;
   private libraryWarmup = false;
+  /**
+   * True from connect until the first personalization pass settles. The home
+   * feed reads it to hold its skeleton instead of painting a feed that
+   * reflows when mixes and history-derived shelves land a beat later.
+   */
+  homeFeedSettling = $state(false);
+  private homeFeedSettleTimer: ReturnType<typeof setTimeout> | undefined;
+  private static readonly HOME_FEED_SETTLE_BUDGET_MS = 5000;
   private playbackRestored = false;
   private reconnectResumePending = $state(false);
   private reconnectPositionMs = 0;
@@ -637,6 +645,7 @@ class MusicStore {
       Date.now() - this.personalizationFetchedAt <
         MusicStore.PERSONALIZATION_STALE_MS
     ) {
+      if (!this.mixesRefreshInFlight) this.endHomeFeedSettling();
       return;
     }
     const run = () => {
@@ -658,9 +667,32 @@ class MusicStore {
   }
 
   private async refreshPersonalization() {
-    await this.refreshMixes();
-    void this.refreshRecommendations().catch(() => {});
-    this.personalizationFetchedAt = Date.now();
+    try {
+      await this.refreshMixes();
+      void this.refreshRecommendations().catch(() => {});
+      this.personalizationFetchedAt = Date.now();
+    } finally {
+      this.endHomeFeedSettling();
+    }
+  }
+
+  private beginHomeFeedSettling() {
+    this.homeFeedSettling = true;
+    if (this.homeFeedSettleTimer) clearTimeout(this.homeFeedSettleTimer);
+    // Backstop so a stalled hydration or refresh cannot skeleton-lock the
+    // page. The feed paints at the deadline and any late mixes still insert.
+    this.homeFeedSettleTimer = setTimeout(() => {
+      this.homeFeedSettleTimer = undefined;
+      this.homeFeedSettling = false;
+    }, MusicStore.HOME_FEED_SETTLE_BUDGET_MS);
+  }
+
+  private endHomeFeedSettling() {
+    this.homeFeedSettling = false;
+    if (this.homeFeedSettleTimer) {
+      clearTimeout(this.homeFeedSettleTimer);
+      this.homeFeedSettleTimer = undefined;
+    }
   }
 
   async refreshMixes() {
