@@ -163,7 +163,7 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    filter: blur(48px) saturate(1.35) brightness(0.55);
+    filter: blur(24px) saturate(1.35) brightness(0.55);
     transform: scale(1.15);
     opacity: 0.7;
   }

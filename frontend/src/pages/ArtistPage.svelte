@@ -237,7 +237,7 @@
         seed={artistCoverSeed(data.artist)}
         paletteKey={artistCoverPaletteKey(data.artist)}
         opacity={0.72}
-        blur={56}
+        blur={28}
         saturate={1.55}
         scale={1.45}
       />

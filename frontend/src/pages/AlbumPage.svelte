@@ -191,7 +191,7 @@
         seed={albumCoverSeed(album.album)}
         paletteKey={albumCoverPaletteKey(album.album)}
         opacity={0.72}
-        blur={56}
+        blur={28}
         saturate={1.55}
         scale={1.45}
       />

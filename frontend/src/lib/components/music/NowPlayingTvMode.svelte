@@ -87,7 +87,7 @@
         seed={trackCoverSeed(track)}
         paletteKey={trackCoverPaletteKey(track)}
         opacity={0.82}
-        blur={64}
+        blur={32}
         saturate={1.65}
         scale={1.5}
       />

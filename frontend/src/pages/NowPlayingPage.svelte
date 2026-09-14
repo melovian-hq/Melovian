@@ -155,7 +155,7 @@
         seed={trackCoverSeed(track)}
         paletteKey={trackCoverPaletteKey(track)}
         opacity={0.72}
-        blur={56}
+        blur={28}
         saturate={1.55}
         scale={1.45}
       />
@@ -526,6 +526,9 @@
       border-right: none;
       border-radius: var(--jb-radius-xl) var(--jb-radius-xl) 0 0;
       background: color-mix(in srgb, var(--jb-bg) 28%, transparent);
+      /* The only backdrop is the already blurred ambient image, so sampling
+         it again per frame buys nothing and costs a repaint on scroll. */
+      backdrop-filter: none;
     }
 
     .now-playing-side__queue {

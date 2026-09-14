@@ -189,6 +189,10 @@
     display: flex;
     flex-direction: column;
     width: 100%;
+    /* Opaque so crossfades composite cleanly. Without a page background the
+       outgoing page stays visible through transparent regions of the
+       incoming one and both pages' content overlaps mid transition. */
+    background: var(--jb-bg);
   }
 
   .route-page > :global(*) {
