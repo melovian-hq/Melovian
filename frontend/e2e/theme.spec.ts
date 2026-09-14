@@ -54,10 +54,7 @@ test.describe("theme", () => {
     expect(await storedTheme(page)).toBe("light");
   });
 
-  test("theme choice persists across reload", async ({
-    browser,
-    baseURL,
-  }) => {
+  test("theme choice persists across reload", async ({ browser, baseURL }) => {
     // The shared context fixture rewrites melovian-theme on every load, so
     // reload persistence needs a context without that init script.
     const context = await browser.newContext({
@@ -74,19 +71,13 @@ test.describe("theme", () => {
         .getByRole("group", { name: "Theme" })
         .getByRole("button", { name: "Light" })
         .click();
-      await expect(page.locator("html")).toHaveAttribute(
-        "data-theme",
-        "light",
-      );
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
 
       await page.reload();
       await waitForAppShell(page);
       await settle(page);
 
-      await expect(page.locator("html")).toHaveAttribute(
-        "data-theme",
-        "light",
-      );
+      await expect(page.locator("html")).toHaveAttribute("data-theme", "light");
       expect(await storedTheme(page)).toBe("light");
     } finally {
       await context.close();

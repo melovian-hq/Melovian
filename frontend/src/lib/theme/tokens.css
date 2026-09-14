@@ -299,4 +299,66 @@
     --jb-focus-ring: 0 0 0 3px
       color-mix(in srgb, var(--jb-accent) 30%, transparent);
   }
+
+  /* Surface palettes. Each overrides only the private primitive ramp. The
+     semantic layer references the raw tokens, so the whole UI re-tints
+     while token structure and accent handling stay identical. */
+
+  /* Midnight: deep navy-tinted dark. */
+  [data-theme="dark"][data-palette="midnight"] {
+    --jb-raw-neutral-975: #060a14;
+    --jb-raw-neutral-950: #0a101f;
+    --jb-raw-neutral-900: #0e1628;
+    --jb-raw-neutral-875: #121b31;
+    --jb-raw-neutral-850: #16203a;
+    --jb-raw-neutral-800: #1e2b4d;
+    --jb-raw-neutral-700: #283a63;
+    --jb-raw-neutral-600: #3b548a;
+    --jb-raw-neutral-400: #8fa3c9;
+    --jb-raw-neutral-300: #b7c5e3;
+    --jb-raw-neutral-50: #eef2fb;
+  }
+
+  /* OLED: pure black surfaces for AMOLED screens. */
+  [data-theme="dark"][data-palette="oled"] {
+    --jb-raw-neutral-975: #000000;
+    --jb-raw-neutral-950: #0a0a0a;
+    --jb-raw-neutral-900: #121212;
+    --jb-raw-neutral-875: #161616;
+    --jb-raw-neutral-850: #1a1a1a;
+    --jb-raw-neutral-800: #222222;
+    --jb-raw-neutral-700: #2b2b2b;
+    --jb-raw-neutral-600: #404040;
+    --jb-raw-neutral-400: #8f8f8f;
+    --jb-raw-neutral-300: #b3b3b3;
+    --jb-raw-neutral-50: #f4f4f4;
+  }
+
+  /* Espresso: warm brown-tinted dark. */
+  [data-theme="dark"][data-palette="espresso"] {
+    --jb-raw-neutral-975: #0f0a07;
+    --jb-raw-neutral-950: #171009;
+    --jb-raw-neutral-900: #1f150d;
+    --jb-raw-neutral-875: #251a11;
+    --jb-raw-neutral-850: #291e14;
+    --jb-raw-neutral-800: #342619;
+    --jb-raw-neutral-700: #41301f;
+    --jb-raw-neutral-600: #5c452f;
+    --jb-raw-neutral-400: #a6927e;
+    --jb-raw-neutral-300: #c9b6a3;
+    --jb-raw-neutral-50: #f7f0e8;
+  }
+
+  /* Paper: warm paper-tinted light. */
+  [data-theme="light"][data-palette="paper"] {
+    --jb-raw-white: #fffdf7;
+    --jb-raw-neutral-50: #faf6ec;
+    --jb-raw-neutral-100: #f4eddd;
+    --jb-raw-neutral-200: #e8dfc9;
+    --jb-raw-neutral-300: #d7cbb0;
+    --jb-raw-neutral-400: #a89c82;
+    --jb-raw-neutral-500: #7d7159;
+    --jb-raw-neutral-600: #5c5341;
+    --jb-raw-neutral-900: #2b251d;
+  }
 }

@@ -119,4 +119,62 @@ describe("theme store", () => {
     expect(localStorage.getItem(StorageKeys.themeAccentPreset)).toBeNull();
     expect(localStorage.getItem(StorageKeys.customCss)).toBeNull();
   });
+
+  it("applies a dark palette through data-palette and persists it", () => {
+    const store = freshThemeStore();
+    store.setMode("dark");
+    store.setPalette("oled");
+    flushSync();
+    expect(store.palette).toBe("oled");
+    expect(document.documentElement.dataset.palette).toBe("oled");
+    expect(localStorage.getItem(StorageKeys.themePaletteDark)).toBe("oled");
+
+    store.setPalette("default");
+    flushSync();
+    expect(document.documentElement.dataset.palette).toBeUndefined();
+    expect(localStorage.getItem(StorageKeys.themePaletteDark)).toBeNull();
+  });
+
+  it("rejects palettes that do not match the resolved theme", () => {
+    const store = freshThemeStore();
+    store.setMode("dark");
+    flushSync();
+    store.setPalette("paper");
+    flushSync();
+    expect(store.palette).toBe("default");
+    expect(document.documentElement.dataset.palette).toBeUndefined();
+  });
+
+  it("swaps the palette attribute when the resolved theme flips", () => {
+    const store = freshThemeStore();
+    store.setMode("dark");
+    store.setPalette("midnight");
+    flushSync();
+    store.setMode("light");
+    flushSync();
+    store.setPalette("paper");
+    flushSync();
+    expect(document.documentElement.dataset.palette).toBe("paper");
+    store.setMode("dark");
+    flushSync();
+    expect(document.documentElement.dataset.palette).toBe("midnight");
+  });
+
+  it("applies radius and interface size overrides inline", () => {
+    const store = freshThemeStore();
+    store.setRadiusStyle("sharp");
+    store.setUiSize("compact");
+    flushSync();
+    const style = document.documentElement.style;
+    expect(style.getPropertyValue("--jb-radius-md")).toBe("0.25rem");
+    expect(style.getPropertyValue("font-size")).toBe("90%");
+    expect(localStorage.getItem(StorageKeys.themeRadius)).toBe("sharp");
+    expect(localStorage.getItem(StorageKeys.themeUiSize)).toBe("compact");
+
+    store.setRadiusStyle("default");
+    store.setUiSize("default");
+    flushSync();
+    expect(style.getPropertyValue("--jb-radius-md")).toBe("");
+    expect(style.getPropertyValue("font-size")).toBe("");
+  });
 });

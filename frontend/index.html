@@ -108,6 +108,30 @@
         var themeColor = resolved === "dark" ? "#0a0a0f" : "#f4f4f5";
         var meta = document.querySelector('meta[name="theme-color"]');
         if (meta) meta.setAttribute("content", themeColor);
+        // Palette, radius, and interface size mirror lib/theme/palettes.ts so
+        // stored choices apply before first paint.
+        var palette = localStorage.getItem(
+          "%VITE_APP_SLUG%-theme-palette-" + resolved,
+        );
+        var palettes =
+          resolved === "dark"
+            ? { midnight: 1, oled: 1, espresso: 1 }
+            : { paper: 1 };
+        if (palette && palettes[palette]) root.dataset.palette = palette;
+        var radius = localStorage.getItem("%VITE_APP_SLUG%-theme-radius");
+        var radii = {
+          sharp: ["0.1875rem", "0.25rem", "0.375rem", "0.5rem"],
+          round: ["0.5625rem", "0.75rem", "1.125rem", "1.5rem"],
+        }[radius];
+        if (radii) {
+          var sizes = ["sm", "md", "lg", "xl"];
+          for (var i = 0; i < sizes.length; i++) {
+            root.style.setProperty("--jb-radius-" + sizes[i], radii[i]);
+          }
+        }
+        var uiSize = localStorage.getItem("%VITE_APP_SLUG%-theme-ui-size");
+        if (uiSize === "compact") root.style.fontSize = "90%";
+        else if (uiSize === "large") root.style.fontSize = "112.5%";
       })();
     </script>
     <style>

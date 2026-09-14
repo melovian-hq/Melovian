@@ -8,6 +8,12 @@
     isHexColor,
     type AccentPreset,
   } from "$lib/theme/accent";
+  import {
+    DEFAULT_PALETTE_ID,
+    palettesForMode,
+    RADIUS_STYLES,
+    UI_SIZES,
+  } from "$lib/theme/palettes";
   import { toast } from "$lib/ui/toast.svelte";
 
   const modes: { value: ThemeMode; label: string }[] = [
@@ -15,6 +21,8 @@
     { value: "light", label: "Light" },
     { value: "system", label: "System" },
   ];
+
+  const palettes = $derived(palettesForMode(theme.resolved));
 
   // Writable derived: tracks the resolved accent but accepts in-progress
   // edits while the user types a hex value.
@@ -59,6 +67,47 @@
           onclick={() => theme.setMode(mode.value)}
         >
           {mode.label}
+        </button>
+      {/each}
+    </div>
+  </Field>
+
+  <Field
+    label="Palette"
+    group
+    hint="Surface palette for the {theme.resolved} appearance."
+  >
+    <div
+      class="theme-customization__swatches"
+      role="group"
+      aria-label="Palette"
+    >
+      <button
+        type="button"
+        class="theme-customization__swatch"
+        class:theme-customization__swatch--active={theme.palette ===
+          DEFAULT_PALETTE_ID}
+        aria-pressed={theme.palette === DEFAULT_PALETTE_ID}
+        onclick={() => theme.setPalette(DEFAULT_PALETTE_ID)}
+      >
+        <span class="theme-customization__dot theme-customization__dot--split"
+        ></span>
+        <span class="theme-customization__swatch-label">Default</span>
+      </button>
+      {#each palettes as palette (palette.id)}
+        <button
+          type="button"
+          class="theme-customization__swatch"
+          class:theme-customization__swatch--active={theme.palette ===
+            palette.id}
+          aria-pressed={theme.palette === palette.id}
+          onclick={() => theme.setPalette(palette.id)}
+        >
+          <span
+            class="theme-customization__dot"
+            style="background: {palette.bg}; border-color: {palette.surface}"
+          ></span>
+          <span class="theme-customization__swatch-label">{palette.label}</span>
         </button>
       {/each}
     </div>
@@ -151,6 +200,51 @@
       </div>
     </Field>
   {/if}
+
+  <Field
+    label="Interface size"
+    group
+    hint="Scales text and controls across the app on this device."
+  >
+    <div
+      class="theme-customization__modes"
+      role="group"
+      aria-label="Interface size"
+    >
+      {#each UI_SIZES as size (size.id)}
+        <button
+          type="button"
+          class="theme-customization__mode"
+          class:theme-customization__mode--active={theme.uiSize === size.id}
+          aria-pressed={theme.uiSize === size.id}
+          onclick={() => theme.setUiSize(size.id)}
+        >
+          {size.label}
+        </button>
+      {/each}
+    </div>
+  </Field>
+
+  <Field
+    label="Corners"
+    group
+    hint="Corner radius on cards, buttons, and panels."
+  >
+    <div class="theme-customization__modes" role="group" aria-label="Corners">
+      {#each RADIUS_STYLES as style (style.id)}
+        <button
+          type="button"
+          class="theme-customization__mode"
+          class:theme-customization__mode--active={theme.radiusStyle ===
+            style.id}
+          aria-pressed={theme.radiusStyle === style.id}
+          onclick={() => theme.setRadiusStyle(style.id)}
+        >
+          {style.label}
+        </button>
+      {/each}
+    </div>
+  </Field>
 
   <Field
     label="Custom CSS"
@@ -253,6 +347,16 @@
     border-radius: var(--jb-radius-full);
     border: 1px solid var(--jb-border);
     flex-shrink: 0;
+  }
+
+  .theme-customization__dot--split {
+    background: linear-gradient(
+      135deg,
+      var(--jb-bg) 0%,
+      var(--jb-bg) 49%,
+      var(--jb-accent) 50%,
+      var(--jb-accent) 100%
+    );
   }
 
   .theme-customization__accent-row {

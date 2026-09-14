@@ -19,6 +19,16 @@ import {
   DARK_THEME_COLORS,
   LIGHT_THEME_COLORS,
 } from "./contrast";
+import {
+  DEFAULT_PALETTE_ID,
+  DEFAULT_RADIUS_ID,
+  DEFAULT_UI_SIZE_ID,
+  isPaletteIdForMode,
+  RADIUS_OVERRIDES,
+  UI_SIZE_FONT_SCALE,
+  type RadiusStyleId,
+  type UiSizeId,
+} from "./palettes";
 
 export type ThemeMode = "light" | "dark" | "system";
 
@@ -28,6 +38,10 @@ const ACCENT_HUE_KEY = StorageKeys.themeAccentHue;
 const LEGACY_ACCENT_KEY = StorageKeys.themeAccent;
 const CUSTOM_CSS_KEY = StorageKeys.customCss;
 const CUSTOM_STYLE_ID = StorageKeys.customCss;
+const PALETTE_DARK_KEY = StorageKeys.themePaletteDark;
+const PALETTE_LIGHT_KEY = StorageKeys.themePaletteLight;
+const RADIUS_KEY = StorageKeys.themeRadius;
+const UI_SIZE_KEY = StorageKeys.themeUiSize;
 
 const DEFAULT_ACCENT = presetAccentHex(DEFAULT_ACCENT_PRESET_ID, "dark");
 
@@ -112,6 +126,62 @@ function loadStoredCustomCss(): string {
   return readStorage(CUSTOM_CSS_KEY) ?? "";
 }
 
+function loadStoredPalette(mode: ResolvedTheme): string {
+  const key = mode === "dark" ? PALETTE_DARK_KEY : PALETTE_LIGHT_KEY;
+  const stored = readStorage(key)?.trim();
+  return stored && isPaletteIdForMode(stored, mode)
+    ? stored
+    : DEFAULT_PALETTE_ID;
+}
+
+const RADIUS_STYLE_IDS: readonly RadiusStyleId[] = [
+  "default",
+  "sharp",
+  "round",
+];
+const UI_SIZE_IDS: readonly UiSizeId[] = ["default", "compact", "large"];
+
+function loadStoredRadius(): RadiusStyleId {
+  const stored = readStorage(RADIUS_KEY)?.trim();
+  return RADIUS_STYLE_IDS.find((id) => id === stored) ?? DEFAULT_RADIUS_ID;
+}
+
+function loadStoredUiSize(): UiSizeId {
+  const stored = readStorage(UI_SIZE_KEY)?.trim();
+  return UI_SIZE_IDS.find((id) => id === stored) ?? DEFAULT_UI_SIZE_ID;
+}
+
+function applyPalette(palette: string) {
+  const root = document.documentElement;
+  if (palette === DEFAULT_PALETTE_ID) {
+    delete root.dataset.palette;
+    return;
+  }
+  root.dataset.palette = palette;
+}
+
+function applyRadiusStyle(style: RadiusStyleId) {
+  const root = document.documentElement.style;
+  const sizes = ["sm", "md", "lg", "xl"] as const;
+  if (style === DEFAULT_RADIUS_ID) {
+    for (const size of sizes) root.removeProperty(`--jb-radius-${size}`);
+    return;
+  }
+  const overrides = RADIUS_OVERRIDES[style];
+  for (const size of sizes) {
+    root.setProperty(`--jb-radius-${size}`, overrides[size]);
+  }
+}
+
+function applyUiSize(size: UiSizeId) {
+  const root = document.documentElement.style;
+  if (size === DEFAULT_UI_SIZE_ID) {
+    root.removeProperty("font-size");
+    return;
+  }
+  root.setProperty("font-size", UI_SIZE_FONT_SCALE[size]);
+}
+
 function applyAccent(hex: string) {
   const root = document.documentElement.style;
   root.setProperty("--jb-accent", hex);
@@ -144,6 +214,14 @@ export class ThemeStore {
   accentPreset = $state<string>(loadStoredAccentPreset());
   customHue = $state<number>(loadStoredCustomHue());
   customCss = $state(loadStoredCustomCss());
+  darkPalette = $state<string>(loadStoredPalette("dark"));
+  lightPalette = $state<string>(loadStoredPalette("light"));
+  radiusStyle = $state<RadiusStyleId>(loadStoredRadius());
+  uiSize = $state<UiSizeId>(loadStoredUiSize());
+  /** Palette id active for the resolved theme. */
+  palette = $derived(
+    this.resolved === "dark" ? this.darkPalette : this.lightPalette,
+  );
   accentColor = $derived(
     this.accentPreset === CUSTOM_ACCENT_ID
       ? hueToAccentHex(this.customHue, this.resolved)
@@ -205,6 +283,32 @@ export class ThemeStore {
       });
 
       $effect(() => {
+        const palette = this.palette;
+        const mode = this.resolved;
+        const key = mode === "dark" ? PALETTE_DARK_KEY : PALETTE_LIGHT_KEY;
+        if (palette === DEFAULT_PALETTE_ID) {
+          removeStorage(key);
+        } else {
+          writeStorage(key, palette);
+        }
+        applyPalette(palette);
+      });
+
+      $effect(() => {
+        const style = this.radiusStyle;
+        if (style === DEFAULT_RADIUS_ID) removeStorage(RADIUS_KEY);
+        else writeStorage(RADIUS_KEY, style);
+        applyRadiusStyle(style);
+      });
+
+      $effect(() => {
+        const size = this.uiSize;
+        if (size === DEFAULT_UI_SIZE_ID) removeStorage(UI_SIZE_KEY);
+        else writeStorage(UI_SIZE_KEY, size);
+        applyUiSize(size);
+      });
+
+      $effect(() => {
         const css = this.customCss;
         if (!css.trim()) {
           removeStorage(CUSTOM_CSS_KEY);
@@ -240,6 +344,23 @@ export class ThemeStore {
     this.accentPreset = CUSTOM_ACCENT_ID;
   }
 
+  setPalette(id: string) {
+    if (!isPaletteIdForMode(id, this.resolved)) return;
+    if (this.resolved === "dark") {
+      this.darkPalette = id;
+    } else {
+      this.lightPalette = id;
+    }
+  }
+
+  setRadiusStyle(id: RadiusStyleId) {
+    if (RADIUS_STYLE_IDS.includes(id)) this.radiusStyle = id;
+  }
+
+  setUiSize(id: UiSizeId) {
+    if (UI_SIZE_IDS.includes(id)) this.uiSize = id;
+  }
+
   setCustomCss(css: string) {
     this.customCss = css;
   }
@@ -248,12 +369,20 @@ export class ThemeStore {
     this.accentPreset = DEFAULT_ACCENT_PRESET_ID;
     this.customHue = DEFAULT_ACCENT_HUE;
     this.customCss = "";
+    this.darkPalette = DEFAULT_PALETTE_ID;
+    this.lightPalette = DEFAULT_PALETTE_ID;
+    this.radiusStyle = DEFAULT_RADIUS_ID;
+    this.uiSize = DEFAULT_UI_SIZE_ID;
     clearAccentOverrides();
     applyCustomCss("");
     removeStorage(ACCENT_PRESET_KEY);
     removeStorage(ACCENT_HUE_KEY);
     removeStorage(LEGACY_ACCENT_KEY);
     removeStorage(CUSTOM_CSS_KEY);
+    removeStorage(PALETTE_DARK_KEY);
+    removeStorage(PALETTE_LIGHT_KEY);
+    removeStorage(RADIUS_KEY);
+    removeStorage(UI_SIZE_KEY);
   }
 
   toggle() {

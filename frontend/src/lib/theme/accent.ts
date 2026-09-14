@@ -35,8 +35,14 @@ export const ACCENT_PRESETS: readonly AccentPreset[] = [
   { id: "aurora", label: "Aurora", dark: "#a468f3", light: "#6f25d0" },
   { id: "ocean", label: "Ocean", dark: "#2dd4bf", light: "#0f766e" },
   { id: "forest", label: "Forest", dark: "#4ade80", light: "#15803d" },
+  { id: "lime", label: "Lime", dark: "#a3e635", light: "#4d7c0f" },
   { id: "amber", label: "Amber", dark: "#fbbf24", light: "#b45309" },
+  { id: "sunset", label: "Sunset", dark: "#fb923c", light: "#c2410c" },
+  { id: "crimson", label: "Crimson", dark: "#f87171", light: "#b91c1c" },
   { id: "rose", label: "Rose", dark: "#fb7185", light: "#e11d48" },
+  { id: "magenta", label: "Magenta", dark: "#e879f9", light: "#a21caf" },
+  { id: "violet", label: "Violet", dark: "#c084fc", light: "#7e22ce" },
+  { id: "sky", label: "Sky", dark: "#38bdf8", light: "#0369a1" },
   { id: "graphite", label: "Graphite", dark: "#a1a1aa", light: "#52525b" },
 ] as const;
 
