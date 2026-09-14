@@ -5,7 +5,12 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"fmt"
+	"log/slog"
+	"os"
+	"path/filepath"
+	"strings"
 	"time"
 
 	"melovian/internal/appconfig"
@@ -74,6 +79,9 @@ func (db *DB) runMigrations(legacy appconfig.Config) error {
 		return err
 	}
 	if err := db.migrateInstancesUserID(); err != nil {
+		return err
+	}
+	if err := db.provisionConfiguredSources(legacy); err != nil {
 		return err
 	}
 	if err := db.migrateLegacyInstance(legacy); err != nil {
@@ -364,6 +372,13 @@ func (db *DB) setSetting(key, value string) error {
 }
 
 func (db *DB) migrateLegacyInstance(legacy appconfig.Config) error {
+	provisioned, err := db.provisioningDone()
+	if err != nil {
+		return err
+	}
+	if provisioned {
+		return nil
+	}
 	var count int
 	if err := db.queryRow(`SELECT COUNT(*) FROM subsonic_instances`).Scan(&count); err != nil {
 		return err
@@ -371,21 +386,51 @@ func (db *DB) migrateLegacyInstance(legacy appconfig.Config) error {
 	if count > 0 {
 		return nil
 	}
+	return db.seedLegacyInstance(legacy)
+}
 
-	server := legacy.LegacyServer
-	user := legacy.LegacyUser
-	pass := legacy.LegacyPass
+// provisioningDone reports whether config source provisioning already ran.
+// The tombstone survives deleted sources so a restart does not resurrect
+// them.
+func (db *DB) provisioningDone() (bool, error) {
+	value, err := db.getSetting(appconfig.SettingSourcesProvisioned)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			return false, nil
+		}
+		return false, err
+	}
+	return value != "", nil
+}
 
-	if v, err := db.getSetting(appconfig.SettingNavidromeServer); err == nil && v != "" {
-		server = v
+// legacyCredentials resolves the bootstrap Subsonic credentials from the
+// process config, falling back to the legacy app_settings keys written by
+// older versions before the instances table existed. Stored settings only
+// fill gaps so explicit env or file config wins per field.
+func (db *DB) legacyCredentials(legacy appconfig.Config) (server, user, pass string) {
+	server = legacy.LegacyServer
+	user = legacy.LegacyUser
+	pass = legacy.LegacyPass
+	if server == "" {
+		if v, err := db.getSetting(appconfig.SettingNavidromeServer); err == nil {
+			server = v
+		}
 	}
-	if v, err := db.getSetting(appconfig.SettingNavidromeUser); err == nil && v != "" {
-		user = v
+	if user == "" {
+		if v, err := db.getSetting(appconfig.SettingNavidromeUser); err == nil {
+			user = v
+		}
 	}
-	if v, err := db.getSetting(appconfig.SettingNavidromePassword); err == nil && v != "" {
-		pass = v
+	if pass == "" {
+		if v, err := db.getSetting(appconfig.SettingNavidromePassword); err == nil {
+			pass = v
+		}
 	}
+	return server, user, pass
+}
 
+func (db *DB) seedLegacyInstance(legacy appconfig.Config) error {
+	server, user, pass := db.legacyCredentials(legacy)
 	if server == "" || user == "" || pass == "" {
 		return nil
 	}
@@ -401,4 +446,151 @@ func (db *DB) migrateLegacyInstance(legacy appconfig.Config) error {
 		return err
 	}
 	return instances.SetActive(inst.ID)
+}
+
+// provisionConfiguredSources seeds first-run sources described entirely by
+// config (env, .env, or config.toml) so the setup screen is skipped. The
+// writes happen in one transaction that ends with the sources_provisioned
+// tombstone, so a partial failure can retry while deliberately deleted
+// sources stay gone.
+func (db *DB) provisionConfiguredSources(cfg appconfig.Config) error {
+	done, err := db.provisioningDone()
+	if err != nil {
+		return err
+	}
+	if done {
+		return nil
+	}
+
+	localPath := ""
+	if lib := cfg.LocalLibraryEffective(); lib.Enabled {
+		localPath = provisionedLibraryPath(lib.DefaultPath)
+	}
+	server, user, pass := db.legacyCredentials(cfg)
+	hasSubsonic := server != "" && user != "" && pass != ""
+	if !hasSubsonic {
+		warnPartialSubsonicConfig(server, user, pass)
+	}
+	if localPath == "" && !hasSubsonic {
+		return nil
+	}
+
+	tx, err := db.begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	var sourceCount int
+	if err := tx.QueryRow(
+		`SELECT (SELECT COUNT(*) FROM subsonic_instances) + (SELECT COUNT(*) FROM local_libraries)`,
+	).Scan(&sourceCount); err != nil {
+		return err
+	}
+	if sourceCount == 0 {
+		if err := db.provisionSourcesTx(tx, localPath, server, user, pass, hasSubsonic); err != nil {
+			return err
+		}
+	}
+	// The tombstone marks provisioning as decided even when existing sources
+	// blocked it: a manual setup is never overlaid by config, and sources
+	// the user deletes are not recreated.
+	if err := setSettingTx(tx, appconfig.SettingSourcesProvisioned, "1"); err != nil {
+		return err
+	}
+	return tx.Commit()
+}
+
+// provisionSourcesTx writes the configured sources inside tx. Callers run it
+// only while both source tables are empty.
+func (db *DB) provisionSourcesTx(tx *Tx, localPath, server, user, pass string, hasSubsonic bool) error {
+	now := nowUnix()
+	if localPath != "" {
+		libID := newLocalLibraryID()
+		if _, err := tx.Exec(
+			`INSERT INTO local_libraries (id, name, path, created_at, updated_at) VALUES (?, ?, ?, ?, ?)`,
+			libID, provisionedLibraryName(localPath), localPath, now, now,
+		); err != nil {
+			return err
+		}
+		if err := setSettingTx(tx, prefActiveLocalLibraryID, libID); err != nil {
+			return err
+		}
+	}
+	if hasSubsonic {
+		instID := newInstanceID()
+		serverURL := strings.TrimRight(strings.TrimSpace(server), "/")
+		if _, err := tx.Exec(
+			`INSERT INTO subsonic_instances (id, name, server_url, username, password, server_name, created_at, updated_at)
+			 VALUES (?, ?, ?, ?, ?, '', ?, ?)`,
+			instID, "Default", serverURL, strings.TrimSpace(user), pass, now, now,
+		); err != nil {
+			return err
+		}
+		if err := setSettingTx(tx, appconfig.SettingActiveInstanceID, instID); err != nil {
+			return err
+		}
+	}
+
+	mode := SourceViewSubsonic
+	switch {
+	case localPath != "" && hasSubsonic:
+		mode = SourceViewUnified
+	case localPath != "":
+		mode = SourceViewLocal
+	}
+	return setSettingTx(tx, appconfig.SettingSourceViewMode, mode)
+}
+
+// warnPartialSubsonicConfig names the missing fields when the Subsonic
+// bootstrap config is only partly specified so the skipped source is not
+// silent.
+func warnPartialSubsonicConfig(server, user, pass string) {
+	var missing []string
+	if server == "" {
+		missing = append(missing, "server")
+	}
+	if user == "" {
+		missing = append(missing, "username")
+	}
+	if pass == "" {
+		missing = append(missing, "password")
+	}
+	if len(missing) == 0 || len(missing) == 3 {
+		return
+	}
+	slog.Warn("subsonic source config is incomplete, skipping provisioning",
+		"missing", strings.Join(missing, ", "))
+}
+
+// provisionedLibraryPath validates a config-supplied library path. An
+// invalid path is a warning, not a startup failure.
+func provisionedLibraryPath(raw string) string {
+	raw = strings.TrimSpace(raw)
+	if raw == "" {
+		return ""
+	}
+	if !filepath.IsAbs(raw) {
+		slog.Warn("local library path from config is not absolute, skipping provisioning", "path", raw)
+		return ""
+	}
+	path := filepath.Clean(raw)
+	info, err := os.Stat(path)
+	if err != nil {
+		slog.Warn("local library path from config is not accessible, skipping provisioning", "path", path, "err", err)
+		return ""
+	}
+	if !info.IsDir() {
+		slog.Warn("local library path from config is not a directory, skipping provisioning", "path", path)
+		return ""
+	}
+	return path
+}
+
+func provisionedLibraryName(path string) string {
+	name := filepath.Base(path)
+	if name == "/" || name == "." || name == `\` {
+		return "Music"
+	}
+	return name
 }

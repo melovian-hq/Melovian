@@ -38,6 +38,11 @@ func main() {
 	defer melog.DeferredPanicHandler()
 	defer observability.Flush(2 * time.Second)
 
+	if _, err := appconfig.LoadConfigFileIfResolved(""); err != nil {
+		fmt.Fprintln(os.Stderr, err)
+		os.Exit(1)
+	}
+
 	cfg, err := appconfig.LoadConfig()
 	if err != nil {
 		fmt.Fprintln(os.Stderr, err)

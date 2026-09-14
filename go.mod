@@ -3,6 +3,7 @@ module melovian
 go 1.26.6
 
 require (
+	github.com/BurntSushi/toml v1.6.0
 	github.com/Nadim147c/go-mpris/v2 v2.0.0-20260524064610-0a7d37a83fb7
 	github.com/adrg/xdg v0.5.3
 	github.com/cespare/xxhash/v2 v2.3.0

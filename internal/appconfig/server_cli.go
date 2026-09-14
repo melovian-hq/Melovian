@@ -23,7 +23,8 @@ type ServerCLI struct {
 	ShowHelp bool
 	NoAuth   bool
 
-	EnvFile string
+	EnvFile    string
+	ConfigFile string
 
 	Host   string
 	Port   int
@@ -46,6 +47,10 @@ type ServerCLI struct {
 	OIDCClientSecret string
 	OIDCRedirectURL  string
 	OIDCScopes       string
+	OIDCProviderName string
+	OIDCAuthURL      string
+	OIDCTokenURL     string
+	OIDCUserInfoURL  string
 
 	LocalLibrary     bool
 	LocalLibraryPath string
@@ -86,10 +91,12 @@ type updateFlag struct {
 func (f updateFlag) String() string { return *f.version }
 
 func (f updateFlag) Set(s string) error {
-	*f.requested = true
-	if s != "true" && s != "" {
-		*f.version = strings.TrimPrefix(strings.TrimSpace(s), "v")
+	if b, err := strconv.ParseBool(strings.TrimSpace(s)); err == nil {
+		*f.requested = b
+		return nil
 	}
+	*f.requested = true
+	*f.version = strings.TrimPrefix(strings.TrimSpace(s), "v")
 	return nil
 }
 
@@ -104,6 +111,7 @@ func (c *ServerCLI) Register(fs *flag.FlagSet) {
 	fs.BoolVar(&c.ShowHelp, "h", false, "show help")
 	fs.BoolVar(&c.NoAuth, "no-auth", false, "disable account authentication")
 	fs.StringVar(&c.EnvFile, "env-file", ".env", "path to .env file in the current directory")
+	fs.StringVar(&c.ConfigFile, "config", "", "path to TOML config file")
 
 	fs.StringVar(&c.Host, "host", "", fmt.Sprintf("listen host (default %s)", defaultServerHost))
 	fs.IntVar(&c.Port, "port", 0, fmt.Sprintf("listen port (default %d)", defaultServerPort))
@@ -130,6 +138,10 @@ func (c *ServerCLI) Register(fs *flag.FlagSet) {
 	fs.StringVar(&c.OIDCClientSecret, "oidc-client-secret", "", "OIDC client secret")
 	fs.StringVar(&c.OIDCRedirectURL, "oidc-redirect-url", "", "OIDC redirect URL")
 	fs.StringVar(&c.OIDCScopes, "oidc-scopes", "", "OIDC scopes (space-separated)")
+	fs.StringVar(&c.OIDCProviderName, "oidc-provider-name", "", "provider label shown on the login button (for example \"Pocket ID\")")
+	fs.StringVar(&c.OIDCAuthURL, "oidc-auth-url", "", "authorization endpoint for OAuth2 providers without OIDC discovery")
+	fs.StringVar(&c.OIDCTokenURL, "oidc-token-url", "", "token endpoint for OAuth2 providers without OIDC discovery")
+	fs.StringVar(&c.OIDCUserInfoURL, "oidc-userinfo-url", "", "userinfo endpoint for OAuth2 providers without OIDC discovery")
 
 	fs.BoolVar(&c.LocalLibrary, "local-library", false, "enable local folder indexing")
 	fs.BoolVar(&c.LocalLibraryOff, "no-local-library", false, "disable local folder indexing")
@@ -166,8 +178,14 @@ func (c *ServerCLI) Parse(args []string) error {
 		c.visited[f.Name] = true
 	})
 	if c.Update && c.UpdateVersion == "" && len(c.Args) > 0 {
-		// `melovian-server --update v1.2.3` leaves the version positional.
-		c.UpdateVersion = strings.TrimPrefix(strings.TrimSpace(c.Args[0]), "v")
+		// `melovian-server --update v1.2.3` leaves the version positional,
+		// and `--update false` leaves a bool that cancels the request.
+		arg := strings.TrimSpace(c.Args[0])
+		if b, err := strconv.ParseBool(arg); err == nil {
+			c.Update = b
+		} else {
+			c.UpdateVersion = strings.TrimPrefix(arg, "v")
+		}
 		c.Args = c.Args[1:]
 	}
 	return nil
@@ -257,6 +275,18 @@ func (c *ServerCLI) Apply(cfg *Config) error {
 		}
 		cfg.OIDC.Scopes = scopes
 	}
+	if c.Visited("oidc-provider-name") {
+		cfg.OIDC.ProviderName = strings.TrimSpace(c.OIDCProviderName)
+	}
+	if c.Visited("oidc-auth-url") {
+		cfg.OIDC.AuthURL = strings.TrimSpace(c.OIDCAuthURL)
+	}
+	if c.Visited("oidc-token-url") {
+		cfg.OIDC.TokenURL = strings.TrimSpace(c.OIDCTokenURL)
+	}
+	if c.Visited("oidc-userinfo-url") {
+		cfg.OIDC.UserInfoURL = strings.TrimSpace(c.OIDCUserInfoURL)
+	}
 
 	if c.Visited("local-library") || c.Visited("no-local-library") || c.Visited("local-library-path") {
 		lib := cfg.LocalLibrary
@@ -338,7 +368,10 @@ func (c *ServerCLI) applyListen(cfg *Config) error {
 			port = c.Port
 		}
 		cfg.ListenAddr = net.JoinHostPort(host, strconv.Itoa(port))
-	case cfg.ListenAddr == "127.0.0.1:17337":
+	case cfg.ListenAddr == "127.0.0.1:17337" && os.Getenv("MELOVIAN_LISTEN") == "":
+		// The desktop default moves to the server listen address, but an
+		// explicit MELOVIAN_LISTEN (including one populated by config.toml)
+		// is honored even when it matches the desktop value.
 		cfg.ListenAddr = net.JoinHostPort(defaultServerHost, strconv.Itoa(defaultServerPort))
 	}
 	return nil
@@ -350,7 +383,7 @@ func (c *ServerCLI) ApplyDefaultLogging() error {
 		return nil
 	case c.Visited("debug") && c.Debug:
 		return os.Setenv("MELOVIAN_LOG_LEVEL", "debug")
-	case c.Visited("verbose") && c.Verbose:
+	case c.Verbose:
 		return os.Setenv("MELOVIAN_LOG_LEVEL", "info")
 	case os.Getenv("MELOVIAN_LOG_LEVEL") != "":
 		return nil
@@ -367,7 +400,7 @@ func (c *ServerCLI) PrintHelp() {
 	termout.HelpTitle("Usage:")
 	termout.HelpText("  " + brand.Slug + "-server [flags]")
 	termout.HelpSection("Configuration precedence:")
-	termout.HelpText("  flags > environment variables > .env file in the current directory")
+	termout.HelpText("  flags > environment variables > .env file > config.toml")
 	termout.HelpSection("Flags:")
 	helpFlags := []struct {
 		name string
@@ -378,6 +411,7 @@ func (c *ServerCLI) PrintHelp() {
 		{"--port", fmt.Sprintf("Listen port (default %d)", defaultServerPort)},
 		{"--listen", "Listen address host:port (overrides --host and --port)"},
 		{"--env-file", "Path to .env file (default .env, skipped if missing)"},
+		{"--config", "Path to TOML config file (also MELOVIAN_CONFIG)"},
 		{"--data, --data-dir", "Data directory for database and cache"},
 		{"--no-cache", "Disable track cache"},
 		{"--no-auth", "Disable account authentication"},
@@ -394,6 +428,10 @@ func (c *ServerCLI) PrintHelp() {
 		{"--oidc-client-secret", "OIDC client secret"},
 		{"--oidc-redirect-url", "OIDC redirect URL"},
 		{"--oidc-scopes", "OIDC scopes (space-separated)"},
+		{"--oidc-provider-name", "Provider label on the login button (for example \"Pocket ID\")"},
+		{"--oidc-auth-url", "Authorization endpoint for OAuth2 providers without discovery"},
+		{"--oidc-token-url", "Token endpoint for OAuth2 providers without discovery"},
+		{"--oidc-userinfo-url", "Userinfo endpoint for OAuth2 providers without discovery"},
 		{"--local-library", "Enable local folder indexing"},
 		{"--no-local-library", "Disable local folder indexing"},
 		{"--local-library-path", "Shared local music folder path"},

@@ -86,6 +86,7 @@ func TestServerCLIApplyListenOverride(t *testing.T) {
 }
 
 func TestServerCLIApplyDefaultServerListen(t *testing.T) {
+	t.Setenv("MELOVIAN_LISTEN", "")
 	cli := NewServerCLI()
 	if err := cli.Parse(nil); err != nil {
 		t.Fatalf("Parse: %v", err)
@@ -96,6 +97,21 @@ func TestServerCLIApplyDefaultServerListen(t *testing.T) {
 	}
 	if cfg.ListenAddr != "0.0.0.0:8080" {
 		t.Fatalf("expected default server listen, got %q", cfg.ListenAddr)
+	}
+}
+
+func TestServerCLIApplyListenRespectsExplicitEnv(t *testing.T) {
+	t.Setenv("MELOVIAN_LISTEN", "127.0.0.1:17337")
+	cli := NewServerCLI()
+	if err := cli.Parse(nil); err != nil {
+		t.Fatalf("Parse: %v", err)
+	}
+	cfg := Config{ListenAddr: "127.0.0.1:17337"}
+	if err := cli.Apply(&cfg); err != nil {
+		t.Fatalf("Apply: %v", err)
+	}
+	if cfg.ListenAddr != "127.0.0.1:17337" {
+		t.Fatalf("explicit MELOVIAN_LISTEN must not be rewritten, got %q", cfg.ListenAddr)
 	}
 }
 

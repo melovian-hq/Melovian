@@ -1,3 +1,5 @@
+github.com/BurntSushi/toml v1.6.0 h1:dRaEfpa2VI55EwlIW72hMRHdWouJeRF7TPYhI+AUQjk=
+github.com/BurntSushi/toml v1.6.0/go.mod h1:ukJfTF/6rtPPRCnwkur4qwRxa8vTRFBF0uk2lLoLwho=
 github.com/Nadim147c/go-mpris/v2 v2.0.0-20260524064610-0a7d37a83fb7 h1:IWPi46sYGxzVywYZsRq0JC8n8kQYtoYCatBWA8pVP34=
 github.com/Nadim147c/go-mpris/v2 v2.0.0-20260524064610-0a7d37a83fb7/go.mod h1:ursOWEDp748fCPetNtEnWzBZrORme5u1Wg8eu5BM9II=
 github.com/adrg/xdg v0.5.3 h1:xRnxJXne7+oWDatRhR1JLnvuccuIeCoBu2rtuLqQB78=

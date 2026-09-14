@@ -231,6 +231,38 @@ func TestValidateServerConfigAllowsNoAuth(t *testing.T) {
 	}
 }
 
+func TestValidateServerConfigOIDCIssuerScheme(t *testing.T) {
+	base := Config{
+		ServerMode: true,
+		AuthSecret: "secret",
+		OIDC: OIDCConfig{
+			ClientID:    "client-id",
+			RedirectURL: "https://app.example/api/auth/oidc/callback",
+		},
+	}
+
+	cfg := base
+	cfg.OIDC.Issuer = "https://idp.example.com"
+	if err := ValidateServerConfig(cfg); err != nil {
+		t.Fatalf("https issuer should validate: %v", err)
+	}
+
+	cfg.OIDC.Issuer = "http://localhost:8080"
+	if err := ValidateServerConfig(cfg); err != nil {
+		t.Fatalf("loopback http issuer should validate: %v", err)
+	}
+
+	cfg.OIDC.Issuer = "http://127.0.0.1:8080"
+	if err := ValidateServerConfig(cfg); err != nil {
+		t.Fatalf("loopback ip issuer should validate: %v", err)
+	}
+
+	cfg.OIDC.Issuer = "http://idp.example.com"
+	if err := ValidateServerConfig(cfg); err == nil {
+		t.Fatal("plain http issuer on a remote host must be rejected")
+	}
+}
+
 func TestGenerateAuthSecret(t *testing.T) {
 	secret, err := GenerateAuthSecret()
 	if err != nil {

@@ -59,6 +59,12 @@ func main() {
 		os.Exit(1)
 	}
 
+	configFile, err := appconfig.LoadConfigFileIfResolved(cli.ConfigFile)
+	if err != nil {
+		termout.Fail(err.Error())
+		os.Exit(1)
+	}
+
 	cfg, err := appconfig.LoadConfig()
 	if err != nil {
 		termout.Fail(err.Error())
@@ -93,7 +99,7 @@ func main() {
 		os.Exit(1)
 	}
 
-	printStartupBanner(envLoaded, cli, cfg, authRes)
+	printStartupBanner(envLoaded, configFile, cli, cfg, authRes)
 
 	if cfg.DemoModeEffective() && authSecretConfigured(cli) {
 		slog.Warn("demo mode overrides auth secret; account login is disabled")
@@ -203,8 +209,11 @@ func printServerHelp(cli *appconfig.ServerCLI) {
 	cli.PrintHelp()
 }
 
-func printStartupBanner(envLoaded bool, cli *appconfig.ServerCLI, cfg appconfig.Config, authRes appconfig.ServerAuthResolution) {
+func printStartupBanner(envLoaded bool, configFile string, cli *appconfig.ServerCLI, cfg appconfig.Config, authRes appconfig.ServerAuthResolution) {
 	termout.Banner()
+	if configFile != "" {
+		termout.Line("config", configFile)
+	}
 	if envLoaded {
 		if cli.Visited("env-file") {
 			termout.Line("env", cli.EnvFile)

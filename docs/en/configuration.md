@@ -107,3 +107,74 @@ Desktop logs live under your data directory (default `~/.local/share/melovian/lo
 | `crashes/crash-*.log` | Go panics, HTTP handler panics, frontend errors with stack traces |
 
 WebKitGTK subprocess crashes (GPU/GBM segfaults) kill the whole app without writing to Melovian logs. Check `coredumpctl` / `journalctl` for `WebKitWebProcess`. For stubborn driver issues, try `LIBGL_ALWAYS_SOFTWARE=1` before launching.
+
+## Config file (TOML)
+
+Both server and desktop modes read a TOML config file. Every key maps to the environment variable of the same meaning and applies only when that variable is unset, so precedence is flags > environment variables > `.env` > config file > built-in defaults. Unknown keys are rejected at startup, so typos fail loudly.
+
+Search order, first match wins:
+
+1. `--config` flag or `MELOVIAN_CONFIG`
+2. `./melovian.toml`
+3. `./config.toml`
+4. `$XDG_CONFIG_HOME/melovian/config.toml`
+5. `{data}/config.toml`
+
+An explicit `--config` or `MELOVIAN_CONFIG` path that does not exist is a startup error.
+
+```toml
+data_dir = "/var/lib/melovian"
+listen = "0.0.0.0:8080"
+auth_secret = "change-me"
+public_url = "https://music.example.com"
+cors_origins = ["https://app.example.com"]
+
+[subsonic]
+server_url = "https://navidrome.example.com"
+username = "demo"
+password = "secret"
+
+[local_library]
+enabled = true
+path = "/srv/music"
+roots = ["/srv/music", "/mnt/media"]
+
+[oidc]
+issuer = "https://id.example.com"
+client_id = "melovian"
+client_secret = "secret"
+redirect_url = "https://music.example.com/api/auth/oidc/callback"
+provider_name = "Pocket ID"
+scopes = ["openid", "profile", "email"]
+
+# For OAuth2 providers without OIDC discovery, set explicit endpoints and
+# leave issuer unset:
+# auth_url = "https://id.example.com/authorize"
+# token_url = "https://id.example.com/token"
+# userinfo_url = "https://id.example.com/userinfo"
+
+[connection]
+min_delay_ms = 2000
+max_delay_ms = 120000
+backoff_multiplier = 1.6
+health_check_interval_ms = 60000
+offline_poll_ms = 5000
+self_heal_interval_ms = 300000
+max_history_entries = 32
+
+[dlna]
+enabled = true
+host = "0.0.0.0"
+port = 8200
+
+[sentry]
+dsn = "https://key@tracker.example.com/1"
+frontend_dsn = "https://key@tracker.example.com/2"
+environment = "production"
+release = "melovian@1.0.0"
+traces_sample_rate = 0.1
+```
+
+Top-level keys also accepted: `database_url`, `cache_enabled`, `no_auth`, `demo_mode`, `allowed_ips`, `trust_proxy`, `debug_pprof`, `subsonic_server`, `log_level`, `log_file`.
+
+When the config fully describes a source on a fresh install, first-run setup is skipped: a `local_library.path` that points at an existing directory becomes an active local library, `[subsonic]` credentials become an active server instance, and both together activate unified view.

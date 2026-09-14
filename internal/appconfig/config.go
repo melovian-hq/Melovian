@@ -24,6 +24,10 @@ const (
 	SettingActiveInstanceID  = "active_instance_id"
 	SettingSourceViewMode    = "source_view_mode"
 	SettingMultiLocalLibrary = "multi_local_library"
+	// SettingSourcesProvisioned is the tombstone written once config source
+	// provisioning has run (or been deliberately skipped). It keeps deleted
+	// sources from being recreated on the next startup.
+	SettingSourcesProvisioned = "sources_provisioned"
 )
 
 type OIDCConfig struct {
@@ -32,6 +36,16 @@ type OIDCConfig struct {
 	ClientSecret string
 	RedirectURL  string
 	Scopes       []string
+	// ProviderName is the human label for the login button, for example
+	// "Pocket ID". Empty falls back to "SSO" in the frontend.
+	ProviderName string
+	// AuthURL, TokenURL, and UserInfoURL enable generic OAuth2 providers
+	// that do not serve OIDC discovery. All three must be set together and
+	// Issuer must be empty; identity then comes from the userinfo endpoint
+	// instead of a verified id_token.
+	AuthURL     string
+	TokenURL    string
+	UserInfoURL string
 }
 
 type LocalLibraryConfig struct {
@@ -117,6 +131,10 @@ func DefaultDataDir() string {
 //	  internal/store/secretcipher.go.
 //	MELOVIAN_LOG_LEVEL - log level in internal/melog and the server CLI,
 //	  applied before Config is loaded.
+//	MELOVIAN_CONFIG - explicit config.toml path, resolved by
+//	  LoadConfigFileIfResolved before Config is loaded.
+//	MELOVIAN_DETECT_EXTRA_URLS - extra Subsonic probe candidates in
+//	  internal/api/instances, read per detect request.
 func LoadConfig() (Config, error) {
 	dataDir := DefaultDataDir()
 	allowedIPs, err := parseAllowedIPs(os.Getenv("MELOVIAN_ALLOWED_IPS"))
@@ -208,6 +226,11 @@ func ValidateServerConfig(cfg Config) error {
 	if !cfg.ServerMode {
 		return nil
 	}
+	if cfg.OIDCEnabled() && strings.TrimSpace(cfg.OIDC.Issuer) != "" {
+		if err := validateOIDCIssuerURL(cfg.OIDC.Issuer); err != nil {
+			return err
+		}
+	}
 	if !cfg.DemoModeEffective() {
 		return nil
 	}
@@ -226,9 +249,21 @@ func ValidateServerConfig(cfg Config) error {
 }
 
 func (c Config) OIDCEnabled() bool {
-	return c.AuthEnabled() &&
-		strings.TrimSpace(c.OIDC.Issuer) != "" &&
-		strings.TrimSpace(c.OIDC.ClientID) != ""
+	if !c.AuthEnabled() || strings.TrimSpace(c.OIDC.ClientID) == "" {
+		return false
+	}
+	if strings.TrimSpace(c.OIDC.Issuer) != "" {
+		return true
+	}
+	return c.OIDC.GenericOAuth2()
+}
+
+// GenericOAuth2 reports whether the config describes a plain OAuth2
+// provider without OIDC discovery: explicit endpoints and no issuer.
+func (o OIDCConfig) GenericOAuth2() bool {
+	return strings.TrimSpace(o.AuthURL) != "" &&
+		strings.TrimSpace(o.TokenURL) != "" &&
+		strings.TrimSpace(o.UserInfoURL) != ""
 }
 
 // FrontendDevServerEnabled reports whether the app is running behind the
@@ -250,6 +285,10 @@ func loadOIDCConfig() OIDCConfig {
 		ClientSecret: os.Getenv("MELOVIAN_OIDC_CLIENT_SECRET"),
 		RedirectURL:  strings.TrimSpace(os.Getenv("MELOVIAN_OIDC_REDIRECT_URL")),
 		Scopes:       scopes,
+		ProviderName: strings.TrimSpace(os.Getenv("MELOVIAN_OIDC_PROVIDER_NAME")),
+		AuthURL:      strings.TrimSpace(os.Getenv("MELOVIAN_OIDC_AUTH_URL")),
+		TokenURL:     strings.TrimSpace(os.Getenv("MELOVIAN_OIDC_TOKEN_URL")),
+		UserInfoURL:  strings.TrimSpace(os.Getenv("MELOVIAN_OIDC_USERINFO_URL")),
 	}
 }
 
@@ -361,6 +400,28 @@ func parseCORSOrigins(raw string) []string {
 		out = append(out, origin)
 	}
 	return out
+}
+
+// validateOIDCIssuerURL requires the OIDC discovery URL to use https, with
+// plain http allowed only for loopback hosts so local development works.
+func validateOIDCIssuerURL(raw string) error {
+	u, err := url.Parse(strings.TrimSpace(raw))
+	if err != nil || u.Scheme == "" || u.Host == "" {
+		return fmt.Errorf("OIDC issuer is not a valid url")
+	}
+	if u.Scheme == "https" {
+		return nil
+	}
+	if u.Scheme == "http" {
+		host := u.Hostname()
+		if strings.EqualFold(host, "localhost") {
+			return nil
+		}
+		if addr, parseErr := netip.ParseAddr(host); parseErr == nil && addr.IsLoopback() {
+			return nil
+		}
+	}
+	return fmt.Errorf("OIDC issuer must use https (http is only allowed for loopback hosts)")
 }
 
 func parseAllowedIPs(raw string) ([]netip.Prefix, error) {

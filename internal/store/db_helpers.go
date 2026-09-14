@@ -5,6 +5,7 @@ package store
 
 import (
 	"database/sql"
+	"errors"
 	"strings"
 )
 
@@ -72,3 +73,35 @@ func (tx *Tx) QueryRow(query string, args ...any) *sql.Row {
 func (tx *Tx) Commit() error { return tx.tx.Commit() }
 
 func (tx *Tx) Rollback() error { return tx.tx.Rollback() }
+
+// getSettingTx reads an app_settings value inside a transaction. A missing
+// key returns "" with no error.
+func getSettingTx(tx *Tx, key string) (string, error) {
+	var value string
+	err := tx.QueryRow(`SELECT value FROM app_settings WHERE key = ?`, key).Scan(&value)
+	if errors.Is(err, sql.ErrNoRows) {
+		return "", nil
+	}
+	return value, err
+}
+
+// setSettingTx writes an app_settings value inside a transaction.
+func setSettingTx(tx *Tx, key, value string) error {
+	_, err := tx.Exec(
+		`INSERT INTO app_settings (key, value) VALUES (?, ?)
+		 ON CONFLICT(key) DO UPDATE SET value = excluded.value`,
+		key, value,
+	)
+	return err
+}
+
+// setUserPrefTx writes a user_preferences value inside a transaction.
+func setUserPrefTx(tx *Tx, userID, key, value string) error {
+	_, err := tx.Exec(
+		`INSERT INTO user_preferences (user_id, key, value, updated_at)
+		 VALUES (?, ?, ?, ?)
+		 ON CONFLICT(user_id, key) DO UPDATE SET value = excluded.value, updated_at = excluded.updated_at`,
+		userID, key, value, nowUnix(),
+	)
+	return err
+}
