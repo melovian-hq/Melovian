@@ -10,3 +10,4 @@ blob-report
 .lighthouseci
 e2e/.tmp
 public/demo
+pnpm-lock.yaml

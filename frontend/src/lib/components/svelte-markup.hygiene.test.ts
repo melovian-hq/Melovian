@@ -2,22 +2,9 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { readdirSync, readFileSync, statSync } from "node:fs";
+import { readFileSync } from "node:fs";
 import { join } from "node:path";
-
-function listSvelteFiles(dir: string, out: string[] = []): string[] {
-  for (const name of readdirSync(dir)) {
-    const path = join(dir, name);
-    const st = statSync(path);
-    if (st.isDirectory()) {
-      if (name === "node_modules" || name === "dist") continue;
-      listSvelteFiles(path, out);
-      continue;
-    }
-    if (name.endsWith(".svelte")) out.push(path);
-  }
-  return out;
-}
+import { listSvelteFiles } from "../../test-fixtures/svelte-files";
 
 describe("svelte markup hygiene", () => {
   it("does not put // SPDX comments before <script> (they render as text)", () => {
