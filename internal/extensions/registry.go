@@ -30,7 +30,7 @@ const (
 	// MELOVIAN_EXTENSION_REGISTRY_KEY for a self-hosted registry.
 	DefaultRegistryKey = "240f4df79f4ce2e137e29d223f11458b63d04c2f456031b12b139a992719a75e"
 
-	maxRegistryBytes = 2 << 20 // 2 MiB for the index
+	maxRegistryBytes  = 2 << 20 // 2 MiB for the index
 	maxSignatureBytes = 4 << 10
 )
 
@@ -65,13 +65,13 @@ type RegistryPackage struct {
 
 // RegistryVersion is one released version of an extension.
 type RegistryVersion struct {
-	Version   string `json:"version"`
-	URL       string `json:"url"`
-	SHA256    string `json:"sha256"`
-	Bytes     int64  `json:"bytes"`
-	Signature string `json:"signature,omitempty"`
+	Version    string `json:"version"`
+	URL        string `json:"url"`
+	SHA256     string `json:"sha256"`
+	Bytes      int64  `json:"bytes"`
+	Signature  string `json:"signature,omitempty"`
 	ReleasedAt string `json:"releasedAt,omitempty"`
-	Notes     string `json:"notes,omitempty"`
+	Notes      string `json:"notes,omitempty"`
 }
 
 // RegistryChangelog is one changelog entry.

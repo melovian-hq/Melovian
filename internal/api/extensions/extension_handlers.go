@@ -269,34 +269,34 @@ func (h *Handler) handleInstallExtension(w http.ResponseWriter, r *http.Request)
 }
 
 type registryListItem struct {
-	ID              string               `json:"id"`
-	Name            string               `json:"name"`
-	Version         string               `json:"version"`
-	Description     string               `json:"description,omitempty"`
-	Author          string               `json:"author,omitempty"`
-	Homepage        string               `json:"homepage,omitempty"`
-	License         string               `json:"license,omitempty"`
-	Tags            []string             `json:"tags,omitempty"`
-	Risk            string               `json:"risk,omitempty"`
-	ExternalURLs    []string             `json:"externalUrls,omitempty"`
-	IconURL         string               `json:"iconUrl,omitempty"`
-	ImageURL        string               `json:"imageUrl,omitempty"`
-	PackageURL      string               `json:"packageUrl,omitempty"`
-	SHA256          string               `json:"sha256,omitempty"`
-	Bytes           int64                `json:"bytes,omitempty"`
-	HasScript       bool                 `json:"hasScript"`
-	HasWasm         bool                 `json:"hasWasm"`
-	Styles          int                  `json:"styles,omitempty"`
-	AppTheme        bool                 `json:"appTheme,omitempty"`
-	TrackRules      int                  `json:"trackRules,omitempty"`
-	PlayerHooks     int                  `json:"playerHooks,omitempty"`
-	AuditStatus     string               `json:"auditStatus,omitempty"`
-	AuditWarnings   []string             `json:"auditWarnings,omitempty"`
+	ID              string                  `json:"id"`
+	Name            string                  `json:"name"`
+	Version         string                  `json:"version"`
+	Description     string                  `json:"description,omitempty"`
+	Author          string                  `json:"author,omitempty"`
+	Homepage        string                  `json:"homepage,omitempty"`
+	License         string                  `json:"license,omitempty"`
+	Tags            []string                `json:"tags,omitempty"`
+	Risk            string                  `json:"risk,omitempty"`
+	ExternalURLs    []string                `json:"externalUrls,omitempty"`
+	IconURL         string                  `json:"iconUrl,omitempty"`
+	ImageURL        string                  `json:"imageUrl,omitempty"`
+	PackageURL      string                  `json:"packageUrl,omitempty"`
+	SHA256          string                  `json:"sha256,omitempty"`
+	Bytes           int64                   `json:"bytes,omitempty"`
+	HasScript       bool                    `json:"hasScript"`
+	HasWasm         bool                    `json:"hasWasm"`
+	Styles          int                     `json:"styles,omitempty"`
+	AppTheme        bool                    `json:"appTheme,omitempty"`
+	TrackRules      int                     `json:"trackRules,omitempty"`
+	PlayerHooks     int                     `json:"playerHooks,omitempty"`
+	AuditStatus     string                  `json:"auditStatus,omitempty"`
+	AuditWarnings   []string                `json:"auditWarnings,omitempty"`
 	Changelog       []ext.RegistryChangelog `json:"changelog,omitempty"`
-	Installed       bool                 `json:"installed"`
-	InstalledVer    string               `json:"installedVersion,omitempty"`
-	Enabled         bool                 `json:"enabled"`
-	UpdateAvailable bool                 `json:"updateAvailable"`
+	Installed       bool                    `json:"installed"`
+	InstalledVer    string                  `json:"installedVersion,omitempty"`
+	Enabled         bool                    `json:"enabled"`
+	UpdateAvailable bool                    `json:"updateAvailable"`
 }
 
 type installRemoteRequest struct {

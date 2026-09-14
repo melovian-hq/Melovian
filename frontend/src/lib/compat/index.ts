@@ -175,6 +175,7 @@ export function applyCompatFromConfig(cfg: CompatConfigPayload): CompatState {
 
   const serverTooOld =
     Boolean(serverVersion) &&
+    versionScheme(serverVersion) === "semver" &&
     compareSemver(serverVersion, MIN_SERVER_VERSION) < 0;
 
   const versionMismatch =
