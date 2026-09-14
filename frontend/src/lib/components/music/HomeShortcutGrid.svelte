@@ -190,7 +190,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    text-shadow: 0 1px 8px rgb(0 0 0 / 0.45);
+    text-shadow: 0 1px 8px var(--jb-overlay-shadow);
   }
 
   .home-shortcut__sub {

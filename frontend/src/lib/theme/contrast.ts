@@ -7,6 +7,10 @@ export interface Rgb {
   b: number;
 }
 
+/**
+ * Resolved semantic color values per theme. These mirror the semantic
+ * tokens in tokens.css and are kept in sync by contrast.test.ts.
+ */
 export const LIGHT_THEME_COLORS = {
   text: "#18181b",
   textMuted: "#52525b",
@@ -16,11 +20,11 @@ export const LIGHT_THEME_COLORS = {
 } as const;
 
 export const DARK_THEME_COLORS = {
-  text: "#f5f5f5",
-  textMuted: "#b0b0b0",
-  textSubtle: "#8a8a8a",
-  surface: "#141414",
-  bg: "#090909",
+  text: "#f4f4f7",
+  textMuted: "#b3b3bf",
+  textSubtle: "#8b8b9a",
+  surface: "#14141b",
+  bg: "#0a0a0f",
 } as const;
 
 export function parseHexColor(color: string): Rgb | null {

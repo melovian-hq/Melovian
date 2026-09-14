@@ -356,7 +356,7 @@
     border: 2px solid var(--jb-border-strong);
     border-radius: var(--jb-radius-sm);
     background: transparent;
-    color: white;
+    color: var(--jb-overlay-text);
     cursor: pointer;
     padding: 0;
   }

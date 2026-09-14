@@ -435,7 +435,7 @@
   }
 
   .devices-panel__status--error {
-    color: var(--jb-danger, #f87171);
+    color: var(--jb-danger);
   }
 
   .devices-panel__self-actions {

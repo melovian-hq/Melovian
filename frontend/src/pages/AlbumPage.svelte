@@ -418,12 +418,12 @@
   }
 
   .album-page__body :global(.music-breadcrumbs) {
-    color: rgb(255 255 255 / 0.72);
+    color: var(--jb-overlay-text-muted);
     margin-bottom: 0;
   }
 
   .album-page__body :global(.music-breadcrumbs__current) {
-    color: rgb(255 255 255 / 0.92);
+    color: var(--jb-overlay-text);
   }
 
   .album-page__skeleton {
@@ -470,7 +470,7 @@
     height: clamp(10rem, 22vw, 16rem);
     border-radius: var(--jb-radius-lg);
     overflow: hidden;
-    box-shadow: 0 24px 60px rgb(0 0 0 / 0.55);
+    box-shadow: 0 24px 60px var(--jb-overlay-shadow);
   }
 
   .album-hero__cover-wrap :global(.cover-art) {
@@ -481,7 +481,7 @@
   .album-hero__info {
     flex: 1;
     min-width: min(100%, 16rem);
-    color: white;
+    color: var(--jb-overlay-text);
     padding-bottom: var(--jb-space-2);
   }
 
@@ -507,7 +507,7 @@
     font-weight: 900;
     line-height: 1.05;
     letter-spacing: -0.02em;
-    text-shadow: 0 2px 18px rgb(0 0 0 / 0.45);
+    text-shadow: 0 2px 18px var(--jb-overlay-shadow);
   }
 
   .album-hero__meta {
@@ -518,7 +518,7 @@
   }
 
   .album-hero__meta :global(a) {
-    color: white;
+    color: var(--jb-overlay-text);
     font-weight: 700;
     text-decoration: none;
   }
@@ -552,10 +552,10 @@
     align-items: center;
     gap: var(--jb-space-2);
     padding: 0.5rem 1rem;
-    border: 1px solid rgb(255 255 255 / 0.25);
+    border: 1px solid var(--jb-overlay-border);
     border-radius: var(--jb-radius-full);
-    background: rgb(255 255 255 / 0.08);
-    color: white;
+    background: var(--jb-overlay-chip);
+    color: var(--jb-overlay-text);
     font-weight: 600;
     font-size: 0.875rem;
     cursor: pointer;
@@ -563,7 +563,7 @@
   }
 
   .album-hero__secondary:hover {
-    background: rgb(255 255 255 / 0.15);
+    background: var(--jb-overlay-chip-hover);
   }
 
   .album-hero__secondary:disabled {
@@ -580,12 +580,12 @@
     grid-template-columns: 2rem 1fr auto 4rem;
     gap: var(--jb-space-3);
     padding: var(--jb-space-3) 0;
-    border-bottom: 1px solid rgb(255 255 255 / 0.12);
+    border-bottom: 1px solid var(--jb-overlay-border);
     font-size: 0.75rem;
     font-weight: 700;
     text-transform: uppercase;
     letter-spacing: 0.06em;
-    color: rgb(255 255 255 / 0.55);
+    color: var(--jb-overlay-text-muted);
   }
 
   @media (max-width: 640px) {

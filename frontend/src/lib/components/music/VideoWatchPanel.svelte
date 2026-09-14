@@ -358,10 +358,11 @@
       </EmptyState>
     {:else}
       <div class="video-watch__search">
-        <Field label="Search music videos">
+        <Field label="Search music videos" group>
           <div class="video-watch__search-row">
             <input
               class="video-watch__input"
+              aria-label="Search music videos"
               bind:value={searchQuery}
               onkeydown={(event) => {
                 if (event.key === "Enter") void runSearch();
@@ -486,7 +487,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    background: #000;
+    background: var(--jb-media-surface);
     border-radius: var(--jb-radius-md);
     overflow: hidden;
     flex: 0 0 auto;

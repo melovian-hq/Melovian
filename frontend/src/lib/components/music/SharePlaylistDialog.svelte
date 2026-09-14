@@ -424,7 +424,7 @@
     inset: 0;
     z-index: 80;
     border: none;
-    background: rgb(0 0 0 / 0.45);
+    background: var(--jb-scrim);
     cursor: pointer;
   }
 

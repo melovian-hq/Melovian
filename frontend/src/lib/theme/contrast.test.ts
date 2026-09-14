@@ -32,6 +32,29 @@ function extractThemeBlock(css: string, theme: "light" | "dark") {
   return match?.[1] ?? "";
 }
 
+/** Parse the custom property declarations inside one theme block. */
+function tokenMap(block: string): Map<string, string> {
+  const map = new Map<string, string>();
+  for (const match of block.matchAll(/(--jb-[\w-]+)\s*:\s*([^;]+);/g)) {
+    map.set(match[1], match[2].trim());
+  }
+  return map;
+}
+
+/** Resolve a semantic token through var() chains to a literal value. */
+function resolveToken(
+  map: Map<string, string>,
+  name: string,
+): string | undefined {
+  let value = map.get(name);
+  for (let guard = 0; guard < 10; guard++) {
+    const ref = /^var\((--jb-[\w-]+)\s*\)?$/.exec(value ?? "")?.[1];
+    if (!ref) return value;
+    value = map.get(ref);
+  }
+  return value;
+}
+
 describe("contrast", () => {
   it("computes known contrast ratios", () => {
     const white = parseHexColor("#ffffff");
@@ -84,7 +107,7 @@ describe("contrast", () => {
       ["light", LIGHT_THEME_COLORS],
       ["dark", DARK_THEME_COLORS],
     ] as const) {
-      const block = extractThemeBlock(css, theme);
+      const map = tokenMap(extractThemeBlock(css, theme));
       for (const [token, value] of Object.entries(colors)) {
         const cssName =
           token === "text"
@@ -96,7 +119,7 @@ describe("contrast", () => {
                 : token === "surface"
                   ? "--jb-surface"
                   : "--jb-bg";
-        expect(block).toContain(`${cssName}: ${value}`);
+        expect(resolveToken(map, cssName)).toBe(value);
       }
     }
   });

@@ -600,7 +600,7 @@
   .server-playlist-header__play {
     border: none;
     background: var(--jb-accent);
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .server-playlist-header__shuffle {

@@ -60,7 +60,7 @@
   }
 
   .favorite-btn--active {
-    color: #fbbf24;
+    color: var(--jb-favorite);
   }
 
   .favorite-btn:disabled {

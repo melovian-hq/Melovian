@@ -191,7 +191,7 @@
     position: fixed;
     inset: 0;
     border: none;
-    background: rgb(0 0 0 / 0.45);
+    background: var(--jb-scrim);
     z-index: 125;
     cursor: default;
   }

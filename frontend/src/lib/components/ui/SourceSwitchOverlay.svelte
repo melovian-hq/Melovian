@@ -43,7 +43,7 @@
     z-index: 90;
     display: grid;
     place-content: center;
-    background: rgba(0, 0, 0, 0.35);
+    background: var(--jb-scrim-subtle);
     pointer-events: all;
   }
 

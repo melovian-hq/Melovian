@@ -43,9 +43,13 @@ export function storageKey(name: string): string {
 /** Well-known storage keys, kept here so a rebrand sees them in one place. */
 export const StorageKeys = {
   theme: storageKey("theme"),
+  /** Legacy free-form accent hex. Read once for migration into themeAccentHue. */
   themeAccent: storageKey("theme-accent"),
+  themeAccentPreset: storageKey("theme-accent-preset"),
+  themeAccentHue: storageKey("theme-accent-hue"),
   customCss: storageKey("custom-css"),
   sidebarCollapsed: storageKey("sidebar-collapsed"),
+  settingsNavAdvancedCollapsed: storageKey("settings-nav-advanced-collapsed"),
   eq: storageKey("eq"),
   profileAvatar: storageKey("profile-avatar"),
   profileSmileVariants: storageKey("profile-smile-variants"),

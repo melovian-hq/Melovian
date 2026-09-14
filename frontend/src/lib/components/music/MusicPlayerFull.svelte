@@ -464,7 +464,7 @@
     object-fit: contain;
     image-rendering: pixelated;
     pointer-events: none;
-    filter: drop-shadow(1px 1px 0 #000);
+    filter: drop-shadow(1px 1px 0 var(--jb-media-surface));
     font-size: 0.75rem;
     line-height: 1;
     display: grid;
@@ -595,7 +595,7 @@
     width: 3rem;
     height: 3rem;
     background: var(--jb-accent);
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .player__btn--play:hover,

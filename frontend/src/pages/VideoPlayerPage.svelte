@@ -388,7 +388,7 @@
   .video-player-page__video {
     width: 100%;
     max-height: min(70vh, 720px);
-    background: #000;
+    background: var(--jb-media-surface);
     border-radius: var(--jb-radius-md);
   }
 
@@ -396,7 +396,7 @@
     position: relative;
     width: 100%;
     aspect-ratio: 16 / 9;
-    background: #000;
+    background: var(--jb-media-surface);
     border-radius: var(--jb-radius-md);
     overflow: hidden;
   }

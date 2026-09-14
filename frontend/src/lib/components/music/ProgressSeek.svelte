@@ -274,7 +274,7 @@
     image-rendering: pixelated;
     pointer-events: none;
     z-index: 3;
-    filter: drop-shadow(0 1px 2px rgb(0 0 0 / 0.45));
+    filter: drop-shadow(0 1px 2px var(--jb-overlay-shadow));
   }
 
   .progress-seek--sm .progress-seek__thumb {

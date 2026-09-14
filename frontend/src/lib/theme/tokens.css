@@ -1,3 +1,15 @@
+/*
+ * Token architecture: shared (theme-independent) tokens live on :root.
+ * Each color theme defines a private primitive ramp (--jb-raw-*) and a
+ * semantic layer (--jb-*) that components consume. Components must never
+ * reference --jb-raw-* tokens or literal colors directly.
+ *
+ * Dark is the default theme: it is declared on plain :root as well as
+ * [data-theme="dark"] so it also acts as the fallback before the boot
+ * script or theme store sets the attribute. [data-theme="light"] comes
+ * later in source order and wins when the attribute is set.
+ */
+
 @layer theme {
   :root {
     --jb-font-sans: "Segoe UI", system-ui, -apple-system, sans-serif;
@@ -45,85 +57,122 @@
     --jb-duration-slow: 240ms;
     --jb-transition: var(--jb-duration-normal) var(--jb-ease-out);
 
+    /* Z-index scale, ordered lowest to highest. Fixed chrome stays under
+       overlays, and transient surfaces stack above dialogs and toasts last. */
+    --jb-z-topbar: 30;
+    --jb-z-mobile-backdrop: 35;
+    --jb-z-banner: 40;
+    --jb-z-bottom-nav: 45;
+    --jb-z-sidebar: 55;
+    --jb-z-scan-banner: 70;
     --jb-z-overlay: 100;
+    --jb-z-dialog-backdrop: 110;
     --jb-z-dialog: 120;
+    /* Anchored panels like notifications share the dialog layer. */
+    --jb-z-popover: 120;
     --jb-z-toast: 200;
   }
 
-  [data-theme="light"] {
-    color-scheme: light;
-
-    --jb-bg: #f4f4f5;
-    --jb-bg-elevated: #ffffff;
-    --jb-bg-muted: #e4e4e7;
-    --jb-bg-subtle: #fafafa;
-
-    --jb-surface: #ffffff;
-    --jb-surface-hover: #f4f4f5;
-    --jb-surface-active: #e4e4e7;
-
-    --jb-border: #d4d4d8;
-    --jb-border-strong: #a1a1aa;
-
-    --jb-text: #18181b;
-    --jb-text-muted: #52525b;
-    --jb-text-subtle: #71717a;
-
-    --jb-accent: #dc2626;
-    --jb-accent-hover: #b91c1c;
-    --jb-accent-muted: #fee2e2;
-    --jb-accent-text: #ffffff;
-
-    --jb-music-accent: var(--jb-accent);
-    --jb-music-accent-hover: var(--jb-accent-hover);
-    --jb-music-accent-muted: var(--jb-accent-muted);
-
-    --jb-success: #16a34a;
-    --jb-warning: #ca8a04;
-    --jb-danger: #dc2626;
-
-    --jb-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
-    --jb-shadow-md: 0 8px 24px rgb(0 0 0 / 0.08);
-    --jb-shadow-lg: 0 16px 40px rgb(0 0 0 / 0.12);
-
-    --jb-island-bg: color-mix(in srgb, var(--jb-bg-elevated) 88%, transparent);
-    --jb-island-border: color-mix(in srgb, var(--jb-border) 65%, transparent);
-    --jb-pill-border: var(--jb-border);
-    --jb-pill-bg: var(--jb-surface);
-    --jb-focus-ring: 0 0 0 3px rgb(220 38 38 / 0.25);
-  }
-
+  /* Dark theme (default). Cool neutral ramp with a subtle violet tint. */
+  :root,
   [data-theme="dark"] {
     color-scheme: dark;
 
-    --jb-bg: #090909;
-    --jb-bg-elevated: #111111;
-    --jb-bg-muted: #1a1a1a;
-    --jb-bg-subtle: #141414;
+    /* Primitive ramp. Private to this file, do not use in components. */
+    --jb-raw-neutral-975: #0a0a0f;
+    --jb-raw-neutral-950: #0f0f15;
+    --jb-raw-neutral-900: #14141b;
+    --jb-raw-neutral-875: #181822;
+    --jb-raw-neutral-850: #1b1b24;
+    --jb-raw-neutral-800: #23232e;
+    --jb-raw-neutral-700: #2c2c39;
+    --jb-raw-neutral-600: #40404f;
+    --jb-raw-neutral-400: #8b8b9a;
+    --jb-raw-neutral-300: #b3b3bf;
+    --jb-raw-neutral-50: #f4f4f7;
 
-    --jb-surface: #141414;
-    --jb-surface-hover: #1c1c1c;
-    --jb-surface-active: #242424;
+    --jb-raw-accent: #a468f3;
+    --jb-raw-accent-text: #171321;
+    --jb-raw-success: #22c55e;
+    --jb-raw-warning: #eab308;
+    --jb-raw-danger: #ef4444;
+    --jb-raw-danger-hover: #dc2626;
+    --jb-raw-info: #38bdf8;
+    --jb-raw-success-muted: #122a1c;
+    --jb-raw-warning-muted: #292012;
+    --jb-raw-danger-muted: #33161a;
+    --jb-raw-info-muted: #0e2433;
 
-    --jb-border: #2a2a2a;
-    --jb-border-strong: #3f3f3f;
+    --jb-raw-scrim: rgb(0 0 0 / 0.45);
+    --jb-raw-scrim-subtle: rgb(0 0 0 / 0.35);
+    --jb-raw-scrim-strong: rgb(0 0 0 / 0.5);
+    --jb-raw-overlay-text: #ffffff;
+    --jb-raw-overlay-text-muted: rgb(255 255 255 / 0.75);
+    --jb-raw-overlay-shadow: rgb(0 0 0 / 0.45);
+    --jb-raw-overlay-surface: rgb(0 0 0 / 0.28);
+    --jb-raw-overlay-surface-hover: rgb(0 0 0 / 0.42);
+    --jb-raw-overlay-border: rgb(255 255 255 / 0.2);
+    --jb-raw-overlay-chip: rgb(255 255 255 / 0.1);
+    --jb-raw-overlay-chip-hover: rgb(255 255 255 / 0.16);
+    --jb-raw-media-surface: #000000;
+    --jb-raw-favorite: #fbbf24;
+    --jb-raw-favorite-hover: #fcd34d;
 
-    --jb-text: #f5f5f5;
-    --jb-text-muted: #b0b0b0;
-    --jb-text-subtle: #8a8a8a;
+    /* Semantic layer. The only tokens components may consume. */
+    --jb-bg: var(--jb-raw-neutral-975);
+    --jb-bg-elevated: var(--jb-raw-neutral-900);
+    --jb-bg-muted: var(--jb-raw-neutral-850);
+    --jb-bg-subtle: var(--jb-raw-neutral-950);
 
-    --jb-accent: #ef4444;
-    --jb-accent-hover: #dc2626;
-    --jb-accent-muted: #2a1212;
-    --jb-accent-text: #ffffff;
+    --jb-surface: var(--jb-raw-neutral-900);
+    --jb-surface-raised: var(--jb-raw-neutral-875);
+    --jb-surface-2: var(--jb-surface-raised);
+    --jb-surface-hover: var(--jb-raw-neutral-850);
+    --jb-surface-active: var(--jb-raw-neutral-800);
+
+    --jb-border: var(--jb-raw-neutral-700);
+    --jb-border-strong: var(--jb-raw-neutral-600);
+
+    --jb-text: var(--jb-raw-neutral-50);
+    --jb-text-muted: var(--jb-raw-neutral-300);
+    --jb-text-subtle: var(--jb-raw-neutral-400);
+
+    --jb-accent: var(--jb-raw-accent);
+    --jb-accent-hover: color-mix(in srgb, var(--jb-accent) 85%, black);
+    --jb-accent-muted: color-mix(in srgb, var(--jb-accent) 22%, transparent);
+    --jb-accent-text: var(--jb-raw-accent-text);
 
     --jb-music-accent: var(--jb-accent);
     --jb-music-accent-hover: var(--jb-accent-hover);
     --jb-music-accent-muted: var(--jb-accent-muted);
+    --jb-music-accent-text: var(--jb-accent-text);
 
-    --jb-success: #22c55e;
-    --jb-warning: #eab308;
-    --jb-danger: #ef4444;
+    --jb-success: var(--jb-raw-success);
+    --jb-success-muted: var(--jb-raw-success-muted);
+    --jb-warning: var(--jb-raw-warning);
+    --jb-warning-muted: var(--jb-raw-warning-muted);
+    --jb-danger: var(--jb-raw-danger);
+    --jb-danger-hover: var(--jb-raw-danger-hover);
+    --jb-danger-muted: var(--jb-raw-danger-muted);
+    --jb-info: var(--jb-raw-info);
+    --jb-info-muted: var(--jb-raw-info-muted);
+
+    /* Scrims dim the page behind overlays. Text over artwork uses the
+       overlay family, which stays light regardless of theme. */
+    --jb-scrim: var(--jb-raw-scrim);
+    --jb-scrim-subtle: var(--jb-raw-scrim-subtle);
+    --jb-scrim-strong: var(--jb-raw-scrim-strong);
+    --jb-overlay-text: var(--jb-raw-overlay-text);
+    --jb-overlay-text-muted: var(--jb-raw-overlay-text-muted);
+    --jb-overlay-shadow: var(--jb-raw-overlay-shadow);
+    --jb-overlay-surface: var(--jb-raw-overlay-surface);
+    --jb-overlay-surface-hover: var(--jb-raw-overlay-surface-hover);
+    --jb-overlay-border: var(--jb-raw-overlay-border);
+    --jb-overlay-chip: var(--jb-raw-overlay-chip);
+    --jb-overlay-chip-hover: var(--jb-raw-overlay-chip-hover);
+    --jb-media-surface: var(--jb-raw-media-surface);
+    --jb-favorite: var(--jb-raw-favorite);
+    --jb-favorite-hover: var(--jb-raw-favorite-hover);
 
     --jb-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.4);
     --jb-shadow-md: 0 8px 24px rgb(0 0 0 / 0.5);
@@ -137,6 +186,117 @@
       var(--jb-accent) 45%
     );
     --jb-pill-bg: var(--jb-bg-muted);
-    --jb-focus-ring: 0 0 0 3px rgb(239 68 68 / 0.28);
+    --jb-focus-ring: 0 0 0 3px
+      color-mix(in srgb, var(--jb-accent) 30%, transparent);
+  }
+
+  /* Light theme. Pure neutral ramp, no tint. */
+  [data-theme="light"] {
+    color-scheme: light;
+
+    /* Primitive ramp. Private to this file, do not use in components. */
+    --jb-raw-white: #ffffff;
+    --jb-raw-neutral-50: #fafafa;
+    --jb-raw-neutral-100: #f4f4f5;
+    --jb-raw-neutral-200: #e4e4e7;
+    --jb-raw-neutral-300: #d4d4d8;
+    --jb-raw-neutral-400: #a1a1aa;
+    --jb-raw-neutral-500: #71717a;
+    --jb-raw-neutral-600: #52525b;
+    --jb-raw-neutral-900: #18181b;
+
+    --jb-raw-accent: #6f25d0;
+    --jb-raw-accent-text: #ffffff;
+    --jb-raw-success: #15803d;
+    --jb-raw-warning: #a16207;
+    --jb-raw-danger: #dc2626;
+    --jb-raw-danger-hover: #b91c1c;
+    --jb-raw-info: #0369a1;
+    --jb-raw-success-muted: #dcfce7;
+    --jb-raw-warning-muted: #fef3c7;
+    --jb-raw-danger-muted: #fee2e2;
+    --jb-raw-info-muted: #e0f2fe;
+
+    --jb-raw-scrim: rgb(0 0 0 / 0.35);
+    --jb-raw-scrim-subtle: rgb(0 0 0 / 0.25);
+    --jb-raw-scrim-strong: rgb(0 0 0 / 0.45);
+    --jb-raw-overlay-text: #ffffff;
+    --jb-raw-overlay-text-muted: rgb(255 255 255 / 0.75);
+    --jb-raw-overlay-shadow: rgb(0 0 0 / 0.45);
+    --jb-raw-overlay-surface: rgb(0 0 0 / 0.28);
+    --jb-raw-overlay-surface-hover: rgb(0 0 0 / 0.42);
+    --jb-raw-overlay-border: rgb(255 255 255 / 0.2);
+    --jb-raw-overlay-chip: rgb(255 255 255 / 0.1);
+    --jb-raw-overlay-chip-hover: rgb(255 255 255 / 0.16);
+    --jb-raw-media-surface: #000000;
+    --jb-raw-favorite: #d97706;
+    --jb-raw-favorite-hover: #f59e0b;
+
+    /* Semantic layer. The only tokens components may consume. */
+    --jb-bg: var(--jb-raw-neutral-100);
+    --jb-bg-elevated: var(--jb-raw-white);
+    --jb-bg-muted: var(--jb-raw-neutral-200);
+    --jb-bg-subtle: var(--jb-raw-neutral-50);
+
+    --jb-surface: var(--jb-raw-white);
+    --jb-surface-raised: var(--jb-raw-white);
+    --jb-surface-2: var(--jb-surface-raised);
+    --jb-surface-hover: var(--jb-raw-neutral-100);
+    --jb-surface-active: var(--jb-raw-neutral-200);
+
+    --jb-border: var(--jb-raw-neutral-300);
+    --jb-border-strong: var(--jb-raw-neutral-400);
+
+    --jb-text: var(--jb-raw-neutral-900);
+    --jb-text-muted: var(--jb-raw-neutral-600);
+    --jb-text-subtle: var(--jb-raw-neutral-500);
+
+    --jb-accent: var(--jb-raw-accent);
+    --jb-accent-hover: color-mix(in srgb, var(--jb-accent) 88%, black);
+    --jb-accent-muted: color-mix(in srgb, var(--jb-accent) 14%, transparent);
+    --jb-accent-text: var(--jb-raw-accent-text);
+
+    --jb-music-accent: var(--jb-accent);
+    --jb-music-accent-hover: var(--jb-accent-hover);
+    --jb-music-accent-muted: var(--jb-accent-muted);
+    --jb-music-accent-text: var(--jb-accent-text);
+
+    --jb-success: var(--jb-raw-success);
+    --jb-success-muted: var(--jb-raw-success-muted);
+    --jb-warning: var(--jb-raw-warning);
+    --jb-warning-muted: var(--jb-raw-warning-muted);
+    --jb-danger: var(--jb-raw-danger);
+    --jb-danger-hover: var(--jb-raw-danger-hover);
+    --jb-danger-muted: var(--jb-raw-danger-muted);
+    --jb-info: var(--jb-raw-info);
+    --jb-info-muted: var(--jb-raw-info-muted);
+
+    /* Scrims dim the page behind overlays. Text over artwork uses the
+       overlay family, which stays light regardless of theme. */
+    --jb-scrim: var(--jb-raw-scrim);
+    --jb-scrim-subtle: var(--jb-raw-scrim-subtle);
+    --jb-scrim-strong: var(--jb-raw-scrim-strong);
+    --jb-overlay-text: var(--jb-raw-overlay-text);
+    --jb-overlay-text-muted: var(--jb-raw-overlay-text-muted);
+    --jb-overlay-shadow: var(--jb-raw-overlay-shadow);
+    --jb-overlay-surface: var(--jb-raw-overlay-surface);
+    --jb-overlay-surface-hover: var(--jb-raw-overlay-surface-hover);
+    --jb-overlay-border: var(--jb-raw-overlay-border);
+    --jb-overlay-chip: var(--jb-raw-overlay-chip);
+    --jb-overlay-chip-hover: var(--jb-raw-overlay-chip-hover);
+    --jb-media-surface: var(--jb-raw-media-surface);
+    --jb-favorite: var(--jb-raw-favorite);
+    --jb-favorite-hover: var(--jb-raw-favorite-hover);
+
+    --jb-shadow-sm: 0 1px 2px rgb(0 0 0 / 0.06);
+    --jb-shadow-md: 0 8px 24px rgb(0 0 0 / 0.08);
+    --jb-shadow-lg: 0 16px 40px rgb(0 0 0 / 0.12);
+
+    --jb-island-bg: color-mix(in srgb, var(--jb-bg-elevated) 88%, transparent);
+    --jb-island-border: color-mix(in srgb, var(--jb-border) 65%, transparent);
+    --jb-pill-border: var(--jb-border);
+    --jb-pill-bg: var(--jb-surface);
+    --jb-focus-ring: 0 0 0 3px
+      color-mix(in srgb, var(--jb-accent) 30%, transparent);
   }
 }

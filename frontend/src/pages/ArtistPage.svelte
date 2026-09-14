@@ -469,13 +469,13 @@
   }
 
   .artist-page__body :global(.music-breadcrumbs) {
-    color: rgb(255 255 255 / 0.72);
+    color: var(--jb-overlay-text-muted);
     margin-bottom: 0;
     flex-shrink: 0;
   }
 
   .artist-page__body :global(.music-breadcrumbs__current) {
-    color: rgb(255 255 255 / 0.92);
+    color: var(--jb-overlay-text);
   }
 
   .artist-page__skeleton {
@@ -526,8 +526,8 @@
     border-radius: var(--jb-radius-lg);
     overflow: hidden;
     box-shadow:
-      0 24px 60px rgb(0 0 0 / 0.55),
-      0 0 0 3px rgb(255 255 255 / 0.12);
+      0 24px 60px var(--jb-overlay-shadow),
+      0 0 0 3px var(--jb-overlay-border);
   }
 
   .artist-hero__portrait-wrap--photo {
@@ -542,7 +542,7 @@
   .artist-hero__info {
     flex: 1;
     min-width: min(100%, 16rem);
-    color: white;
+    color: var(--jb-overlay-text);
     padding-bottom: var(--jb-space-2);
   }
 
@@ -568,7 +568,7 @@
     font-weight: 900;
     line-height: 1.05;
     letter-spacing: -0.02em;
-    text-shadow: 0 2px 18px rgb(0 0 0 / 0.45);
+    text-shadow: 0 2px 18px var(--jb-overlay-shadow);
   }
 
   .artist-hero__meta {
@@ -599,7 +599,7 @@
   .artist-hero__play {
     border: none;
     background: var(--jb-accent);
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .artist-hero__play:disabled,
@@ -609,26 +609,26 @@
   }
 
   .artist-hero__shuffle {
-    border: 1px solid rgb(255 255 255 / 0.25);
-    background: rgb(255 255 255 / 0.08);
-    color: white;
+    border: 1px solid var(--jb-overlay-border);
+    background: var(--jb-overlay-chip);
+    color: var(--jb-overlay-text);
     backdrop-filter: blur(8px);
   }
 
   .artist-hero__shuffle:hover:not(:disabled) {
-    background: rgb(255 255 255 / 0.15);
+    background: var(--jb-overlay-chip-hover);
   }
 
   .artist-hero__bio {
     margin-top: var(--jb-space-6);
     padding-top: var(--jb-space-6);
-    border-top: 1px solid rgb(255 255 255 / 0.12);
+    border-top: 1px solid var(--jb-overlay-border);
   }
 
   .artist-hero__bio-text {
     margin: 0;
     line-height: 1.7;
-    color: rgb(255 255 255 / 0.78);
+    color: var(--jb-overlay-text-muted);
     white-space: pre-wrap;
     font-size: 0.9375rem;
   }
@@ -665,8 +665,8 @@
     margin: 0 0 var(--jb-space-5);
     font-size: 1.25rem;
     font-weight: 700;
-    color: rgb(255 255 255 / 0.92);
-    text-shadow: 0 1px 10px rgb(0 0 0 / 0.35);
+    color: var(--jb-overlay-text);
+    text-shadow: 0 1px 10px var(--jb-overlay-shadow);
   }
 
   .similar-grid {
@@ -731,7 +731,7 @@
     overflow: hidden;
     text-overflow: ellipsis;
     white-space: nowrap;
-    color: rgb(255 255 255 / 0.88);
+    color: var(--jb-overlay-text);
   }
 
   @media (max-width: 640px) {

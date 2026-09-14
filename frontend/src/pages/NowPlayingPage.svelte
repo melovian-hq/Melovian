@@ -339,15 +339,15 @@
     place-items: center;
     width: 2.5rem;
     height: 2.5rem;
-    border: 1px solid rgb(255 255 255 / 0.18);
+    border: 1px solid var(--jb-overlay-border);
     border-radius: var(--jb-radius-full);
-    background: rgb(0 0 0 / 0.28);
-    color: rgb(255 255 255 / 0.9);
+    background: var(--jb-overlay-surface);
+    color: var(--jb-overlay-text);
     cursor: pointer;
   }
 
   .now-playing-page__tool:hover {
-    background: rgb(0 0 0 / 0.42);
+    background: var(--jb-overlay-surface-hover);
   }
 
   .now-playing-page__tool--tv {
@@ -359,15 +359,15 @@
     place-items: center;
     width: 2.75rem;
     height: 2.75rem;
-    border: 1px solid rgb(255 255 255 / 0.22);
+    border: 1px solid var(--jb-overlay-border);
     border-radius: var(--jb-radius-full);
-    background: rgb(0 0 0 / 0.28);
-    color: rgb(255 255 255 / 0.9);
+    background: var(--jb-overlay-surface);
+    color: var(--jb-overlay-text);
     cursor: pointer;
   }
 
   .now-playing-page__video-btn:hover {
-    background: rgb(0 0 0 / 0.42);
+    background: var(--jb-overlay-surface-hover);
   }
 
   .now-playing-layout {

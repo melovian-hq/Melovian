@@ -80,23 +80,23 @@
   }
 
   .star-btn--active {
-    color: #fbbf24;
+    color: var(--jb-favorite);
   }
 
   .star-btn--on-dark.star-btn--active {
-    color: #fbbf24;
+    color: var(--jb-favorite);
   }
 
   .star-btn--on-dark.star-btn--active:hover:not(:disabled) {
-    color: #fcd34d;
+    color: var(--jb-favorite-hover);
   }
 
   .star-btn--on-dark {
-    color: rgb(255 255 255 / 0.75);
+    color: var(--jb-overlay-text-muted);
   }
 
   .star-btn--on-dark:hover:not(:disabled) {
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .star-btn:disabled {

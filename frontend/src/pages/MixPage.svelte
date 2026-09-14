@@ -142,7 +142,7 @@
     border-radius: var(--jb-radius-xl);
     overflow: hidden;
     background: var(--mix-gradient);
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .mix-hero__bg {

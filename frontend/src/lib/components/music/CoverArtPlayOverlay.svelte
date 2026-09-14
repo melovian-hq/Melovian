@@ -24,7 +24,7 @@
     inset: 0;
     display: grid;
     place-content: center;
-    color: #fff;
+    color: var(--jb-overlay-text);
     opacity: 0;
     transition: opacity var(--jb-transition);
     pointer-events: none;

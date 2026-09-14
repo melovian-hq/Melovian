@@ -114,16 +114,16 @@
   .home-customize__backdrop {
     position: fixed;
     inset: 0;
-    z-index: 110;
+    z-index: var(--jb-z-dialog-backdrop);
     border: none;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--jb-scrim);
   }
 
   .home-customize {
     position: fixed;
     top: 50%;
     left: 50%;
-    z-index: 111;
+    z-index: calc(var(--jb-z-dialog-backdrop) + 1);
     transform: translate(-50%, -50%);
     width: min(28rem, calc(100vw - 2rem));
     border-radius: var(--jb-radius-lg);

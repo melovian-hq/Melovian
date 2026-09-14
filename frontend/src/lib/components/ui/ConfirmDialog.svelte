@@ -78,7 +78,7 @@
     inset: 0;
     z-index: var(--jb-z-dialog);
     border: none;
-    background: rgba(0, 0, 0, 0.45);
+    background: var(--jb-scrim);
     cursor: default;
   }
 
@@ -117,10 +117,10 @@
   }
 
   :global(.confirm__danger) {
-    background: var(--jb-danger, #c62828);
+    background: var(--jb-danger);
   }
 
   :global(.confirm__danger:hover) {
-    background: var(--jb-danger-hover, #b71c1c);
+    background: var(--jb-danger-hover);
   }
 </style>

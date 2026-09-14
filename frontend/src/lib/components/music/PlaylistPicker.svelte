@@ -194,7 +194,7 @@
   .picker-backdrop {
     position: fixed;
     inset: 0;
-    background: rgb(0 0 0 / 0.45);
+    background: var(--jb-scrim);
     z-index: 70;
   }
 
@@ -267,7 +267,7 @@
     border: none;
     border-radius: var(--jb-radius-md);
     background: var(--jb-music-accent);
-    color: white;
+    color: var(--jb-overlay-text);
     font-weight: 600;
     cursor: pointer;
   }

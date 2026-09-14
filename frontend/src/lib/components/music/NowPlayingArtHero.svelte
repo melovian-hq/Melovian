@@ -114,15 +114,15 @@
     font-weight: 800;
     letter-spacing: -0.02em;
     line-height: 1.2;
-    color: rgb(255 255 255 / 0.96);
-    text-shadow: 0 1px 12px rgb(0 0 0 / 0.45);
+    color: var(--jb-overlay-text);
+    text-shadow: 0 1px 12px var(--jb-overlay-shadow);
     overflow-wrap: anywhere;
   }
 
   :global(.now-playing-art__artist.track-meta-links) {
     justify-content: center;
     font-size: 0.9375rem;
-    color: rgb(255 255 255 / 0.82);
+    color: var(--jb-overlay-text-muted);
   }
 
   .now-playing-art__actions {
@@ -136,7 +136,7 @@
   :global(.now-playing-art__fav.favorite-btn) {
     width: 2.75rem;
     height: 2.75rem;
-    color: rgb(255 255 255 / 0.88);
+    color: var(--jb-overlay-text);
   }
 
   .now-playing-art__details {
@@ -149,7 +149,7 @@
 
   .now-playing-art__year {
     font-size: 0.8125rem;
-    color: rgb(255 255 255 / 0.65);
+    color: var(--jb-overlay-text-muted);
     font-variant-numeric: tabular-nums;
   }
 

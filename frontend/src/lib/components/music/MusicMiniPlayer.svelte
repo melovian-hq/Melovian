@@ -436,7 +436,7 @@
     object-fit: contain;
     image-rendering: pixelated;
     pointer-events: none;
-    filter: drop-shadow(1px 1px 0 #000);
+    filter: drop-shadow(1px 1px 0 var(--jb-media-surface));
     font-size: 0.65rem;
     line-height: 1;
     display: grid;
@@ -538,12 +538,12 @@
     width: 2.25rem;
     height: 2.25rem;
     background: var(--jb-accent);
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .mini-player__btn--play:hover {
     background: var(--jb-accent-hover);
-    color: white;
+    color: var(--jb-overlay-text);
   }
 
   .mini-player__btn--close:hover {
