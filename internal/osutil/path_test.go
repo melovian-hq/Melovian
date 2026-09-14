@@ -36,8 +36,14 @@ func TestResolveInside(t *testing.T) {
 	if err != nil {
 		t.Fatalf("in-root path rejected: %v", err)
 	}
-	if got != inside {
-		t.Fatalf("resolved = %q, want %q", got, inside)
+	// ResolveInside runs EvalSymlinks, so on macOS the /var temp root comes
+	// back as /private/var.
+	wantInside, err := filepath.EvalSymlinks(inside)
+	if err != nil {
+		t.Fatalf("EvalSymlinks(%q): %v", inside, err)
+	}
+	if got != wantInside {
+		t.Fatalf("resolved = %q, want %q", got, wantInside)
 	}
 
 	outside := t.TempDir()
