@@ -39,6 +39,7 @@ import { connection } from "$lib/music/connection.svelte";
 import { toast } from "$lib/ui/toast.svelte";
 import { layout, MOBILE_MEDIA } from "$lib/components/layout/layout.svelte";
 import { loadExtensions } from "$lib/extensions/registry";
+import { checkExtensionUpdates } from "$lib/extensions/updates.svelte";
 
 let mobileMedia: MediaQuery | undefined;
 
@@ -90,6 +91,7 @@ export function runInitialBootstrap(
       await Promise.all([instances.init(), localLibraries.init()]);
       await sources.refreshStatus();
       await loadExtensions();
+      void checkExtensionUpdates();
     }
     setBootstrapped(true);
   })();

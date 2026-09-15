@@ -98,7 +98,9 @@ export function decorateTrack(
   return decoration;
 }
 
-function createExtensionAPI(): ExtensionAPI {
+function createExtensionAPI(
+  settings: Record<string, unknown>,
+): ExtensionAPI {
   return {
     registerTrackRule(rule) {
       declarativeRules.push(rule);
@@ -111,10 +113,84 @@ function createExtensionAPI(): ExtensionAPI {
       }
       return null;
     },
+    settings: Object.freeze({ ...settings }),
   };
 }
 
-async function loadScriptExtension(manifest: ExtensionManifest) {
+// Identifiers shadowed to undefined inside the runner. The audit scans
+// for these statically, but a regex is not a boundary: shadowing is what
+// actually removes them from the script's scope chain. Anything not
+// listed stays reachable (math, strings, JSON, Date), which is all the
+// extension API needs.
+export const SHADOWED_GLOBALS = [
+  "window",
+  "document",
+  "self",
+  "globalThis",
+  "frames",
+  "top",
+  "parent",
+  "opener",
+  "fetch",
+  "XMLHttpRequest",
+  "WebSocket",
+  "EventSource",
+  "navigator",
+  "location",
+  "history",
+  "localStorage",
+  "sessionStorage",
+  "indexedDB",
+  "caches",
+  "open",
+  "alert",
+  "confirm",
+  "prompt",
+  // eval and arguments cannot be parameter names in strict mode. The
+  // audit's static blocklist covers eval instead.
+  "Function",
+  "process",
+  "require",
+  "module",
+  "exports",
+  "importScripts",
+  "postMessage",
+  "customElements",
+  "crypto",
+  "SharedArrayBuffer",
+  "Worker",
+  "setTimeout",
+  "setInterval",
+  "queueMicrotask",
+  "requestAnimationFrame",
+  "close",
+] as const;
+
+// Runs an extension script with every dangerous global rebound to
+// undefined. `new Function` still shares the global scope, so the shadow
+// list is what makes the audit's static blocklist real at runtime.
+// Exported for the sandbox test matrix.
+export function runExtensionScript(
+  source: string,
+  api: ExtensionAPI,
+): unknown {
+  const runner = new Function(
+    "api",
+    "register",
+    ...SHADOWED_GLOBALS,
+    `"use strict";\n${source}\n;return typeof register === 'function' ? register(api) : undefined;`,
+  ) as (
+    api: ExtensionAPI,
+    register: ScriptHook,
+    ...shadowed: undefined[]
+  ) => unknown;
+  return runner(api, undefined as unknown as ScriptHook);
+}
+
+async function loadScriptExtension(
+  manifest: ExtensionManifest,
+  settings: Record<string, unknown>,
+) {
   if (!manifest.script) return;
   const response = await fetch(
     resolveApiUrl(ApiPaths.extensionScript(manifest.id)),
@@ -131,18 +207,8 @@ async function loadScriptExtension(manifest: ExtensionManifest) {
   ) {
     return;
   }
-  const api = createExtensionAPI();
-  const runner = new Function(
-    "api",
-    "register",
-    `"use strict";\n${source}\n;return typeof register === 'function' ? register(api) : undefined;`,
-  ) as (api: ExtensionAPI, register: ScriptHook) => unknown;
-  runner(api, (extensionApi, ctx) => {
-    const result = extensionApi.decorateTrack(ctx);
-    if (result) {
-      scriptDecorators.push(() => result);
-    }
-  });
+  const api = createExtensionAPI(settings);
+  runExtensionScript(source, api);
 }
 
 export async function loadExtensions() {
@@ -160,12 +226,16 @@ export async function loadExtensions() {
   extensionFeatures.applyFromItems(payload.items ?? []);
   declarativeRules.length = 0;
   scriptDecorators.length = 0;
+  const settingsById = new Map<string, Record<string, unknown>>();
+  for (const item of payload.items ?? []) {
+    if (item.settings) settingsById.set(item.id, item.settings);
+  }
   const manifests = payload.manifests ?? [];
   for (const manifest of manifests) {
     for (const rule of manifest.trackRules ?? []) {
       declarativeRules.push(rule);
     }
-    await loadScriptExtension(manifest);
+    await loadScriptExtension(manifest, settingsById.get(manifest.id) ?? {});
   }
   extensionFeatures.applyAppThemeFromManifests(manifests);
   syncExtensionStyles(manifests);

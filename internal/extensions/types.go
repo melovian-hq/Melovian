@@ -29,6 +29,17 @@ type Manifest struct {
 	Script      string       `json:"script,omitempty"`
 	TrackRules  []TrackRule  `json:"trackRules,omitempty"`
 	PlayerHooks []PlayerHook `json:"playerHooks,omitempty"`
+	// Settings declares user-configurable fields the app renders as a form.
+	Settings []SettingField `json:"settings,omitempty"`
+}
+
+// SettingField declares one user-configurable extension option.
+type SettingField struct {
+	Key     string   `json:"key"`
+	Label   string   `json:"label,omitempty"`
+	Type    string   `json:"type"` // boolean | choice | text
+	Options []string `json:"options,omitempty"`
+	Default any      `json:"default,omitempty"`
 }
 
 type TrackMatch struct {
@@ -68,6 +79,8 @@ type Entry struct {
 	Manifest Manifest `json:"manifest"`
 	Dir      string   `json:"dir"`
 	Enabled  bool     `json:"enabled"`
+	// Dev marks a directory-linked development install.
+	Dev bool `json:"dev,omitempty"`
 	// InstalledAt is the extension folder mtime as RFC3339 UTC.
 	InstalledAt string `json:"installedAt,omitempty"`
 }

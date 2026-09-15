@@ -32,6 +32,14 @@ export type TrackRule = {
   decoration: TrackDecoration;
 };
 
+export type ExtensionSettingField = {
+  key: string;
+  label?: string;
+  type: "boolean" | "choice" | "text" | string;
+  options?: string[];
+  default?: unknown;
+};
+
 export type ExtensionManifest = {
   id: string;
   name: string;
@@ -52,6 +60,8 @@ export type ExtensionManifest = {
     when: string;
     style?: Record<string, string>;
   }>;
+  /** Declared user settings rendered as a form by the app. */
+  settings?: ExtensionSettingField[];
 };
 
 export type DecorateTrackContext = {
@@ -67,4 +77,6 @@ export type ExtensionAPI = {
   decorateTrack: (
     ctx: DecorateTrackContext,
   ) => TrackDecoration | null | undefined;
+  /** Read-only snapshot of the extension's configured settings. */
+  settings: Readonly<Record<string, unknown>>;
 };

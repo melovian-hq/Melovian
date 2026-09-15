@@ -144,11 +144,13 @@ export const ApiPaths = {
 
   extensions: "/api/extensions",
   extensionsInstall: "/api/extensions/install",
+  extensionsInstallDir: "/api/extensions/install-dir",
   extensionsRegistry: "/api/extensions/registry",
   extensionsInstallRemote: "/api/extensions/install-remote",
   extensionById: (id: string) => `/api/extensions/${id}`,
   extensionScript: (id: string) => `/api/extensions/${id}/script`,
   extensionEnabled: (id: string) => `/api/extensions/${id}/enabled`,
+  extensionSettings: (id: string) => `/api/extensions/${id}/settings`,
   extensionReinstall: (id: string) => `/api/extensions/${id}/reinstall`,
   extensionAsset: (id: string, path: string) =>
     `/api/extensions/${encodeURIComponent(id)}/assets/${path}`,

@@ -5,6 +5,7 @@ import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
 import { ApiPaths } from "$lib/core/http/api-paths";
 import { readAPIError } from "$lib/core/http/errors";
 import { parseJson } from "$lib/core/http/parse";
+import * as v from "valibot";
 import { extensionsPayloadSchema, registryPayloadSchema } from "./schemas";
 import type { ExtensionManifest } from "./types";
 
@@ -26,6 +27,10 @@ export type ExtensionListItem = {
   appTheme?: string;
   /** Folder mtime of the installed extension as an ISO/RFC3339 string. */
   installedAt?: string;
+  /** Current configured values for declared settings. */
+  settings?: Record<string, unknown>;
+  /** Directory-linked development install. */
+  dev?: boolean;
 };
 
 export type ExtensionsPayload = {
@@ -131,6 +136,16 @@ export type RegistryItem = {
   tags?: string[];
   risk?: string;
   externalUrls?: string[];
+  permissions?: string[];
+  minAppVersion?: string;
+  requires?: string[];
+  delisted?: { reason?: string; at?: string };
+  versions?: {
+    version: string;
+    url?: string;
+    releasedAt?: string;
+    notes?: string;
+  }[];
   iconUrl?: string;
   imageUrl?: string;
   packageUrl?: string;
@@ -155,6 +170,7 @@ export type ExtensionRegistryPayload = {
   url: string;
   generatedAt: string;
   signed: boolean;
+  custom: boolean;
   items: RegistryItem[];
 };
 
@@ -174,17 +190,82 @@ export async function fetchExtensionRegistry(): Promise<ExtensionRegistryPayload
     url: payload.url ?? "",
     generatedAt: payload.generatedAt ?? "",
     signed: payload.signed ?? false,
+    custom: payload.custom ?? false,
     items: payload.items ?? [],
   };
 }
 
+export async function installExtensionDir(
+  path: string,
+): Promise<ExtensionsPayload> {
+  const response = await fetchWithRetry(ApiPaths.extensionsInstallDir, {
+    method: "POST",
+    headers: apiHeaders("application/json"),
+    body: JSON.stringify({ path }),
+  });
+  if (!response.ok) {
+    throw new Error(await readAPIError(response));
+  }
+  return parseExtensionsPayload(response);
+}
+
+export async function saveRegistryConfig(
+  url: string,
+  keys: string[],
+): Promise<void> {
+  const response = await fetchWithRetry(ApiPaths.extensionsRegistry, {
+    method: "PUT",
+    headers: apiHeaders("application/json"),
+    body: JSON.stringify({ url, keys }),
+  });
+  if (!response.ok) {
+    throw new Error(await readAPIError(response));
+  }
+}
+
+export async function clearRegistryConfig(): Promise<void> {
+  const response = await fetchWithRetry(ApiPaths.extensionsRegistry, {
+    method: "DELETE",
+    headers: apiHeaders(),
+  });
+  if (!response.ok) {
+    throw new Error(await readAPIError(response));
+  }
+}
+
+const extensionSettingsPayloadSchema = v.looseObject({
+  schema: v.optional(v.array(v.unknown())),
+  settings: v.optional(v.record(v.string(), v.unknown())),
+});
+
+export async function saveExtensionSettings(
+  id: string,
+  settings: Record<string, unknown>,
+): Promise<Record<string, unknown>> {
+  const response = await fetchWithRetry(ApiPaths.extensionSettings(id), {
+    method: "PUT",
+    headers: apiHeaders("application/json"),
+    body: JSON.stringify({ settings }),
+  });
+  if (!response.ok) {
+    throw new Error(await readAPIError(response));
+  }
+  const payload = await parseJson(
+    extensionSettingsPayloadSchema,
+    response,
+    "extension settings",
+  );
+  return payload.settings ?? {};
+}
+
 export async function installRemoteExtension(
   id: string,
+  version?: string,
 ): Promise<ExtensionsPayload> {
   const response = await fetchWithRetry(ApiPaths.extensionsInstallRemote, {
     method: "POST",
     headers: apiHeaders("application/json"),
-    body: JSON.stringify({ id }),
+    body: JSON.stringify(version ? { id, version } : { id }),
   });
   if (!response.ok) {
     throw new Error(await readAPIError(response));

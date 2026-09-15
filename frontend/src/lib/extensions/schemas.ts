@@ -12,6 +12,7 @@ export const extensionListItemSchema = v.looseObject({
   enabled: v.boolean(),
   installed: v.boolean(),
   bundled: v.boolean(),
+  dev: v.optional(v.boolean()),
   hasScript: v.boolean(),
   scriptSafe: v.boolean(),
   hasWasm: v.boolean(),
@@ -19,6 +20,7 @@ export const extensionListItemSchema = v.looseObject({
   imageUrl: v.optional(v.string()),
   appTheme: v.optional(v.string()),
   installedAt: v.optional(v.string()),
+  settings: v.optional(v.record(v.string(), v.unknown())),
 });
 
 const trackMatchSchema = v.looseObject({
@@ -54,6 +56,14 @@ const playerHookSchema = v.looseObject({
   style: v.optional(v.record(v.string(), v.string())),
 });
 
+const settingFieldSchema = v.looseObject({
+  key: v.string(),
+  label: v.optional(v.string()),
+  type: v.string(),
+  options: v.optional(v.array(v.string())),
+  default: v.optional(v.unknown()),
+});
+
 export const extensionManifestSchema = v.looseObject({
   id: v.string(),
   name: v.string(),
@@ -67,6 +77,7 @@ export const extensionManifestSchema = v.looseObject({
   styles: v.optional(v.array(v.string())),
   trackRules: v.optional(v.array(trackRuleSchema)),
   playerHooks: v.optional(v.array(playerHookSchema)),
+  settings: v.optional(v.array(settingFieldSchema)),
 });
 
 export const extensionsPayloadSchema = v.looseObject({
@@ -86,6 +97,25 @@ export const registryItemSchema = v.looseObject({
   tags: v.optional(v.array(v.string())),
   risk: v.optional(v.string()),
   externalUrls: v.optional(v.array(v.string())),
+  permissions: v.optional(v.array(v.string())),
+  minAppVersion: v.optional(v.string()),
+  requires: v.optional(v.array(v.string())),
+  delisted: v.optional(
+    v.looseObject({
+      reason: v.optional(v.string()),
+      at: v.optional(v.string()),
+    }),
+  ),
+  versions: v.optional(
+    v.array(
+      v.looseObject({
+        version: v.string(),
+        url: v.optional(v.string()),
+        releasedAt: v.optional(v.string()),
+        notes: v.optional(v.string()),
+      }),
+    ),
+  ),
   iconUrl: v.optional(v.string()),
   imageUrl: v.optional(v.string()),
   packageUrl: v.optional(v.string()),
@@ -118,5 +148,6 @@ export const registryPayloadSchema = v.looseObject({
   url: v.optional(v.string()),
   generatedAt: v.optional(v.string()),
   signed: v.optional(v.boolean()),
+  custom: v.optional(v.boolean()),
   items: v.optional(v.nullable(v.array(registryItemSchema))),
 });

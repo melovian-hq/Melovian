@@ -29,10 +29,15 @@ func (h *Handler) Register(mux *http.ServeMux) {
 func (h *Handler) registerExtensionRoutes(mux *http.ServeMux) {
 	mux.HandleFunc("GET /api/extensions", h.handleListExtensions)
 	mux.HandleFunc("POST /api/extensions/install", h.handleInstallExtension)
+	mux.HandleFunc("POST /api/extensions/install-dir", h.handleInstallDir)
 	mux.HandleFunc("GET /api/extensions/registry", h.handleExtensionRegistry)
+	mux.HandleFunc("PUT /api/extensions/registry", h.handlePutRegistry)
+	mux.HandleFunc("DELETE /api/extensions/registry", h.handleDeleteRegistry)
 	mux.HandleFunc("POST /api/extensions/install-remote", h.handleInstallRemoteExtension)
 	mux.HandleFunc("GET /api/extensions/{id}/script", h.handleExtensionScript)
 	mux.HandleFunc("GET /api/extensions/{id}/assets/{path...}", h.handleExtensionAsset)
+	mux.HandleFunc("GET /api/extensions/{id}/settings", h.handleGetExtensionSettings)
+	mux.HandleFunc("PUT /api/extensions/{id}/settings", h.handlePutExtensionSettings)
 	mux.HandleFunc("PUT /api/extensions/{id}/enabled", h.handleSetExtensionEnabled)
 	mux.HandleFunc("DELETE /api/extensions/{id}", h.handleUninstallExtension)
 	mux.HandleFunc("POST /api/extensions/{id}/reinstall", h.handleReinstallExtension)
@@ -51,6 +56,7 @@ type extensionListItem struct {
 	Enabled     bool   `json:"enabled"`
 	Installed   bool   `json:"installed"`
 	Bundled     bool   `json:"bundled"`
+	Dev         bool   `json:"dev,omitempty"`
 	HasScript   bool   `json:"hasScript"`
 	ScriptSafe  bool   `json:"scriptSafe"`
 	HasWasm     bool   `json:"hasWasm"`
@@ -58,6 +64,9 @@ type extensionListItem struct {
 	ImageURL    string `json:"imageUrl,omitempty"`
 	AppTheme    string `json:"appTheme,omitempty"`
 	InstalledAt string `json:"installedAt,omitempty"`
+	// Settings carries the current user-configured values merged over
+	// manifest defaults. Nil when the extension declares no settings.
+	Settings map[string]any `json:"settings,omitempty"`
 }
 
 func extensionAssetURL(id, rel string) string {
@@ -95,6 +104,7 @@ func (h *Handler) buildExtensionList() ([]extensionListItem, []ext.Manifest, err
 			Enabled:     item.Enabled,
 			Installed:   true,
 			Bundled:     ext.IsBundled(item.Manifest.ID),
+			Dev:         item.Dev,
 			HasScript:   strings.TrimSpace(item.Manifest.Script) != "",
 			ScriptSafe:  scriptSafe,
 			HasWasm:     ext.HasWasm(item.Dir),
@@ -102,6 +112,7 @@ func (h *Handler) buildExtensionList() ([]extensionListItem, []ext.Manifest, err
 			ImageURL:    extensionAssetURL(item.Manifest.ID, item.Manifest.Image),
 			AppTheme:    strings.TrimSpace(item.Manifest.AppTheme),
 			InstalledAt: item.InstalledAt,
+			Settings:    ext.LoadSettings(h.cfg.DataDir, item.Manifest),
 		})
 		if !item.Enabled {
 			continue
@@ -268,6 +279,26 @@ func (h *Handler) handleInstallExtension(w http.ResponseWriter, r *http.Request)
 	h.writeExtensionList(w, r)
 }
 
+type installDirRequest struct {
+	Path string `json:"path"`
+}
+
+// handleInstallDir links a local extension directory for development.
+// The path is local machine state, not remote input, so no signature is
+// involved; scripts still face the sandbox and the scriptSafe gate.
+func (h *Handler) handleInstallDir(w http.ResponseWriter, r *http.Request) {
+	var req installDirRequest
+	if err := httputil.DecodeJSONBody(r, &req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", err.Error())
+		return
+	}
+	if _, err := ext.InstallFromDir(h.cfg.DataDir, req.Path); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "install_failed", err.Error())
+		return
+	}
+	h.writeExtensionList(w, r)
+}
+
 type registryListItem struct {
 	ID              string                  `json:"id"`
 	Name            string                  `json:"name"`
@@ -279,6 +310,11 @@ type registryListItem struct {
 	Tags            []string                `json:"tags,omitempty"`
 	Risk            string                  `json:"risk,omitempty"`
 	ExternalURLs    []string                `json:"externalUrls,omitempty"`
+	Permissions     []string                `json:"permissions,omitempty"`
+	MinAppVersion   string                  `json:"minAppVersion,omitempty"`
+	Requires        []string                `json:"requires,omitempty"`
+	Delisted        *ext.RegistryDelisted   `json:"delisted,omitempty"`
+	Versions        []ext.RegistryVersion   `json:"versions,omitempty"`
 	IconURL         string                  `json:"iconUrl,omitempty"`
 	ImageURL        string                  `json:"imageUrl,omitempty"`
 	PackageURL      string                  `json:"packageUrl,omitempty"`
@@ -300,11 +336,12 @@ type registryListItem struct {
 }
 
 type installRemoteRequest struct {
-	ID string `json:"id"`
+	ID      string `json:"id"`
+	Version string `json:"version,omitempty"`
 }
 
 func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request) {
-	index, indexURL, verified, err := ext.FetchRegistry(r.Context())
+	index, indexURL, verified, err := ext.FetchRegistry(r.Context(), h.cfg.DataDir)
 	if err != nil {
 		httputil.WriteError(w, http.StatusBadGateway, "registry_unavailable", err.Error())
 		return
@@ -328,6 +365,11 @@ func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request
 			Tags:          entry.Tags,
 			Risk:          entry.Risk,
 			ExternalURLs:  entry.ExternalURLs,
+			Permissions:   entry.Permissions,
+			MinAppVersion: entry.MinAppVersion,
+			Requires:      entry.Requires,
+			Delisted:      entry.Delisted,
+			Versions:      entry.Versions,
 			IconURL:       ext.ResolveRegistryAsset(indexURL, entry.Icon),
 			ImageURL:      ext.ResolveRegistryAsset(indexURL, entry.Image),
 			PackageURL:    entry.Package.URL,
@@ -351,12 +393,43 @@ func (h *Handler) handleExtensionRegistry(w http.ResponseWriter, r *http.Request
 		}
 		items = append(items, item)
 	}
+	custom := false
+	if o, ok := ext.LoadRegistryOverride(h.cfg.DataDir); ok && o.URL == indexURL {
+		custom = true
+	}
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
 		"url":         indexURL,
 		"generatedAt": index.GeneratedAt,
 		"signed":      verified,
+		"custom":      custom,
 		"items":       items,
 	})
+}
+
+type registryConfigRequest struct {
+	URL  string   `json:"url"`
+	Keys []string `json:"keys"`
+}
+
+func (h *Handler) handlePutRegistry(w http.ResponseWriter, r *http.Request) {
+	var req registryConfigRequest
+	if err := httputil.DecodeJSONBody(r, &req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", err.Error())
+		return
+	}
+	if err := ext.SaveRegistryOverride(h.cfg.DataDir, req.URL, req.Keys); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_registry", err.Error())
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
+}
+
+func (h *Handler) handleDeleteRegistry(w http.ResponseWriter, r *http.Request) {
+	if err := ext.ClearRegistryOverride(h.cfg.DataDir); err != nil {
+		httputil.WriteInternalError(w, r, "clear registry override", err)
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{"ok": true})
 }
 
 func (h *Handler) handleInstallRemoteExtension(w http.ResponseWriter, r *http.Request) {
@@ -371,12 +444,59 @@ func (h *Handler) handleInstallRemoteExtension(w http.ResponseWriter, r *http.Re
 		return
 	}
 	// The package URL comes from the trusted index, not the request, so
-	// clients cannot turn this endpoint into an arbitrary fetch.
-	if _, err := ext.InstallFromRegistry(r.Context(), h.cfg.DataDir, id); err != nil {
+	// clients cannot turn this endpoint into an arbitrary fetch. Version
+	// only selects which published entry to install.
+	if _, err := ext.InstallFromRegistry(r.Context(), h.cfg.DataDir, id, strings.TrimSpace(req.Version)); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "install_failed", err.Error())
 		return
 	}
 	h.writeExtensionList(w, r)
+}
+
+func (h *Handler) extensionManifestFor(w http.ResponseWriter, r *http.Request) (ext.Manifest, bool) {
+	id := strings.TrimSpace(r.PathValue("id"))
+	if id == "" {
+		httputil.WriteError(w, http.StatusBadRequest, "missing_id", "missing id")
+		return ext.Manifest{}, false
+	}
+	entry, err := ext.FindInstalled(h.cfg.DataDir, id)
+	if err != nil {
+		httputil.WriteError(w, http.StatusNotFound, "not_found", "extension not installed")
+		return ext.Manifest{}, false
+	}
+	return entry.Manifest, true
+}
+
+func (h *Handler) handleGetExtensionSettings(w http.ResponseWriter, r *http.Request) {
+	manifest, ok := h.extensionManifestFor(w, r)
+	if !ok {
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"schema":   manifest.Settings,
+		"settings": ext.LoadSettings(h.cfg.DataDir, manifest),
+	})
+}
+
+func (h *Handler) handlePutExtensionSettings(w http.ResponseWriter, r *http.Request) {
+	manifest, ok := h.extensionManifestFor(w, r)
+	if !ok {
+		return
+	}
+	var req struct {
+		Settings map[string]any `json:"settings"`
+	}
+	if err := httputil.DecodeJSONBody(r, &req); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", err.Error())
+		return
+	}
+	if err := ext.SaveSettings(h.cfg.DataDir, manifest, req.Settings); err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "invalid_settings", err.Error())
+		return
+	}
+	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+		"settings": ext.LoadSettings(h.cfg.DataDir, manifest),
+	})
 }
 
 func (h *Handler) handleUninstallExtension(w http.ResponseWriter, r *http.Request) {

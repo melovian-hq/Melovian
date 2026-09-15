@@ -172,6 +172,9 @@ func InstallFromZip(dataDir string, zipData []byte) (Manifest, error) {
 	if strings.TrimSpace(manifest.Name) == "" || strings.TrimSpace(manifest.Version) == "" {
 		return Manifest{}, fmt.Errorf("manifest requires name and version")
 	}
+	if err := ValidateSettings(manifest); err != nil {
+		return Manifest{}, err
+	}
 
 	dest := filepath.Join(ExtensionsDir(dataDir), id)
 	if err := os.MkdirAll(ExtensionsDir(dataDir), 0o750); err != nil {
@@ -225,6 +228,56 @@ func InstallFromZip(dataDir string, zipData []byte) (Manifest, error) {
 		return Manifest{}, err
 	}
 	if err := os.Rename(tmp, dest); err != nil {
+		return Manifest{}, err
+	}
+	if err := clearUninstalled(dataDir, id); err != nil {
+		return Manifest{}, err
+	}
+	return manifest, nil
+}
+
+// InstallFromDir links a local extension work tree into the extensions
+// dir for development. The link means file edits apply on the next
+// extension reload without repacking a zip. The manifest still goes
+// through the same id and settings validation as packaged installs, and
+// scripts remain subject to the sandbox and the scriptSafe gate.
+func InstallFromDir(dataDir, src string) (Manifest, error) {
+	abs, err := filepath.Abs(strings.TrimSpace(src))
+	if err != nil {
+		return Manifest{}, fmt.Errorf("invalid path")
+	}
+	info, err := os.Stat(abs)
+	if err != nil || !info.IsDir() {
+		return Manifest{}, fmt.Errorf("extension directory not found")
+	}
+	data, err := os.ReadFile(filepath.Join(abs, ManifestName))
+	if err != nil {
+		return Manifest{}, fmt.Errorf("missing %s", ManifestName)
+	}
+	manifest, err := ParseManifest(data)
+	if err != nil {
+		return Manifest{}, fmt.Errorf("invalid manifest: %w", err)
+	}
+	id := strings.TrimSpace(manifest.ID)
+	if !IsValidExtensionID(id) {
+		return Manifest{}, fmt.Errorf("invalid extension id")
+	}
+	if strings.TrimSpace(manifest.Name) == "" || strings.TrimSpace(manifest.Version) == "" {
+		return Manifest{}, fmt.Errorf("manifest requires name and version")
+	}
+	if err := ValidateSettings(manifest); err != nil {
+		return Manifest{}, err
+	}
+	if err := os.MkdirAll(ExtensionsDir(dataDir), 0o750); err != nil {
+		return Manifest{}, err
+	}
+	dest := filepath.Join(ExtensionsDir(dataDir), id)
+	// RemoveAll on a symlink drops the link, not the target tree, so a
+	// dev install can be replaced without touching the source.
+	if err := os.RemoveAll(dest); err != nil {
+		return Manifest{}, err
+	}
+	if err := os.Symlink(abs, dest); err != nil {
 		return Manifest{}, err
 	}
 	if err := clearUninstalled(dataDir, id); err != nil {

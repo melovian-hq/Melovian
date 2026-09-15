@@ -27,10 +27,17 @@ func List(dataDir string) ([]Entry, error) {
 
 	out := make([]Entry, 0, len(entries))
 	for _, entry := range entries {
-		if !entry.IsDir() {
+		dir := filepath.Join(root, entry.Name())
+		// Stat rather than DirEntry.IsDir so dev installs, which are
+		// symlinks into a work tree, still resolve as directories.
+		info, err := os.Stat(dir)
+		if err != nil || !info.IsDir() {
 			continue
 		}
-		dir := filepath.Join(root, entry.Name())
+		dev := false
+		if link, lerr := os.Lstat(dir); lerr == nil {
+			dev = link.Mode()&os.ModeSymlink != 0
+		}
 		manifestPath := filepath.Join(dir, ManifestName)
 		data, err := os.ReadFile(manifestPath) //#nosec G304 -- path is under ExtensionsDir
 		if err != nil {
@@ -42,14 +49,12 @@ func List(dataDir string) ([]Entry, error) {
 		}
 		manifest.Styles = SanitizeStyles(manifest.Styles)
 		enabled := !disabledMarker(dir)
-		installedAt := ""
-		if info, err := os.Stat(dir); err == nil {
-			installedAt = info.ModTime().UTC().Format(time.RFC3339)
-		}
+		installedAt := info.ModTime().UTC().Format(time.RFC3339)
 		out = append(out, Entry{
 			Manifest:    manifest,
 			Dir:         dir,
 			Enabled:     enabled,
+			Dev:         dev,
 			InstalledAt: installedAt,
 		})
 	}
@@ -79,6 +84,11 @@ func ReadScript(dataDir, id string) ([]byte, string, error) {
 		return nil, "", err
 	}
 	return data, "application/javascript; charset=utf-8", nil
+}
+
+// FindInstalled returns the installed entry for id.
+func FindInstalled(dataDir, id string) (Entry, error) {
+	return findByID(dataDir, id)
 }
 
 func findByID(dataDir, id string) (Entry, error) {
