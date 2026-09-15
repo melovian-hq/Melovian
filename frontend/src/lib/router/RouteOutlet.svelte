@@ -16,6 +16,8 @@
   } from "./page-motion";
   import { outletState } from "./outlet-state.svelte";
   import type { RouteContentLayout } from "./router.svelte";
+  import { attemptStaleReload, isStaleChunkError } from "$lib/ui/stale-chunk";
+  import { APP_NAME } from "$lib/brand";
 
   interface Props {
     load?: RouteLoader;
@@ -40,6 +42,8 @@
   let shownParams = $state<Record<string, string>>({});
   let coldLoading = $state(true);
   let loadError = $state<string | null>(null);
+  let staleError = $state(false);
+  let refreshing = $state(false);
   let retryToken = $state(0);
   let outletEl = $state<HTMLDivElement | null>(null);
   let viewSnapshot: PinnedViewSnapshot | null = null;
@@ -103,6 +107,7 @@
     let cancelled = false;
 
     loadError = null;
+    staleError = false;
 
     const commit = (next: Component) => {
       Page = next;
@@ -149,8 +154,17 @@
       })
       .catch((err) => {
         if (cancelled) return;
-        loadError = err instanceof Error ? err.message : "Failed to load page";
         coldLoading = false;
+        staleError = isStaleChunkError(err);
+        if (staleError && attemptStaleReload() === "reloading") {
+          refreshing = true;
+          return;
+        }
+        loadError = staleError
+          ? `${APP_NAME} was updated in the background. Refresh to load the latest version.`
+          : err instanceof Error
+            ? err.message
+            : "Failed to load page";
       });
 
     return () => {
@@ -159,6 +173,12 @@
   });
 
   function retryLoad() {
+    // Retrying a stale chunk re-imports the same missing URL, so the
+    // recovery path is a reload rather than another import attempt.
+    if (staleError) {
+      window.location.reload();
+      return;
+    }
     retryToken += 1;
   }
 
@@ -171,7 +191,12 @@
   }
 </script>
 
-{#if coldLoading && !Page}
+{#if refreshing}
+  <div class="route-loading">
+    <Spinner />
+    <p class="route-refreshing">Updating {APP_NAME}...</p>
+  </div>
+{:else if coldLoading && !Page}
   <div class="route-loading"><Spinner /></div>
 {:else if loadError}
   <!-- A failed lazy load replaces the stale page so the retry affordance is
@@ -224,5 +249,13 @@
     min-height: 12rem;
     display: grid;
     place-content: center;
+    justify-items: center;
+    gap: 0.75rem;
+  }
+
+  .route-refreshing {
+    margin: 0;
+    font-size: 0.875rem;
+    color: var(--jb-text-muted);
   }
 </style>

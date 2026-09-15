@@ -8,6 +8,10 @@ import {
   reportFatalError,
   installGlobalErrorHandlers,
 } from "$lib/ui/boot-error";
+import {
+  configureStaleChunkHandling,
+  installStaleChunkHandlers,
+} from "$lib/ui/stale-chunk";
 import { installInsecureContextPolyfills } from "$lib/utils/uuid";
 import { mount } from "svelte";
 import "./app.css";
@@ -18,11 +22,13 @@ import { setStaticDemo } from "$lib/config/runtime";
 installInsecureContextPolyfills();
 initSentryFromBuildEnv();
 installGlobalErrorHandlers();
+installStaleChunkHandlers();
 
 // PWA shell + auto-update. The reload is deferred while audio is playing so
 // an update can never cut a track mid-stream.
 void import("$lib/config/music.svelte")
   .then(({ music }) => {
+    configureStaleChunkHandling({ isPlaying: () => music.playing });
     registerServiceWorker({
       isPlaying: () => music.playing,
       onUpdateReady: () => {

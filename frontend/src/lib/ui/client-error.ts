@@ -1,6 +1,9 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import { APP_NAME } from "$lib/brand";
+import { isStaleChunkError } from "$lib/ui/stale-chunk";
+
 export interface ClientErrorView {
   message: string;
   detail?: string;
@@ -31,6 +34,13 @@ export function mapClientError(error: unknown): ClientErrorView {
   ) {
     return {
       message: "Sign-in failed or your session expired.",
+      detail,
+    };
+  }
+
+  if (isStaleChunkError(error)) {
+    return {
+      message: `${APP_NAME} was updated in the background. Refresh to load the latest version.`,
       detail,
     };
   }
