@@ -1,0 +1,9 @@
+{
+  "id": "navidrome",
+  "name": "Navidrome",
+  "version": "1.0.0",
+  "description": "Navidrome music source. Subsonic-compatible browsing and streaming plus Navidrome-native smart playlists and server events.",
+  "author": "Melovian",
+  "icon": "assets/icon.svg",
+  "image": "assets/icon.svg"
+}

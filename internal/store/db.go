@@ -81,6 +81,9 @@ func (db *DB) runMigrations(legacy appconfig.Config) error {
 	if err := db.migrateInstancesUserID(); err != nil {
 		return err
 	}
+	if err := db.migrateInstancesSourceID(); err != nil {
+		return err
+	}
 	if err := db.provisionConfiguredSources(legacy); err != nil {
 		return err
 	}
@@ -278,6 +281,16 @@ CREATE INDEX IF NOT EXISTS idx_local_tracks_library_media ON local_tracks(librar
 
 func (db *DB) migrateInstancesUserID() error {
 	_, err := db.exec(`ALTER TABLE subsonic_instances ADD COLUMN user_id TEXT NOT NULL DEFAULT ''`)
+	if err != nil && !db.dialect.IsDuplicateColumn(err) {
+		return err
+	}
+	return nil
+}
+
+// migrateInstancesSourceID adds the source extension column. Existing
+// rows become Subsonic instances, matching the pre-migration behavior.
+func (db *DB) migrateInstancesSourceID() error {
+	_, err := db.exec(`ALTER TABLE subsonic_instances ADD COLUMN source_id TEXT NOT NULL DEFAULT 'subsonic'`)
 	if err != nil && !db.dialect.IsDuplicateColumn(err) {
 		return err
 	}

@@ -65,7 +65,14 @@ export async function detectServers(): Promise<DetectedServer[]> {
   return (payload.servers ?? []).filter((server) => server.reachable);
 }
 
-export async function testInstance(input: InstanceInput): Promise<string> {
+export interface InstanceTestResult {
+  serverName: string;
+  sourceId?: string;
+}
+
+export async function testInstance(
+  input: InstanceInput,
+): Promise<InstanceTestResult> {
   const response = await fetchWithRetry(ApiPaths.instancesTest, {
     method: "POST",
     headers: apiHeaders("application/json"),
@@ -77,7 +84,10 @@ export async function testInstance(input: InstanceInput): Promise<string> {
     response,
     "instance test",
   );
-  return payload.serverName ?? "Connected";
+  return {
+    serverName: payload.serverName ?? "Connected",
+    sourceId: payload.sourceId,
+  };
 }
 
 export async function updateInstance(

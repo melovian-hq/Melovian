@@ -9,6 +9,7 @@ export const subsonicInstanceSchema = v.looseObject({
   serverUrl: v.string(),
   username: v.string(),
   serverName: v.string(),
+  sourceId: v.optional(v.string()),
   createdAt: v.string(),
   updatedAt: v.string(),
   lastUsedAt: v.optional(v.string()),
@@ -25,6 +26,7 @@ export const activeInstanceProbeSchema = v.looseObject({
 
 export const instanceTestResponseSchema = v.looseObject({
   serverName: v.optional(v.string()),
+  sourceId: v.optional(v.string()),
 });
 
 export const detectedServerSchema = v.looseObject({
@@ -32,6 +34,7 @@ export const detectedServerSchema = v.looseObject({
   serverName: v.optional(v.string(), ""),
   version: v.optional(v.string(), ""),
   reachable: v.optional(v.boolean(), true),
+  sourceId: v.optional(v.string()),
 });
 
 export const detectServersResponseSchema = v.looseObject({
@@ -43,6 +46,7 @@ export const instancePingSchema = v.looseObject({
   latencyMs: v.number(),
   serverName: v.optional(v.string()),
   version: v.optional(v.string()),
+  sourceId: v.optional(v.string()),
   songCount: v.optional(v.number()),
   error: v.optional(v.string()),
 });

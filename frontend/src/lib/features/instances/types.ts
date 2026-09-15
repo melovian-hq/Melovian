@@ -7,6 +7,7 @@ export interface SubsonicInstance {
   serverUrl: string;
   username: string;
   serverName: string;
+  sourceId?: string;
   createdAt: string;
   updatedAt: string;
   lastUsedAt?: string;
@@ -24,4 +25,5 @@ export interface DetectedServer {
   serverName: string;
   version: string;
   reachable: boolean;
+  sourceId?: string;
 }

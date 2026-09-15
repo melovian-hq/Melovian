@@ -148,10 +148,10 @@ func SeedUserData(listen *store.ListenStore, userID string) error {
 }
 
 // EnsureInstance creates the fake demo Subsonic instance when missing.
-func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, error) {
+func EnsureInstance(instances *store.InstanceStore) (store.SourceInstance, error) {
 	items, err := instances.List()
 	if err != nil {
-		return store.SubsonicInstance{}, err
+		return store.SourceInstance{}, err
 	}
 	for _, inst := range items {
 		if IsFakeURL(inst.ServerURL) {
@@ -165,7 +165,7 @@ func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, err
 			return active, nil
 		}
 		if !errors.Is(err, sql.ErrNoRows) {
-			return store.SubsonicInstance{}, err
+			return store.SourceInstance{}, err
 		}
 	}
 	inst, err := instances.Create(store.CreateInstanceInput{
@@ -176,10 +176,10 @@ func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, err
 		ServerName: ServerName,
 	})
 	if err != nil {
-		return store.SubsonicInstance{}, err
+		return store.SourceInstance{}, err
 	}
 	if err := instances.SetActive(inst.ID); err != nil {
-		return store.SubsonicInstance{}, err
+		return store.SourceInstance{}, err
 	}
 	return inst, nil
 }
@@ -187,7 +187,7 @@ func EnsureInstance(instances *store.InstanceStore) (store.SubsonicInstance, err
 // normalizeDemoInstance repairs display fields on a provisioned fake instance.
 // Config provisioning names the row "Default" and leaves serverName empty,
 // which shows up in the instance switcher instead of the demo library name.
-func normalizeDemoInstance(instances *store.InstanceStore, inst store.SubsonicInstance) store.SubsonicInstance {
+func normalizeDemoInstance(instances *store.InstanceStore, inst store.SourceInstance) store.SourceInstance {
 	name := inst.Name
 	if name == "Default" {
 		name = ServerName

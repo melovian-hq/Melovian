@@ -6,6 +6,7 @@ package instances
 import (
 	"database/sql"
 	"errors"
+	"fmt"
 	"log/slog"
 	"net/http"
 	"strings"
@@ -15,6 +16,8 @@ import (
 	"melovian/internal/appconfig"
 	"melovian/internal/httputil"
 	"melovian/internal/melog"
+	"melovian/internal/navidrome"
+	"melovian/internal/sources"
 	"melovian/internal/store"
 	"melovian/internal/subsonic"
 )
@@ -25,15 +28,30 @@ type Handler struct {
 	localLibraries *store.LocalLibraryStore
 	preferences    *store.PreferencesStore
 	resolver       *apishared.Resolver
+	sources        *sources.Registry
+	sourceEvents   *sources.EventBridge
 	cfg            appconfig.Config
 }
 
-func New(instances *store.InstanceStore, localLibraries *store.LocalLibraryStore, preferences *store.PreferencesStore, resolver *apishared.Resolver, cfg appconfig.Config) *Handler {
+// SetSourceEvents attaches the bridge that mirrors upstream source event
+// streams onto the websocket hub. Optional; nil-safe.
+func (h *Handler) SetSourceEvents(b *sources.EventBridge) {
+	h.sourceEvents = b
+}
+
+func (h *Handler) syncSourceEvents(userID string) {
+	if h.sourceEvents != nil {
+		h.sourceEvents.SyncUser(userID)
+	}
+}
+
+func New(instances *store.InstanceStore, localLibraries *store.LocalLibraryStore, preferences *store.PreferencesStore, resolver *apishared.Resolver, reg *sources.Registry, cfg appconfig.Config) *Handler {
 	return &Handler{
 		instances:      instances,
 		localLibraries: localLibraries,
 		preferences:    preferences,
 		resolver:       resolver,
+		sources:        reg,
 		cfg:            cfg,
 	}
 }
@@ -65,6 +83,37 @@ type instanceRequest struct {
 	Username   string `json:"username"`
 	Password   string `json:"password"`
 	ServerName string `json:"serverName"`
+	// SourceID selects the backing source extension. Empty means
+	// auto-detect from the server ping, falling back to subsonic.
+	SourceID string `json:"sourceId"`
+}
+
+// resolveSourceID picks the source extension for an instance. An explicit
+// request value wins; otherwise the detected server identity decides.
+func (h *Handler) resolveSourceID(requested, serverName, version string) (string, error) {
+	if requested != "" {
+		if h.sources != nil {
+			if _, ok := h.sources.Get(requested); !ok {
+				return "", fmt.Errorf("unknown source %q; valid values: %s", requested, h.sourceIDs())
+			}
+		}
+		return requested, nil
+	}
+	if navidrome.IsNavidromeServer(serverName, version) {
+		return sources.NavidromeSourceID, nil
+	}
+	return store.DefaultSourceID, nil
+}
+
+func (h *Handler) sourceIDs() string {
+	ids := make([]string, 0)
+	if h.sources == nil {
+		return store.DefaultSourceID
+	}
+	for _, s := range h.sources.List() {
+		ids = append(ids, s.ID())
+	}
+	return strings.Join(ids, ", ")
 }
 
 // validateInstanceServerURL rejects non HTTP(S) upstreams and URLs that embed
@@ -110,13 +159,22 @@ func (h *Handler) handleCreateInstance(w http.ResponseWriter, r *http.Request) {
 	}
 
 	client := subsonic.NewClient(req.ServerURL, req.Username, req.Password)
-	serverName, _, err := client.Ping()
+	serverName, version, err := client.Ping()
 	if err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "bad_request", "connection test failed: "+err.Error())
 		return
 	}
 	if req.ServerName == "" {
 		req.ServerName = serverName
+	}
+	sourceID, err := h.resolveSourceID(req.SourceID, serverName, version)
+	if err != nil {
+		httputil.WriteError(w, http.StatusBadRequest, "unknown_source", err.Error())
+		return
+	}
+	if h.sources != nil && !h.sources.Enabled(sourceID) {
+		httputil.WriteError(w, http.StatusConflict, "source_disabled", "the "+sourceID+" extension is disabled")
+		return
 	}
 
 	inst, err := h.instances.CreateForUser(apishared.UserIDFromContext(r.Context()), store.CreateInstanceInput{
@@ -125,6 +183,7 @@ func (h *Handler) handleCreateInstance(w http.ResponseWriter, r *http.Request) {
 		Username:   req.Username,
 		Password:   req.Password,
 		ServerName: req.ServerName,
+		SourceID:   sourceID,
 	})
 	if err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
@@ -168,10 +227,13 @@ func (h *Handler) handleTestInstance(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	sourceID, sourceErr := h.resolveSourceID(req.SourceID, serverName, version)
 	httputil.WriteJSON(w, http.StatusOK, map[string]any{
-		"connected":  true,
-		"serverName": serverName,
-		"version":    version,
+		"connected":   true,
+		"serverName":  serverName,
+		"version":     version,
+		"sourceId":    sourceID,
+		"sourceKnown": sourceErr == nil,
 	})
 }
 
@@ -191,6 +253,14 @@ func (h *Handler) handleGetActiveInstance(w http.ResponseWriter, r *http.Request
 func (h *Handler) handleActivateInstance(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userID := apishared.UserIDFromContext(r.Context())
+	if h.sources != nil {
+		if inst, err := h.instances.GetForUser(userID, id); err == nil {
+			if _, availErr := h.sources.Available(inst); availErr != nil {
+				httputil.WriteError(w, http.StatusConflict, "source_unavailable", "the "+inst.SourceOrDefault()+" source is unavailable (extension disabled or unhealthy)")
+				return
+			}
+		}
+	}
 	if err := h.instances.SetActiveForUser(userID, id); err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
@@ -210,6 +280,7 @@ func (h *Handler) handleActivateInstance(w http.ResponseWriter, r *http.Request)
 		return
 	}
 	_ = h.instances.TouchLastUsed(id)
+	h.syncSourceEvents(userID)
 
 	inst, err := h.instances.GetForUser(userID, id)
 	if err != nil {
@@ -234,7 +305,12 @@ func (h *Handler) handlePingInstance(w http.ResponseWriter, r *http.Request) {
 
 	client := subsonic.NewClient(inst.ServerURL, inst.Username, inst.Password)
 	start := time.Now()
-	serverName, version, err := client.Ping()
+	var serverName, version string
+	if h.sources != nil {
+		serverName, version, err = h.sources.PingInstance(r.Context(), inst)
+	} else {
+		serverName, version, err = client.Ping()
+	}
 	latencyMs := time.Since(start).Milliseconds()
 	if err != nil {
 		httputil.WriteJSON(w, http.StatusOK, map[string]any{
@@ -250,6 +326,7 @@ func (h *Handler) handlePingInstance(w http.ResponseWriter, r *http.Request) {
 		"latencyMs":  latencyMs,
 		"serverName": serverName,
 		"version":    version,
+		"sourceId":   inst.SourceOrDefault(),
 	}
 	if stats, statsErr := client.LibraryStats(); statsErr == nil {
 		payload["songCount"] = stats.SongCount
@@ -296,12 +373,19 @@ func (h *Handler) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
+	if req.SourceID != "" && h.sources != nil {
+		if _, ok := h.sources.Get(req.SourceID); !ok {
+			httputil.WriteError(w, http.StatusBadRequest, "unknown_source", "unknown source "+req.SourceID)
+			return
+		}
+	}
 	inst, err := h.instances.Update(id, store.UpdateInstanceInput{
 		Name:       req.Name,
 		ServerURL:  req.ServerURL,
 		Username:   req.Username,
 		Password:   req.Password,
 		ServerName: req.ServerName,
+		SourceID:   req.SourceID,
 	})
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
@@ -317,6 +401,7 @@ func (h *Handler) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 	activeID, _ := h.instances.GetActiveIDForUser(userID)
 	if activeID == id {
 		_ = h.resolver.ReloadActive()
+		h.syncSourceEvents(userID)
 	}
 
 	httputil.WriteJSON(w, http.StatusOK, h.instances.PublicView(inst))
@@ -354,6 +439,7 @@ func (h *Handler) handleDeleteInstance(w http.ResponseWriter, r *http.Request) {
 		_ = h.instances.ClearActiveForUser(userID)
 		_ = h.resolver.ReloadActive()
 	}
+	h.syncSourceEvents(userID)
 
 	w.WriteHeader(http.StatusNoContent)
 }

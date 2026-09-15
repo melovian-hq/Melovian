@@ -34,6 +34,7 @@ import (
 	"melovian/internal/jukebox"
 	"melovian/internal/localmusic"
 	"melovian/internal/observability"
+	"melovian/internal/sources"
 	"melovian/internal/store"
 	"melovian/internal/subsonic"
 	"melovian/internal/subsonicserver"
@@ -52,6 +53,8 @@ type Server struct {
 	downloads        *store.DownloadStore
 	videoLinks       *store.TrackVideoLinkStore
 	resolver         *apishared.Resolver
+	sources          *sources.Registry
+	sourceEvents     *sources.EventBridge
 	mux              *http.ServeMux
 	server           *http.Server
 	listenAddr       string
@@ -104,19 +107,22 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	events := realtime.NewEventHub()
 
 	s := &Server{
-		cfg:              cfg,
-		db:               db,
-		instances:        instances,
-		localLibraries:   localLibraries,
-		localTracks:      localTracks,
-		auth:             store.NewAuthStore(db, cfg.AuthSecret),
-		listen:           listen,
-		preferences:      preferences,
-		downloads:        downloads,
-		videoLinks:       store.NewTrackVideoLinkStore(db),
-		mux:              http.NewServeMux(),
-		cache:            responseCache,
-		resolver:         apishared.NewResolver(instances),
+		cfg:            cfg,
+		db:             db,
+		instances:      instances,
+		localLibraries: localLibraries,
+		localTracks:    localTracks,
+		auth:           store.NewAuthStore(db, cfg.AuthSecret),
+		listen:         listen,
+		preferences:    preferences,
+		downloads:      downloads,
+		videoLinks:     store.NewTrackVideoLinkStore(db),
+		mux:            http.NewServeMux(),
+		cache:          responseCache,
+		resolver:       apishared.NewResolver(instances),
+		sources: sources.DefaultRegistry(func(id string) bool {
+			return extensions.IsEnabled(cfg.DataDir, id)
+		}),
 		downloadSem:      make(chan struct{}, 3),
 		catalogCache:     localmusic.NewCatalogCache(),
 		coverCache:       localmusic.NewCoverCache(),
@@ -150,6 +156,8 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	if err := extensions.InstallBundled(cfg.DataDir); err != nil {
 		slog.Error("failed to install bundled extensions", "err", err)
 	}
+	s.sourceEvents = sources.NewEventBridge(s.sources, s.events, s.instances)
+	go s.sourceEvents.SyncAll()
 
 	musicSvc := music.NewMusicService(listen, preferences, cfg.DataDir, httputil.NewRetryHTTPClient())
 	musicSvc.Register(s.mux)
@@ -179,7 +187,8 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	if err := observability.InitOTel(context.Background()); err != nil {
 		slog.Error("otel init failed", "err", err)
 	}
-	s.instancesH = instancesapi.New(s.instances, s.localLibraries, s.preferences, s.resolver, s.cfg)
+	s.instancesH = instancesapi.New(s.instances, s.localLibraries, s.preferences, s.resolver, s.sources, s.cfg)
+	s.instancesH.SetSourceEvents(s.sourceEvents)
 	s.instancesH.Register(s.mux)
 	s.realtimeH = realtime.New(s.auth, s.events, s.devices)
 	s.realtimeH.Register(s.mux)
@@ -200,7 +209,7 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	s.videosH.Register(s.mux)
 	extensionsH := extapi.New(s.cfg)
 	extensionsH.Register(s.mux)
-	music.NewProxyHandler(s.cfg, s.instances, s.localLibraries, s.localTracks, s.preferences, s.resolver, s.cache).Register(s.mux)
+	music.NewProxyHandler(s.cfg, s.instances, s.localLibraries, s.localTracks, s.preferences, s.resolver, s.sources, s.cache).Register(s.mux)
 	s.downloadsH = downloadsapi.New(downloadsapi.Deps{
 		Config:      s.cfg,
 		Downloads:   s.downloads,
@@ -287,6 +296,9 @@ func (s *Server) ListenAddr() string {
 }
 
 func (s *Server) Stop(ctx context.Context) error {
+	if s.sourceEvents != nil {
+		s.sourceEvents.StopAll()
+	}
 	if s.libraryH != nil {
 		s.libraryH.Close()
 	}

@@ -34,13 +34,20 @@ func (h *Handler) handleSourceStatus(w http.ResponseWriter, r *http.Request) {
 	localID, _ := h.localLibraries.GetActiveIDForUser(userID)
 	multiLocal, _ := h.preferences.GetMultiLocalLibrary(userID)
 
-	httputil.WriteJSON(w, http.StatusOK, map[string]any{
+	payload := map[string]any{
 		"mode":              mode,
 		"activeInstanceId":  subsonicID,
 		"activeLocalId":     localID,
 		"multiLocalLibrary": multiLocal,
 		"unifiedAvailable":  subsonicID != "" && localID != "" && h.localLibraryEnabled(),
-	})
+	}
+	if h.sources != nil {
+		payload["sources"] = h.sources.Info()
+		if inst, err := h.instances.GetForUser(userID, subsonicID); err == nil {
+			payload["activeSourceId"] = inst.SourceOrDefault()
+		}
+	}
+	httputil.WriteJSON(w, http.StatusOK, payload)
 }
 
 func (h *Handler) handleSetMultiLocalLibrary(w http.ResponseWriter, r *http.Request) {

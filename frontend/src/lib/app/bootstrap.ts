@@ -7,6 +7,7 @@ import { music } from "$lib/config/music.svelte";
 import { instances } from "$lib/features/instances/store.svelte";
 import { localLibraries } from "$lib/features/local-libraries/store.svelte";
 import { sources } from "$lib/features/sources/store.svelte";
+import { bindSourceEvents } from "$lib/features/sources/events";
 import { auth } from "$lib/features/auth/store.svelte";
 import { eventSocket } from "$lib/core/events/ws.svelte";
 import { deviceSync } from "$lib/music/device-sync.svelte";
@@ -118,9 +119,11 @@ export function connectRealtimeServices(
   // re-ran this effect, called disconnect(), and permanently killed WS.
   const unbindScans = untrack(() => localLibraries.bindEvents());
   const unbindTasks = untrack(() => tasks.bindEvents());
+  const unbindSourceEvents = untrack(() => bindSourceEvents());
   return () => {
     unbindScans?.();
     unbindTasks?.();
+    unbindSourceEvents?.();
   };
 }
 

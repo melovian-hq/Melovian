@@ -308,6 +308,9 @@ func Uninstall(dataDir, id string) error {
 	if !IsValidExtensionID(id) {
 		return fmt.Errorf("invalid extension id")
 	}
+	if BundledRequired[id] {
+		return fmt.Errorf("extension %q is required and cannot be uninstalled", id)
+	}
 	entry, err := findByID(dataDir, id)
 	if err != nil {
 		return err

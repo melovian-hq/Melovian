@@ -643,7 +643,7 @@
                   </p>
                 {/if}
                 <div class="extensions-settings__actions">
-                  {#if item.installed}
+                  {#if item.installed && !item.required}
                     <Button
                       size="sm"
                       variant="ghost"

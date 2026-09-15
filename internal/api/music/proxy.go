@@ -9,6 +9,7 @@ import (
 	"melovian/internal/appconfig"
 	"melovian/internal/cache"
 	"melovian/internal/httputil"
+	"melovian/internal/sources"
 	"melovian/internal/store"
 	"melovian/internal/subsonic"
 	"net/http"
@@ -23,10 +24,11 @@ type ProxyHandler struct {
 	localTracks    *store.LocalTrackStore
 	preferences    *store.PreferencesStore
 	resolver       *apishared.Resolver
+	sources        *sources.Registry
 	cache          *cache.ResponseCache
 }
 
-func NewProxyHandler(cfg appconfig.Config, instances *store.InstanceStore, localLibraries *store.LocalLibraryStore, localTracks *store.LocalTrackStore, preferences *store.PreferencesStore, resolver *apishared.Resolver, cache *cache.ResponseCache) *ProxyHandler {
+func NewProxyHandler(cfg appconfig.Config, instances *store.InstanceStore, localLibraries *store.LocalLibraryStore, localTracks *store.LocalTrackStore, preferences *store.PreferencesStore, resolver *apishared.Resolver, reg *sources.Registry, cache *cache.ResponseCache) *ProxyHandler {
 	return &ProxyHandler{
 		cfg:            cfg,
 		instances:      instances,
@@ -34,6 +36,7 @@ func NewProxyHandler(cfg appconfig.Config, instances *store.InstanceStore, local
 		localTracks:    localTracks,
 		preferences:    preferences,
 		resolver:       resolver,
+		sources:        reg,
 		cache:          cache,
 	}
 }
@@ -72,6 +75,9 @@ func (h *ProxyHandler) Register(mux *http.ServeMux) {
 		}
 
 		if instanceID != "" || store.IsSubsonicSourceView(mode) {
+			if h.sourceUnavailable(w, r) {
+				return
+			}
 			client := h.resolver.ForContext(r.Context())
 			subsonic.StatusHandler(client, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID)(w, r)
 			return
@@ -85,6 +91,9 @@ func (h *ProxyHandler) Register(mux *http.ServeMux) {
 				"version":    "local",
 				"source":     "local",
 			})
+			return
+		}
+		if h.sourceUnavailable(w, r) {
 			return
 		}
 		client := h.resolver.ForContext(r.Context())
@@ -136,6 +145,9 @@ func (h *ProxyHandler) Register(mux *http.ServeMux) {
 		}
 
 		if instanceID != "" || store.IsSubsonicSourceView(mode) {
+			if h.sourceUnavailable(w, r) {
+				return
+			}
 			client := h.resolver.ForContext(r.Context())
 			subsonic.LibraryStatsHandler(client, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID)(w, r)
 			return
@@ -161,8 +173,75 @@ func (h *ProxyHandler) Register(mux *http.ServeMux) {
 	mux.HandleFunc("POST /api/music/library/refresh", h.handleRefreshLibraryCache)
 
 	proxy := subsonic.NewProxy(h.subsonicForContext, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID)
-	mux.Handle("/api/subsonic/", proxy)
-	mux.Handle("/api/subsonic", proxy)
+	if h.sources != nil {
+		mux.Handle("/api/subsonic/", http.HandlerFunc(h.serveSourceREST))
+		mux.Handle("/api/subsonic", http.HandlerFunc(h.serveSourceREST))
+	} else {
+		mux.Handle("/api/subsonic/", proxy)
+		mux.Handle("/api/subsonic", proxy)
+	}
+}
+
+// sourceUnavailable writes a disconnected status when the resolved
+// instance's source extension is disabled, unknown, or breaker-open.
+// It returns true when it wrote a response.
+func (h *ProxyHandler) sourceUnavailable(w http.ResponseWriter, r *http.Request) bool {
+	if h.sources == nil {
+		return false
+	}
+	userID := apishared.UserIDFromContext(r.Context())
+	instanceID, err := h.resolver.ResolveInstanceID(r)
+	if err != nil || instanceID == "" {
+		return false
+	}
+	inst, err := h.instances.GetForUser(userID, instanceID)
+	if err != nil {
+		return false
+	}
+	status := subsonic.StatusResponse{Enabled: true, Connected: false}
+	if _, srcErr := h.sources.Available(inst); srcErr != nil {
+		status.Error = srcErr.Error()
+		httputil.WriteJSON(w, http.StatusOK, status)
+		return true
+	}
+	if err := h.sources.AllowRequest(inst.ID); err != nil {
+		status.ServerName = inst.ServerName
+		status.Error = err.Error()
+		httputil.WriteJSON(w, http.StatusOK, status)
+		return true
+	}
+	return false
+}
+
+// sourceDeps builds the shared infrastructure handed to a source while it
+// serves one request.
+func (h *ProxyHandler) sourceDeps() sources.Deps {
+	return sources.Deps{
+		Cache:        h.cache,
+		CacheEnabled: h.cfg.CacheEnabled,
+		CacheScope:   apishared.ResolveProgressUserID,
+		ClientFor: func(inst store.SourceInstance) *subsonic.Client {
+			return h.resolver.CachedClient(inst.ID, inst.ServerURL, inst.Username, inst.Password)
+		},
+	}
+}
+
+// serveSourceREST dispatches a proxied request to the source extension
+// backing the resolved instance. Requests with no resolvable instance
+// fall back to the legacy active-client proxy.
+func (h *ProxyHandler) serveSourceREST(w http.ResponseWriter, r *http.Request) {
+	userID := apishared.UserIDFromContext(r.Context())
+	instanceID, err := h.resolver.ResolveInstanceID(r)
+	if err != nil || instanceID == "" {
+		subsonic.NewProxy(h.subsonicForContext, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID).ServeHTTP(w, r)
+		return
+	}
+	inst, err := h.instances.GetForUser(userID, instanceID)
+	if err != nil {
+		subsonic.NewProxy(h.subsonicForContext, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID).ServeHTTP(w, r)
+		return
+	}
+	h.sources.ServeREST(w, r, inst, h.sourceDeps())
 }
 
 func (h *ProxyHandler) handleRefreshLibraryCache(w http.ResponseWriter, r *http.Request) {

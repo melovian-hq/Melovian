@@ -170,7 +170,7 @@ func (h *Handler) smartPlaylistCapability(r *http.Request) (bool, string, string
 		}
 	}
 
-	looksNavidrome := navidrome.IsNavidromeServer(serverName, version)
+	looksNavidrome := navidrome.IsNavidromeServer(serverName, version) || inst.SourceOrDefault() == "navidrome"
 	nd := navidrome.NewClient(inst.ServerURL, inst.Username, inst.Password)
 	ctx, cancel := context.WithTimeout(r.Context(), consts.SmartPlaylistPreviewTimeout)
 	defer cancel()
@@ -191,25 +191,25 @@ func (h *Handler) smartPlaylistCapability(r *http.Request) (bool, string, string
 	return true, "client", "", nil
 }
 
-func (h *Handler) subsonicInstanceForRequest(r *http.Request) (store.SubsonicInstance, error) {
+func (h *Handler) subsonicInstanceForRequest(r *http.Request) (store.SourceInstance, error) {
 	instanceID, err := h.resolver.ResolveInstanceID(r)
 	if err != nil {
-		return store.SubsonicInstance{}, err
+		return store.SourceInstance{}, err
 	}
 	if strings.TrimSpace(instanceID) == "" {
-		return store.SubsonicInstance{}, errors.New("no subsonic instance configured")
+		return store.SourceInstance{}, errors.New("no subsonic instance configured")
 	}
 
 	userID := apishared.UserIDFromContext(r.Context())
 	inst, err := h.instances.GetForUser(userID, instanceID)
 	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
-			return store.SubsonicInstance{}, errors.New("unknown subsonic instance")
+			return store.SourceInstance{}, errors.New("unknown subsonic instance")
 		}
-		return store.SubsonicInstance{}, err
+		return store.SourceInstance{}, err
 	}
 	if strings.TrimSpace(inst.ServerURL) == "" {
-		return store.SubsonicInstance{}, errors.New("subsonic server URL is missing")
+		return store.SourceInstance{}, errors.New("subsonic server URL is missing")
 	}
 	return inst, nil
 }

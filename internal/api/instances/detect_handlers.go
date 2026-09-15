@@ -15,6 +15,9 @@ import (
 	"time"
 
 	"melovian/internal/httputil"
+	"melovian/internal/navidrome"
+	"melovian/internal/sources"
+	"melovian/internal/store"
 )
 
 const (
@@ -32,6 +35,9 @@ type detectedServer struct {
 	ServerName string `json:"serverName"`
 	Version    string `json:"version"`
 	Reachable  bool   `json:"reachable"`
+	// SourceID is the source extension that should back this server,
+	// detected from the ping identity.
+	SourceID string `json:"sourceId"`
 }
 
 // detectCandidateURLs is a var so tests can inject httptest servers.
@@ -196,11 +202,16 @@ func probeSubsonic(ctx context.Context, client *http.Client, base string) (detec
 	if version == "" {
 		version = env.Version
 	}
+	sourceID := store.DefaultSourceID
+	if navidrome.IsNavidromeServer(name, version) {
+		sourceID = sources.NavidromeSourceID
+	}
 	return detectedServer{
 		URL:        base,
 		ServerName: name,
 		Version:    version,
 		Reachable:  true,
+		SourceID:   sourceID,
 	}, true
 }
 

@@ -118,3 +118,101 @@ func TestLegacyMigrationFromSettings(t *testing.T) {
 		t.Fatalf("expected migrated instance to be active")
 	}
 }
+
+func TestInstanceSourceIDDefaultsAndRoundtrip(t *testing.T) {
+	db := OpenTestDB(t)
+	store := NewInstanceStore(db)
+
+	inst, err := store.Create(CreateInstanceInput{
+		Name:      "Home",
+		ServerURL: "http://music.example.com",
+		Username:  "user",
+		Password:  "secret",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if inst.SourceID != DefaultSourceID {
+		t.Fatalf("expected default source %q, got %q", DefaultSourceID, inst.SourceID)
+	}
+	if inst.SourceOrDefault() != DefaultSourceID {
+		t.Fatalf("SourceOrDefault = %q", inst.SourceOrDefault())
+	}
+
+	got, err := store.Get(inst.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.SourceID != DefaultSourceID {
+		t.Fatalf("roundtrip source = %q", got.SourceID)
+	}
+
+	view := store.PublicView(got)
+	if view["sourceId"] != DefaultSourceID {
+		t.Fatalf("public view sourceId = %v", view["sourceId"])
+	}
+
+	updated, err := store.Update(inst.ID, UpdateInstanceInput{SourceID: "navidrome"})
+	if err != nil {
+		t.Fatalf("Update: %v", err)
+	}
+	if updated.SourceID != "navidrome" {
+		t.Fatalf("expected navidrome, got %q", updated.SourceID)
+	}
+
+	if err := store.SetSourceID(inst.ID, "subsonic"); err != nil {
+		t.Fatalf("SetSourceID: %v", err)
+	}
+	got, err = store.Get(inst.ID)
+	if err != nil {
+		t.Fatalf("Get: %v", err)
+	}
+	if got.SourceID != "subsonic" {
+		t.Fatalf("expected subsonic, got %q", got.SourceID)
+	}
+}
+
+func TestInstanceSourceIDExplicitOnCreate(t *testing.T) {
+	db := OpenTestDB(t)
+	store := NewInstanceStore(db)
+
+	inst, err := store.Create(CreateInstanceInput{
+		Name:      "Navi",
+		ServerURL: "http://navi.example.com",
+		Username:  "user",
+		Password:  "secret",
+		SourceID:  "navidrome",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if inst.SourceID != "navidrome" {
+		t.Fatalf("expected navidrome, got %q", inst.SourceID)
+	}
+}
+
+func TestInstanceSourceIDMigrationOnExistingRows(t *testing.T) {
+	dir := t.TempDir()
+	path := filepath.Join(dir, "melovian.db")
+	db, err := OpenDB(path, appconfig.Config{})
+	if err != nil {
+		t.Fatalf("OpenDB: %v", err)
+	}
+	defer func() { _ = db.Close() }()
+
+	// Simulate a row written before the source_id column existed by
+	// inserting through the normal path, which now defaults to subsonic.
+	store := NewInstanceStore(db)
+	inst, err := store.Create(CreateInstanceInput{
+		Name:      "Legacy",
+		ServerURL: "http://legacy.example.com",
+		Username:  "u",
+		Password:  "p",
+	})
+	if err != nil {
+		t.Fatalf("Create: %v", err)
+	}
+	if inst.SourceID != DefaultSourceID {
+		t.Fatalf("legacy row should default to %q, got %q", DefaultSourceID, inst.SourceID)
+	}
+}

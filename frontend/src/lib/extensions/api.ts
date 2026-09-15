@@ -18,6 +18,8 @@ export type ExtensionListItem = {
   enabled: boolean;
   installed: boolean;
   bundled: boolean;
+  /** Bundled core extensions (music sources) that cannot be uninstalled. */
+  required?: boolean;
   hasScript: boolean;
   scriptSafe: boolean;
   hasWasm: boolean;

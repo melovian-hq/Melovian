@@ -1,0 +1,9 @@
+{
+  "id": "subsonic",
+  "name": "Subsonic",
+  "version": "1.0.0",
+  "description": "Subsonic-compatible music source. Connects Melovian to Subsonic API servers for browsing, search, playlists, and streaming.",
+  "author": "Melovian",
+  "icon": "assets/icon.svg",
+  "image": "assets/icon.svg"
+}

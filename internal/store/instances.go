@@ -13,7 +13,9 @@ import (
 	"melovian/internal/appconfig"
 )
 
-type SubsonicInstance struct {
+// SourceInstance is a per-user remote source configuration: which source
+// extension backs it (SourceID) plus the connection details.
+type SourceInstance struct {
 	ID         string
 	UserID     string
 	Name       string
@@ -21,10 +23,25 @@ type SubsonicInstance struct {
 	Username   string
 	Password   string
 	ServerName string
+	// SourceID is the source extension backing this instance, for
+	// example "subsonic" or "navidrome". Empty means subsonic.
+	SourceID   string
 	CreatedAt  time.Time
 	UpdatedAt  time.Time
 	LastUsedAt *time.Time
 }
+
+// SourceOrDefault returns the backing source id, defaulting to the
+// bundled Subsonic source for rows written before the column existed.
+func (inst SourceInstance) SourceOrDefault() string {
+	if inst.SourceID == "" {
+		return DefaultSourceID
+	}
+	return inst.SourceID
+}
+
+// DefaultSourceID is the bundled Subsonic-compatible source extension.
+const DefaultSourceID = "subsonic"
 
 const prefActiveInstanceID = "active_instance_id"
 
@@ -34,6 +51,7 @@ type CreateInstanceInput struct {
 	Username   string
 	Password   string
 	ServerName string
+	SourceID   string
 }
 
 type UpdateInstanceInput struct {
@@ -42,6 +60,7 @@ type UpdateInstanceInput struct {
 	Username   string
 	Password   string
 	ServerName string
+	SourceID   string
 }
 
 type InstanceStore struct {
@@ -101,12 +120,12 @@ func newInstanceID() string {
 	return mustRandomHex(16)
 }
 
-func (s *InstanceStore) ListForUser(userID string) ([]SubsonicInstance, error) {
+func (s *InstanceStore) ListForUser(userID string) ([]SourceInstance, error) {
 	if userID == "" {
 		return s.List()
 	}
 	rows, err := s.db.query(
-		`SELECT id, user_id, name, server_url, username, password, server_name, created_at, updated_at, last_used_at
+		`SELECT id, user_id, name, server_url, username, password, server_name, source_id, created_at, updated_at, last_used_at
 		 FROM subsonic_instances WHERE user_id = ? ORDER BY name ASC`,
 		userID,
 	)
@@ -117,9 +136,9 @@ func (s *InstanceStore) ListForUser(userID string) ([]SubsonicInstance, error) {
 	return s.scanInstances(rows)
 }
 
-func (s *InstanceStore) List() ([]SubsonicInstance, error) {
+func (s *InstanceStore) List() ([]SourceInstance, error) {
 	rows, err := s.db.query(
-		`SELECT id, user_id, name, server_url, username, password, server_name, created_at, updated_at, last_used_at
+		`SELECT id, user_id, name, server_url, username, password, server_name, source_id, created_at, updated_at, last_used_at
 		 FROM subsonic_instances ORDER BY name ASC`,
 	)
 	if err != nil {
@@ -129,86 +148,90 @@ func (s *InstanceStore) List() ([]SubsonicInstance, error) {
 	return s.scanInstances(rows)
 }
 
-func (s *InstanceStore) GetForUser(userID, id string) (SubsonicInstance, error) {
+func (s *InstanceStore) GetForUser(userID, id string) (SourceInstance, error) {
 	inst, err := s.Get(id)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	if userID != "" && inst.UserID != userID {
-		return SubsonicInstance{}, sql.ErrNoRows
+		return SourceInstance{}, sql.ErrNoRows
 	}
 	return inst, nil
 }
 
-func (s *InstanceStore) Get(id string) (SubsonicInstance, error) {
+func (s *InstanceStore) Get(id string) (SourceInstance, error) {
 	row := s.db.queryRow(
-		`SELECT id, user_id, name, server_url, username, password, server_name, created_at, updated_at, last_used_at
+		`SELECT id, user_id, name, server_url, username, password, server_name, source_id, created_at, updated_at, last_used_at
 		 FROM subsonic_instances WHERE id = ?`,
 		id,
 	)
 	return s.scanInstance(row)
 }
 
-func (s *InstanceStore) CreateForUser(userID string, input CreateInstanceInput) (SubsonicInstance, error) {
+func (s *InstanceStore) CreateForUser(userID string, input CreateInstanceInput) (SourceInstance, error) {
 	inst, err := s.create(input)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	if userID != "" {
 		_, err = s.db.exec(`UPDATE subsonic_instances SET user_id = ? WHERE id = ?`, userID, inst.ID)
 		if err != nil {
-			return SubsonicInstance{}, err
+			return SourceInstance{}, err
 		}
 		inst.UserID = userID
 	}
 	return inst, nil
 }
 
-func (s *InstanceStore) Create(input CreateInstanceInput) (SubsonicInstance, error) {
+func (s *InstanceStore) Create(input CreateInstanceInput) (SourceInstance, error) {
 	return s.create(input)
 }
 
-func (s *InstanceStore) create(input CreateInstanceInput) (SubsonicInstance, error) {
+func (s *InstanceStore) create(input CreateInstanceInput) (SourceInstance, error) {
 	name := strings.TrimSpace(input.Name)
 	serverURL := strings.TrimRight(strings.TrimSpace(input.ServerURL), "/")
 	username := strings.TrimSpace(input.Username)
 	password := input.Password
 
 	if name == "" {
-		return SubsonicInstance{}, fmt.Errorf("name is required")
+		return SourceInstance{}, fmt.Errorf("name is required")
 	}
 	if serverURL == "" {
-		return SubsonicInstance{}, fmt.Errorf("server url is required")
+		return SourceInstance{}, fmt.Errorf("server url is required")
 	}
 	if username == "" {
-		return SubsonicInstance{}, fmt.Errorf("username is required")
+		return SourceInstance{}, fmt.Errorf("username is required")
 	}
 	if password == "" {
-		return SubsonicInstance{}, fmt.Errorf("password is required")
+		return SourceInstance{}, fmt.Errorf("password is required")
 	}
 
 	sealed, err := s.cipher.encrypt(password)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
+	}
+	sourceID := strings.TrimSpace(input.SourceID)
+	if sourceID == "" {
+		sourceID = DefaultSourceID
 	}
 
 	id := newInstanceID()
 	now := nowUnix()
 	_, err = s.db.exec(
-		`INSERT INTO subsonic_instances (id, name, server_url, username, password, server_name, created_at, updated_at)
-		 VALUES (?, ?, ?, ?, ?, ?, ?, ?)`,
-		id, name, serverURL, username, sealed, strings.TrimSpace(input.ServerName), now, now,
+		`INSERT INTO subsonic_instances (id, name, server_url, username, password, server_name, source_id, created_at, updated_at)
+		 VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)`,
+		id, name, serverURL, username, sealed, strings.TrimSpace(input.ServerName), sourceID, now, now,
 	)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	return s.Get(id)
 }
 
-func (s *InstanceStore) Update(id string, input UpdateInstanceInput) (SubsonicInstance, error) {
+func (s *InstanceStore) Update(id string, input UpdateInstanceInput) (SourceInstance, error) {
 	existing, err := s.Get(id)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 
 	name := strings.TrimSpace(input.Name)
@@ -231,22 +254,46 @@ func (s *InstanceStore) Update(id string, input UpdateInstanceInput) (SubsonicIn
 	if serverName == "" && input.ServerName == "" {
 		serverName = existing.ServerName
 	}
+	sourceID := strings.TrimSpace(input.SourceID)
+	if sourceID == "" {
+		sourceID = existing.SourceOrDefault()
+	}
 
 	sealed, err := s.cipher.encrypt(password)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 
 	now := nowUnix()
 	_, err = s.db.exec(
 		`UPDATE subsonic_instances SET name = ?, server_url = ?, username = ?, password = ?,
-		 server_name = ?, updated_at = ? WHERE id = ?`,
-		name, serverURL, username, sealed, serverName, now, id,
+		 server_name = ?, source_id = ?, updated_at = ? WHERE id = ?`,
+		name, serverURL, username, sealed, serverName, sourceID, now, id,
 	)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	return s.Get(id)
+}
+
+// SetSourceID rebinds an instance to a different source extension, for
+// example after server detection identifies a Navidrome host.
+func (s *InstanceStore) SetSourceID(id, sourceID string) error {
+	sourceID = strings.TrimSpace(sourceID)
+	if sourceID == "" {
+		return fmt.Errorf("source id is required")
+	}
+	res, err := s.db.exec(
+		`UPDATE subsonic_instances SET source_id = ?, updated_at = ? WHERE id = ?`,
+		sourceID, nowUnix(), id,
+	)
+	if err != nil {
+		return err
+	}
+	if n, _ := res.RowsAffected(); n == 0 {
+		return sql.ErrNoRows
+	}
+	return nil
 }
 
 func (s *InstanceStore) Delete(id string) error {
@@ -283,13 +330,13 @@ func (s *InstanceStore) GetActiveIDForUser(userID string) (string, error) {
 	return value, nil
 }
 
-func (s *InstanceStore) GetActiveForUser(userID string) (SubsonicInstance, error) {
+func (s *InstanceStore) GetActiveForUser(userID string) (SourceInstance, error) {
 	id, err := s.GetActiveIDForUser(userID)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	if id == "" {
-		return SubsonicInstance{}, sql.ErrNoRows
+		return SourceInstance{}, sql.ErrNoRows
 	}
 	return s.GetForUser(userID, id)
 }
@@ -317,6 +364,36 @@ func (s *InstanceStore) SetActiveForUser(userID, id string) error {
 	return prefs.Set(userID, prefActiveInstanceID, id)
 }
 
+// ListActivePairs maps user id to their active instance id for every user
+// with an active-instance preference. The legacy global selection (empty
+// user id key) is included when set.
+func (s *InstanceStore) ListActivePairs() (map[string]string, error) {
+	pairs := map[string]string{}
+	rows, err := s.db.query(
+		`SELECT user_id, value FROM user_preferences WHERE key = ?`, prefActiveInstanceID,
+	)
+	if err != nil {
+		return nil, err
+	}
+	defer func() { _ = rows.Close() }()
+	for rows.Next() {
+		var userID, instanceID string
+		if err := rows.Scan(&userID, &instanceID); err != nil {
+			return nil, err
+		}
+		if instanceID != "" {
+			pairs[userID] = instanceID
+		}
+	}
+	if err := rows.Err(); err != nil {
+		return nil, err
+	}
+	if global, err := s.GetActiveID(); err == nil && global != "" {
+		pairs[""] = global
+	}
+	return pairs, nil
+}
+
 func (s *InstanceStore) GetActiveID() (string, error) {
 	value, err := s.db.getSetting(appconfig.SettingActiveInstanceID)
 	if err != nil {
@@ -328,13 +405,13 @@ func (s *InstanceStore) GetActiveID() (string, error) {
 	return value, nil
 }
 
-func (s *InstanceStore) GetActive() (SubsonicInstance, error) {
+func (s *InstanceStore) GetActive() (SourceInstance, error) {
 	id, err := s.GetActiveID()
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	if id == "" {
-		return SubsonicInstance{}, sql.ErrNoRows
+		return SourceInstance{}, sql.ErrNoRows
 	}
 	return s.Get(id)
 }
@@ -359,13 +436,14 @@ func (s *InstanceStore) TouchLastUsed(id string) error {
 	return nil
 }
 
-func (s *InstanceStore) PublicView(inst SubsonicInstance) map[string]any {
+func (s *InstanceStore) PublicView(inst SourceInstance) map[string]any {
 	payload := map[string]any{
 		"id":         inst.ID,
 		"name":       inst.Name,
 		"serverUrl":  inst.ServerURL,
 		"username":   inst.Username,
 		"serverName": inst.ServerName,
+		"sourceId":   inst.SourceOrDefault(),
 		"createdAt":  inst.CreatedAt.UTC().Format(time.RFC3339),
 		"updatedAt":  inst.UpdatedAt.UTC().Format(time.RFC3339),
 	}
@@ -375,20 +453,20 @@ func (s *InstanceStore) PublicView(inst SubsonicInstance) map[string]any {
 	return payload
 }
 
-func (s *InstanceStore) scanInstance(row *sql.Row) (SubsonicInstance, error) {
-	var inst SubsonicInstance
+func (s *InstanceStore) scanInstance(row *sql.Row) (SourceInstance, error) {
+	var inst SourceInstance
 	var created, updated int64
 	var lastUsed sql.NullInt64
 	err := row.Scan(
 		&inst.ID, &inst.UserID, &inst.Name, &inst.ServerURL, &inst.Username, &inst.Password,
-		&inst.ServerName, &created, &updated, &lastUsed,
+		&inst.ServerName, &inst.SourceID, &created, &updated, &lastUsed,
 	)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	password, err := s.cipher.decrypt(inst.Password)
 	if err != nil {
-		return SubsonicInstance{}, err
+		return SourceInstance{}, err
 	}
 	inst.Password = password
 	inst.CreatedAt = time.Unix(created, 0)
@@ -400,15 +478,15 @@ func (s *InstanceStore) scanInstance(row *sql.Row) (SubsonicInstance, error) {
 	return inst, nil
 }
 
-func (s *InstanceStore) scanInstances(rows *sql.Rows) ([]SubsonicInstance, error) {
-	var items []SubsonicInstance
+func (s *InstanceStore) scanInstances(rows *sql.Rows) ([]SourceInstance, error) {
+	var items []SourceInstance
 	for rows.Next() {
-		var inst SubsonicInstance
+		var inst SourceInstance
 		var created, updated int64
 		var lastUsed sql.NullInt64
 		if err := rows.Scan(
 			&inst.ID, &inst.UserID, &inst.Name, &inst.ServerURL, &inst.Username, &inst.Password,
-			&inst.ServerName, &created, &updated, &lastUsed,
+			&inst.ServerName, &inst.SourceID, &created, &updated, &lastUsed,
 		); err != nil {
 			return nil, err
 		}

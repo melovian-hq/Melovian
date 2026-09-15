@@ -62,8 +62,12 @@
   async function handleTest(input: InstanceInput) {
     testing = true;
     try {
-      const serverName = await instances.test(input);
-      toast.success(`Connected to ${serverName}`);
+      const result = await instances.test(input);
+      const suffix =
+        result.sourceId && result.sourceId !== "subsonic"
+          ? ` (${result.sourceId} source)`
+          : "";
+      toast.success(`Connected to ${result.serverName}${suffix}`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Connection test failed",

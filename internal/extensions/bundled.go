@@ -25,6 +25,14 @@ var BundledOptional = map[string]bool{
 	"lyrics-whisper": true,
 }
 
+// BundledRequired lists bundled ids that cannot be uninstalled. These back
+// core functionality (music sources), so removal would orphan configured
+// instances. Disabling them stays allowed.
+var BundledRequired = map[string]bool{
+	"subsonic":  true,
+	"navidrome": true,
+}
+
 func extensionInstalled(dataDir, id string) bool {
 	_, err := os.Stat(filepath.Join(ExtensionsDir(dataDir), id, ManifestName))
 	return err == nil

@@ -91,8 +91,12 @@
   async function handleTest(input: InstanceInput) {
     testing = true;
     try {
-      const serverName = await instances.test(input);
-      toast.success(`Connected to ${serverName}`);
+      const result = await instances.test(input);
+      const suffix =
+        result.sourceId && result.sourceId !== "subsonic"
+          ? ` (${result.sourceId} source)`
+          : "";
+      toast.success(`Connected to ${result.serverName}${suffix}`);
     } catch (err) {
       toast.error(
         err instanceof Error ? err.message : "Connection test failed",
@@ -156,7 +160,12 @@
         {@const ping = pings[item.id]}
         <div class="instance-list__copy">
           <h3 class="instance-list__name">{item.name}</h3>
-          <p class="instance-list__meta">{item.serverName || item.serverUrl}</p>
+          <p class="instance-list__meta">
+            {item.serverName || item.serverUrl}
+            {#if item.sourceId && item.sourceId !== "subsonic"}
+              <span class="instance-list__source">{item.sourceId}</span>
+            {/if}
+          </p>
           <p class="instance-list__user">{item.username}</p>
           {#if ping !== "loading" && ping !== undefined && ping.online && ping.songCount != null}
             <p class="instance-list__tracks">
@@ -281,6 +290,18 @@
 
   .instance-list__tracks {
     font-variant-numeric: tabular-nums;
+  }
+
+  .instance-list__source {
+    display: inline-block;
+    margin-left: var(--jb-space-2);
+    padding: 0.0625rem var(--jb-space-2);
+    border-radius: var(--jb-radius-full);
+    background: var(--jb-accent-muted);
+    color: var(--jb-accent);
+    font-size: 0.6875rem;
+    text-transform: uppercase;
+    letter-spacing: 0.04em;
   }
 
   .instance-list__actions {

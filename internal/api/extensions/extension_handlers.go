@@ -56,6 +56,7 @@ type extensionListItem struct {
 	Enabled     bool   `json:"enabled"`
 	Installed   bool   `json:"installed"`
 	Bundled     bool   `json:"bundled"`
+	Required    bool   `json:"required,omitempty"`
 	Dev         bool   `json:"dev,omitempty"`
 	HasScript   bool   `json:"hasScript"`
 	ScriptSafe  bool   `json:"scriptSafe"`
@@ -104,6 +105,7 @@ func (h *Handler) buildExtensionList() ([]extensionListItem, []ext.Manifest, err
 			Enabled:     item.Enabled,
 			Installed:   true,
 			Bundled:     ext.IsBundled(item.Manifest.ID),
+			Required:    ext.BundledRequired[item.Manifest.ID],
 			Dev:         item.Dev,
 			HasScript:   strings.TrimSpace(item.Manifest.Script) != "",
 			ScriptSafe:  scriptSafe,
@@ -147,6 +149,7 @@ func (h *Handler) buildExtensionList() ([]extensionListItem, []ext.Manifest, err
 			Enabled:     false,
 			Installed:   false,
 			Bundled:     true,
+			Required:    ext.BundledRequired[id],
 			HasScript:   strings.TrimSpace(manifest.Script) != "",
 			ScriptSafe:  false,
 			HasWasm:     false,
@@ -503,6 +506,10 @@ func (h *Handler) handleUninstallExtension(w http.ResponseWriter, r *http.Reques
 	id := strings.TrimSpace(r.PathValue("id"))
 	if id == "" {
 		httputil.WriteError(w, http.StatusBadRequest, "missing_id", "missing id")
+		return
+	}
+	if ext.BundledRequired[id] {
+		httputil.WriteError(w, http.StatusConflict, "extension_required", "extension "+id+" is required and cannot be uninstalled")
 		return
 	}
 	if err := ext.Uninstall(h.cfg.DataDir, id); err != nil {
