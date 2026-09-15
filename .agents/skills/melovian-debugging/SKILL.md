@@ -7,7 +7,7 @@ description: Melovian debugging playbook: reproducing issues, log locations, dev
 
 ## Method
 
-1. Reproduce first. Pick the smallest environment that shows it: static demo (`VITE_STATIC_DEMO=true pnpm build`), `task dev:server`, or full `task dev` desktop.
+1. Reproduce first. Pick the smallest environment that shows it: static demo (`cd frontend && VITE_STATIC_DEMO=true pnpm build`), server mode (`bash build/scripts/dev-server.sh`), or full desktop (`wails3 dev -config ./build/config.yml -port 9245`).
 2. Trace the path before editing. Find the owning layer with a search for the user-visible string or API path: `internal/api/` for the route, `frontend/src/lib/config/music.svelte.ts` + `*-ops.ts` for playback, `services/` for desktop-only behavior.
 3. Add temporary logging at the boundary where behavior diverges from expectation, then remove it before finishing.
 4. Fix the root cause, pin it with a `.regression.test.ts` or `*_test.go` case, and verify the test fails without the fix.
@@ -31,8 +31,8 @@ Tuning env vars:
 ## Dev modes
 
 ```bash
-task dev          # wails3 dev: full desktop, Vite HMR on :9245, Go rebuild on change
-task dev:server   # API on :17337 + Vite proxy, no webview. Best for API/frontend bugs
+wails3 dev -config ./build/config.yml -port 9245   # full desktop, Vite HMR on :9245, Go rebuild on change
+bash build/scripts/dev-server.sh                   # API on :17337 + Vite proxy, no webview. Best for API/frontend bugs
 ```
 
 - `build/config.yml` `dev_mode` watches `*.go`, rebuilds with `wails3 build DEV=true`, runs `common:dev:frontend` in the background.
@@ -51,7 +51,7 @@ task dev:server   # API on :17337 + Vite proxy, no webview. Best for API/fronten
 - `slog` fields are the first breadcrumb: `slog.Error("...", "err", err)` calls carry structured context.
 - Subsonic proxy problems: `internal/subsonic/` caches upstream responses; check `internal/cache` behavior and whether the bug is upstream or in the proxy transform.
 - DB problems: `internal/store/` abstracts SQLite (`modernc.org/sqlite`) and Postgres (`pgx`). `MELOVIAN_DATABASE_URL` switches backends; a bug that only shows under Postgres usually means a dialect assumption in a query.
-- `task test:fuzz` covers parsers (metaloader signatures, query ints, auth injection, lyrics normalize, filename sanitize, cache keys). A crash report pointing at parsing is a fuzz-target candidate.
+- `task test:fuzz` covers parsers (metaloader signatures, query ints, auth injection, lyrics normalize, filename sanitize, cache keys), or run one directly: `go test -fuzz=<name> -fuzztime=5s ./internal/<pkg>`. A crash report pointing at parsing is a fuzz-target candidate.
 
 ## Frontend issues
 

@@ -37,13 +37,14 @@ app := application.New(application.Options{
 ## Bindings
 
 ```bash
-task generate:bindings   # wails3 generate bindings -f '<flags>' -clean=true -ts
-                         # then build/scripts/bindings-postprocess.sh
+wails3 generate bindings -clean=true -ts
+bash build/scripts/bindings-postprocess.sh   # postprocess step
+# wrapped together by task generate:bindings
 ```
 
 - Output: `frontend/bindings/`, mirroring Go import paths (`melovian/services/audioservice.ts`, `models.ts`, `index.ts`).
 - Generated calls use `$Call.ByID(id, args...)` returning `$CancellablePromise<T>`.
-- Do not hand-edit `frontend/bindings/**`. `task test:bindings-drift` fails CI on drift. Commit regenerated bindings with the Go change.
+- Do not hand-edit `frontend/bindings/**`. `bash build/scripts/check-bindings-drift.sh` fails CI on drift. Commit regenerated bindings with the Go change.
 - The `wails("./bindings")` Vite plugin in `frontend/vite.config.ts` injects typed event definitions. A missing or stale `bindings/` dir breaks `vite build` and `vite dev`.
 
 ## Frontend usage
@@ -71,7 +72,7 @@ Tests mock both modules: `vi.mock("@bindings/melovian/services/index.js")`, `vi.
 ## Config and dev mode
 
 - `build/config.yml` is the v3 project config: `info:` metadata, `ios:` overrides, `dev_mode:` watcher + command orchestration, `fileAssociations:`.
-- Dev loop: `task dev` runs `wails3 dev -config ./build/config.yml -port 9245`. The port must match `WAILS_VITE_PORT` and `frontend/vite.config.ts` (`strictPort`).
+- Dev loop: `wails3 dev -config ./build/config.yml -port 9245` (wrapped by `task dev`). The port must match `WAILS_VITE_PORT` and `frontend/vite.config.ts` (`strictPort`).
 - After changing `info` or `fileAssociations`, run `wails3 task common:update:build-assets` (overwrites generated assets).
 - `wails3 generate icons` refreshes platform icons from `build/appicon.png`.
 - Entry points by build tag: `main.go` (desktop, `!server && !android && !ios`), `main_server.go` (`server`), `main_mobile.go` + `app_options_*.go` (android/ios).

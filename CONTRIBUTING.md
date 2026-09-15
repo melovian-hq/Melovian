@@ -14,29 +14,23 @@ Platform package lists: [docs/en/requirements.md](docs/en/requirements.md).
 
 | Goal | Command |
 |------|---------|
-| First-time bootstrap | `task setup` |
-| List tasks | `task --list` |
-| Desktop app with hot reload | `task dev` |
-| Server API + Vite (no GUI) | `task dev:server` |
-| Backend + frontend unit tests | `task test` |
-| Local pre-merge gate | `task verify` |
-| Frontend typecheck | `task check` or `cd frontend && pnpm check` |
-| Regenerate Wails bindings | `task generate:bindings` |
+| First-time bootstrap | `cp .env.example .env && cd frontend && pnpm install` |
+| Desktop app with hot reload | `wails3 dev -config ./build/config.yml -port 9245` |
+| Server API + Vite (no GUI) | `bash build/scripts/dev-server.sh` |
+| Backend unit tests | `go test ./internal/... ./services/...` |
+| Frontend unit tests | `cd frontend && pnpm test` |
+| Frontend typecheck | `cd frontend && pnpm check` |
+| Frontend lint | `cd frontend && pnpm lint` |
+| Regenerate Wails bindings | `wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh` |
 
-`task verify` runs format check, golangci-lint, race-enabled Go tests, property tests, ESLint, svelte-check, and Vitest. Prefer that before you open a pull request. Full CI also runs e2e smoke, mutation, coverage, Lighthouse, and mobile packaging.
+A Taskfile wraps these and more (`task dev`, `task test`, `task --list` for the full list). `task verify` is the local pre-merge gate: format check, golangci-lint, race-enabled Go tests, property tests, ESLint, svelte-check, and Vitest. Run it before you open a pull request. Full CI also runs e2e smoke, mutation, coverage, Lighthouse, and mobile packaging.
 
-Package-scoped Go tests without a built `frontend/dist`:
-
-```bash
-go test ./internal/... ./services/...
-```
-
-Root `go test .` fails until the frontend embed exists. Use the package paths or `task test`.
+Root `go test .` fails until the frontend embed exists. Use the package paths, or build the frontend with `cd frontend && pnpm build` first.
 
 Go modules are vendored in `./vendor`. After changing `go.mod` / `go.sum`, run:
 
 ```bash
-task go:vendor
+bash build/scripts/go-vendor.sh
 ```
 
 That script patches Wails WebView2 embed files (see `third_party/wails-webview2loader/`) then runs `go mod vendor`. Builds and Docker images use `-mod=vendor`.
@@ -57,7 +51,7 @@ More detail: [docs/en/development.md](docs/en/development.md).
 | Svelte UI | `frontend/src/` |
 | Playback store | `frontend/src/lib/config/music.svelte.ts` and `frontend/src/lib/config/music/` |
 
-Do not hand-edit `frontend/bindings/` except as a short-lived fix. Regenerate with the Wails CLI and run `task test:bindings-drift`.
+Do not hand-edit `frontend/bindings/` except as a short-lived fix. Regenerate with `wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh` and check drift with `bash build/scripts/check-bindings-drift.sh`.
 
 ## Pull requests
 
@@ -65,7 +59,7 @@ Do not hand-edit `frontend/bindings/` except as a short-lived fix. Regenerate wi
 2. Keep the change focused. One problem per PR when you can.
 3. Match the style of the files you touch. Skip drive-by renames and unrelated refactors.
 4. Add or update tests next to the code (`*_test.go`, `*.test.ts`).
-5. Run `task test` at minimum. Run `task verify` for anything that touches shared packages or CI-sensitive paths.
+5. Run `go test ./internal/... ./services/...` and `cd frontend && pnpm test` at minimum. Run `task verify` for anything that touches shared packages or CI-sensitive paths.
 6. Write a short PR description that states what broke or what is missing, and how you checked the fix.
 
 Commit messages in this repo are usually imperative and short (`Add video settings panel`, `Fix share token expiry`). Prefer that over changelog essays in the subject line.
@@ -85,7 +79,7 @@ Read `.agents/skills/no-ai-slop/SKILL.md` before large prose edits.
 Bug reports work best with:
 
 - Melovian version or git commit
-- OS and how you run it (desktop binary, `task dev`, Docker, server binary)
+- OS and how you run it (desktop binary, `wails3 dev`, Docker, server binary)
 - Steps to reproduce
 - Relevant lines from `{data}/logs/melovian.log` (desktop default: `~/.local/share/melovian/logs/`)
 

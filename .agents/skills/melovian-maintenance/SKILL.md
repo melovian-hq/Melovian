@@ -25,15 +25,17 @@ The `wails3` CLI must match the `go.mod` Wails version. Install with `go install
 ## Daily commands
 
 ```bash
-task setup                # first clone: .env + pnpm install
-task --list               # discover tasks
-task dev                  # wails3 dev -config ./build/config.yml -port 9245
-task dev:server           # HTTP API + vite (no Wails GUI)
-task test                 # go test + pnpm test
-task verify               # local pre-merge gate (format, lint, race, typecheck)
-task generate:bindings    # after Go service signature changes
-cd frontend && pnpm check # svelte-check / TS
+cp .env.example .env && cd frontend && pnpm install   # first clone (task setup adds hints)
+wails3 dev -config ./build/config.yml -port 9245      # desktop hot reload (task dev)
+bash build/scripts/dev-server.sh                      # HTTP API + vite (task dev:server)
+go test ./internal/... ./services/...                 # backend tests
+cd frontend && pnpm test                              # frontend Vitest
+cd frontend && pnpm check                             # svelte-check / TS
+task verify               # composite pre-merge gate (format, lint, race, typecheck)
+wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh
 ```
+
+`task --list` shows the Taskfile wrappers around all of these.
 
 Git hooks: `lefthook install` (see `lefthook.yml`). Dev Container: `.devcontainer/` (server-mode stack).
 
@@ -76,25 +78,25 @@ Pin `@wailsio/runtime` to a resolved version after major updates. Do not leave `
 ```bash
 go get -u ./...
 go mod tidy
-task go:vendor          # repo vendors modules into ./vendor
+bash build/scripts/go-vendor.sh   # repo vendors modules into ./vendor
 go test ./internal/... ./services/...
 ```
 
-Wails bumps may require regenerating `frontend/bindings/` and running `task test:bindings-drift`. Bump the wails3 CLI in `mise.toml` to match `go.mod`.
+Wails bumps may require regenerating `frontend/bindings/` and running `bash build/scripts/check-bindings-drift.sh`. Bump the wails3 CLI in `mise.toml` to match `go.mod`.
 
 ## CI expectations
 
-`.github/workflows/` run `task verify` or subsets. A change that passes `task test` locally but skips `verify` may still fail on race tests or svelte-check.
+`.github/workflows/` run `task verify` or subsets. A change that passes `go test` + `pnpm test` locally but skips `verify` may still fail on race tests or svelte-check.
 
 ## Build folder
 
-`build/` holds per-OS Taskfiles, `config.yml` (Wails v3 project config), packaging assets, and `build/scripts/bindings-postprocess.sh` which runs after bindings generation. `task dev` depends on `build/config.yml`. After changing `info` or `fileAssociations` in `config.yml`, run `wails3 task common:update:build-assets`.
+`build/` holds per-OS Taskfiles, `config.yml` (Wails v3 project config), packaging assets, and `build/scripts/bindings-postprocess.sh` which runs after bindings generation. `wails3 dev` depends on `build/config.yml`. After changing `info` or `fileAssociations` in `config.yml`, run `wails3 task common:update:build-assets`.
 
 ## Docker server mode
 
 ```bash
 cp .env.example .env
-task build:docker
+docker build -t melovian:web -f docker/Dockerfile .
 cd docker && docker compose up -d
 ```
 
@@ -117,8 +119,8 @@ When editing skills, keep YAML frontmatter `name` matching the directory name.
 
 | Symptom | Likely cause |
 |---------|----------------|
-| `go test .` fails on embed | Build frontend first or test subpackages only |
+| `go test .` fails on embed | Build frontend first (`cd frontend && pnpm build`) or test subpackages only |
 | Wails dev won't start | Missing `build/`, or wails3 CLI version mismatch with `go.mod` |
-| Bindings drift CI | Run `task generate:bindings` and commit `frontend/bindings/` |
+| Bindings drift CI | Regenerate bindings and commit `frontend/bindings/` |
 | Desktop blank WebView on Linux | WebKit GPU issues; try `WEBKIT_DISABLE_DMABUF_RENDERER=1` or graphics stability settings (see README logging section) |
-| Vite fails on `wails("./bindings")` plugin | `frontend/bindings/` missing; run `task generate:bindings` |
+| Vite fails on `wails("./bindings")` plugin | `frontend/bindings/` missing; run `wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh` |

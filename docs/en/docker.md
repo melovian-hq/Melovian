@@ -11,7 +11,8 @@
 2. Build the frontend and Docker image, then start the stack:
 
    ```bash
-   task build:docker
+   cd frontend && pnpm build && cd ..
+   docker build -t melovian:web -f docker/Dockerfile .
    cd docker && docker compose up -d
    ```
 
@@ -30,7 +31,7 @@
 Stop the stack:
 
 ```bash
-task stop:docker
+cd docker && docker compose down
 ```
 
 The compose file uses a named volume for data, a dedicated network, a non-root container user, and a read-only root filesystem. When auth is enabled, each account keeps its own saved servers, playlists, favorites, and play history.
@@ -70,8 +71,9 @@ NAVIDROME_PASSWORD=your-demo-password
 For a demo that does not run `melovian-server` at all, build the SPA with the in-browser catalog:
 
 ```bash
-task demo:export
+go run ./internal/democatalog/cmd/export -out frontend/public/demo
 VITE_STATIC_DEMO=true VITE_BASE=/melovian/ pnpm --dir frontend run build
+cp frontend/dist/index.html frontend/dist/404.html
 ```
 
 Or `task build:frontend:demo`. CI workflow `.github/workflows/pages.yml` does this on `main` when Pages is enabled for the repo (GitHub Actions source). Mutations stay blocked the same way as server demo mode.
@@ -90,7 +92,9 @@ Include `127.0.0.1/32` when container health checks hit localhost.
 Capture a small set of desktop and mobile shots:
 
 ```bash
-task showcase
+go build -tags server -o bin/melovian-server .   # if not built yet
+cd scripts/showcase && pnpm install && pnpm exec playwright install chromium && cd ../..
+node scripts/showcase/capture.mjs
 ```
 
 Images land in [`showcase/`](../../showcase/) (six PNGs: home, album, and playlists across light/dark and desktop/mobile). The tool starts a temporary demo server with the built-in catalog.

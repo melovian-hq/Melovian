@@ -145,7 +145,7 @@ internal/termout/      Terminal output helpers
 - Frontend calls the Go backend two ways: REST under `/api/*` (see `frontend/src/lib/core/http/api-paths.ts`) and Wails service bindings.
 - Wails bindings are imported lazily: `await import("@bindings/melovian/services/index.js")` gives `MediaService`, `AudioService`, `UpdateService`. Lazy import keeps server/web mode from loading desktop-only code. `@bindings` is a Vite alias for `frontend/bindings/`.
 - `@wailsio/runtime` provides `Events.On/Emit`, `Dialogs`, `Window`. The `wails("./bindings")` Vite plugin injects typed event definitions.
-- Three services are registered in `main.go`: MediaService, AudioService, UpdateService. Add new ones under `services/` and register in `application.Options.Services`, then run `task generate:bindings`.
+- Three services are registered in `main.go`: MediaService, AudioService, UpdateService. Add new ones under `services/` and register in `application.Options.Services`, then regenerate bindings (see below).
 
 ## Multi-instance model
 
@@ -159,7 +159,7 @@ Users can save several Subsonic servers ("instances"). Connection state, credent
 
 ## Generated code
 
-- `frontend/bindings/` comes from `wails3 generate bindings -ts` (via `task generate:bindings`). `task test:bindings-drift` checks drift in CI. Do not hand-edit bindings.
+- `frontend/bindings/` comes from `wails3 generate bindings -clean=true -ts` plus `bash build/scripts/bindings-postprocess.sh` (wrapped by `task generate:bindings`). `bash build/scripts/check-bindings-drift.sh` checks drift in CI. Do not hand-edit bindings.
 
 ## Tests
 

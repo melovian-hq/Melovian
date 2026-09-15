@@ -165,7 +165,7 @@ save.runScheduledNow();
 - Flat config only (`frontend/eslint.config.js`). No `.eslintrc`, no `eslint-env` comments, no `--ignore-path`.
 - `eslint-plugin-svelte` v3 understands runes; legacy-reactivity rules are skipped in runes mode.
 - `prettier-plugin-svelte` v4 requires Prettier 3 + Svelte 5; `svelteStrictMode` and `svelteBracketNewLine` options are gone (use `bracketSameLine`).
-- Format with `pnpm format`, lint with `pnpm lint` or `task lint:frontend`.
+- Format with `cd frontend && pnpm format`, lint with `cd frontend && pnpm lint`.
 
 ## Other frontend deps in use
 

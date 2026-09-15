@@ -1,27 +1,27 @@
 # Development
 
-| Task | What it does |
-|------|----------------|
-| `task setup` | Copy `.env` if missing, `pnpm install`, print toolchain hints, install lefthook hooks when present |
-| `task --list` | List root tasks (each has a one-line `desc`) |
-| `task dev` | Run the desktop app with hot reload |
-| `task dev:server` | HTTP API (`MELOVIAN_LISTEN`, default `127.0.0.1:17337`) plus Vite on port 9245 with `/api` proxy |
-| `task test` | Backend and frontend unit tests |
-| `task verify` | Local gate: bindings drift, format check, golangci-lint, Go race tests, property tests, ESLint, svelte-check, Vitest |
-| `task go:vendor` | Refresh `./vendor` after Go dependency changes |
-| `task generate:bindings` | Regenerate `frontend/bindings` (fix drift with this after Go service changes) |
-| `task lint` | Frontend ESLint + golangci-lint |
-| `task lint:frontend` / `task lint:go` / `task lint:fix` | Split or autofix lint |
-| `task check` | Frontend typecheck (`svelte-check`) |
-| `task format` | Write gofmt + Prettier |
-| `task fmt` | Write gofmt only |
-| `task format:check` | Fail on dirty format (CI gate) |
-| `task bench` | Go allocation benchmarks |
-| `task test:coverage` | Frontend + Go coverage floors |
-| `task lighthouse` | Lighthouse CI on static demo build (all demo-reachable pages) |
-| `task showcase` | Capture demo screenshots into `showcase/` |
+Everyday commands use the standard toolchain. The Taskfile wraps them (`task --list` for the full list, `task verify` for the composite gate).
 
-`task verify` is the local pre-merge gate. Full CI still runs e2e smoke, mutation, coverage floors, Lighthouse, and mobile packaging on top of that.
+| Command | What it does |
+|------|----------------|
+| `cp .env.example .env && cd frontend && pnpm install` | First-time bootstrap (`bash build/scripts/setup.sh` adds toolchain hints and lefthook hooks) |
+| `wails3 dev -config ./build/config.yml -port 9245` | Desktop app with hot reload |
+| `bash build/scripts/dev-server.sh` | HTTP API (`MELOVIAN_LISTEN`, default `127.0.0.1:17337`) plus Vite on port 9245 with `/api` proxy |
+| `go test ./internal/... ./services/...` | Backend unit tests |
+| `cd frontend && pnpm test` | Frontend unit tests |
+| `cd frontend && pnpm check` | Frontend typecheck (`svelte-check`) |
+| `cd frontend && pnpm lint` / `pnpm lint:fix` | ESLint, optionally autofix |
+| `golangci-lint run ./...` | Go lint |
+| `gofmt -w .` / `cd frontend && pnpm format` | Format Go / frontend |
+| `wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh` | Regenerate `frontend/bindings` after Go service changes |
+| `bash build/scripts/check-bindings-drift.sh` | Fail when committed bindings differ from generated output |
+| `bash build/scripts/go-vendor.sh` | Refresh `./vendor` after Go dependency changes |
+| `go test -bench=. -benchmem -count=1 ./internal/cache/ ./internal/localmusic/ ./internal/subsonic/ ./internal/httputil/ ./internal/video/` | Go allocation benchmarks |
+| `cd frontend && pnpm test:coverage && bash build/scripts/coverage-go.sh` | Frontend + Go coverage floors |
+| `cd frontend && pnpm lighthouse:ci` | Lighthouse CI (expects a built `frontend/dist`; `task lighthouse` builds the static demo first) |
+| `cd scripts/showcase && pnpm install && pnpm exec playwright install chromium && node capture.mjs` | Capture demo screenshots into `showcase/` (needs `bin/melovian-server`) |
+
+The pre-merge gate is `task verify`, or run its parts by hand: `bash build/scripts/check-bindings-drift.sh`, `bash build/scripts/check-gofmt.sh`, `golangci-lint run ./...`, `go test -race ./...`, `cd frontend && pnpm test:property && pnpm lint && pnpm check && pnpm test`. Full CI still runs e2e smoke, mutation, coverage floors, Lighthouse, and mobile packaging on top of that.
 
 ## Toolchain pins
 
@@ -32,7 +32,7 @@
 | pnpm | `frontend/package.json` `packageManager` (`11.1.2`) |
 | Task / golangci-lint / Wails CLI / lefthook | `mise.toml` (optional) |
 
-Install [mise](https://mise.jdx.dev/) and run `mise install` to sync optional CLIs. Without mise, install Go, Node 22, pnpm, and Task from their own docs. Wails CLI matches `go.mod`:
+Install [mise](https://mise.jdx.dev/) and run `mise install` to sync optional CLIs. Without mise, install Go, Node 22, and pnpm from their own docs. Task is optional. Wails CLI matches `go.mod`:
 
 ```bash
 go install github.com/wailsapp/wails/v3/cmd/wails3@v3.0.0-beta.16
@@ -52,8 +52,8 @@ Skip hooks for one commit with `LEFTHOOK=0 git commit ...`.
 [`.devcontainer/devcontainer.json`](../../.devcontainer/devcontainer.json) is a server-mode / web container (Go + Node + Task, no libmpv desktop stack). Open the folder in a Dev Container, then:
 
 ```bash
-task setup
-task dev:server
+bash build/scripts/setup.sh
+bash build/scripts/dev-server.sh
 ```
 
 UI on port 9245, API on 17337.

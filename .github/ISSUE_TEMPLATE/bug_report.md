@@ -23,7 +23,7 @@ labels: ["bug"]
 
 - Melovian version or git commit:
 - OS:
-- How you run it: <!-- desktop binary / task dev / Docker / melovian-server -->
+- How you run it: <!-- desktop binary / wails3 dev / Docker / melovian-server -->
 - Library source: <!-- Navidrome / other Subsonic / local folders -->
 
 ## Logs

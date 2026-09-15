@@ -4,7 +4,7 @@ Concise ground rules and a map for anyone editing Melovian with AI assistance.
 
 ## The shortest path in
 
-1. Run `task --list` to see available commands. On a fresh clone, run `task setup`.
+1. On a fresh clone, copy `.env.example` to `.env` and run `cd frontend && pnpm install`. `task setup` does both plus toolchain hints, and `task --list` shows every wrapped command.
 2. Before a broad change, load the relevant skill from `.agents/skills/`.
 3. Run the smallest test that covers the change before finishing. For backend work that is `go test ./internal/... ./services/...`. For UI work that is `cd frontend && pnpm check`.
 4. Do not commit secrets, `.env` values, or credentials.
@@ -91,7 +91,7 @@ The local `no-ai-slop` files carry additions beyond upstream: the `.agents/rules
 | Persistent setting | Go handler in `internal/api/`, mirror in frontend prefs if needed |
 | config.toml key | `internal/appconfig/configfile.go` key map, see `docs/en/configuration.md` |
 | Desktop-only behavior | `internal/desktop/`, `services/`, `frontend/src/lib/desktop/` |
-| Wails service method | `services/`, register in `main.go`, then `task generate:bindings` |
+| Wails service method | `services/`, register in `main.go`, then regenerate bindings (see below) |
 | Mix or radio algorithm | `frontend/src/lib/music/mix-generator/`, `personal-radio.ts`, `taste-score.ts` |
 | Scrobbling (Last.fm, ListenBrainz, Rocksky) | `internal/lastfm/`, `internal/api/{lastfm,listenbrainz,rocksky,scrobblers}.go`, see `.agents/knowledgebase/scrobbling.md` |
 | Native audio output | `internal/libmpv/`, `internal/libvlc/`, `internal/pcmsink/`, see `.agents/knowledgebase/audio.md` |
@@ -101,14 +101,17 @@ The local `no-ai-slop` files carry additions beyond upstream: the `.agents/rules
 ## Development loop
 
 ```bash
-task setup              # first clone: .env, frontend deps, toolchain hints
-task --list             # discover all tasks
-task dev                # desktop app with Vite hot reload
-task dev:server         # HTTP API + Vite (server mode)
-task test               # Go tests + frontend Vitest
-task verify             # format, lint, race tests, typecheck
-task generate:bindings  # after Go Wails service signature changes
+cp .env.example .env                        # first clone
+cd frontend && pnpm install                 # frontend deps (pnpm 11.1.2)
+wails3 dev -config ./build/config.yml -port 9245   # desktop app with Vite hot reload
+bash build/scripts/dev-server.sh            # HTTP API + Vite (server mode)
+go test ./internal/... ./services/...       # backend tests, no frontend embed needed
+cd frontend && pnpm test                    # frontend Vitest
+cd frontend && pnpm check                   # svelte-check typecheck
+wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh
 ```
+
+Each command has a `task` wrapper (`task dev`, `task test`, `task verify`, `task generate:bindings`). `task verify` is the composite pre-merge gate: bindings drift, format check, golangci-lint, `go test -race ./...`, property tests, ESLint, svelte-check, Vitest.
 
 Package-scoped backend tests do not need the built frontend embed:
 
@@ -123,7 +126,7 @@ cd frontend && pnpm install  # pnpm 11.1.2
 cd frontend && pnpm check
 ```
 
-Root `go test .` fails unless `frontend/dist` is already built. Use package-scoped tests or `task test`.
+Root `go test .` fails unless `frontend/dist` is already built. Use package-scoped tests or `cd frontend && pnpm test` for the frontend side.
 
 ## Writing rules
 
@@ -135,7 +138,7 @@ Root `go test .` fails unless `frontend/dist` is already built. Use package-scop
 
 ## Verification before finishing
 
-- Run `task test` or the narrowest test subset that covers the change.
+- Run `go test ./internal/... ./services/...` or the narrowest test subset that covers the change. Frontend: `cd frontend && pnpm test`.
 - For UI work, run `cd frontend && pnpm check` when types might break.
 - Do not commit secrets, `.env` values, or user credentials.
 
@@ -143,8 +146,8 @@ Root `go test .` fails unless `frontend/dist` is already built. Use package-scop
 
 | Symptom | Likely cause | Fix |
 |---|---|---|
-| `go test .` fails on embed | `frontend/dist` is missing | Build the frontend or use `go test ./internal/... ./services/...` |
-| Wails dev will not start | Missing `build/` or CLI version mismatch | Run `task setup` and check the Wails CLI version against `go.mod` |
-| Bindings drift in CI | Go service signature changed | Run `task generate:bindings` and commit `frontend/bindings/` |
-| Vite fails on `wails("./bindings")` | `frontend/bindings/` missing or stale | Run `task generate:bindings` |
+| `go test .` fails on embed | `frontend/dist` is missing | Build the frontend (`cd frontend && pnpm build`) or use `go test ./internal/... ./services/...` |
+| Wails dev will not start | Missing `build/` or CLI version mismatch | Run `bash build/scripts/setup.sh` and check the Wails CLI version against `go.mod` |
+| Bindings drift in CI | Go service signature changed | Run `wails3 generate bindings -clean=true -ts && bash build/scripts/bindings-postprocess.sh` and commit `frontend/bindings/` |
+| Vite fails on `wails("./bindings")` | `frontend/bindings/` missing or stale | Regenerate bindings as above |
 | Desktop blank WebView on Linux | WebKit GPU issues | `WEBKIT_DISABLE_DMABUF_RENDERER=1` or the graphics stability settings; see the README logging section |

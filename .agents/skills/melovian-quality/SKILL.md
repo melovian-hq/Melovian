@@ -45,7 +45,7 @@ A change is done when all of these hold:
 4. New Go service signatures came with regenerated `frontend/bindings/` in the same change.
 5. User-facing text passes the prose rules in `.agents/rules/prose.md`.
 6. No secrets, tokens, or `.env` values in the diff.
-7. For broad changes: `task verify` ran clean, not just `task test`.
+7. For broad changes: `task verify` (the composite gate) ran clean, not just `go test` and `pnpm test`.
 
 ## Self-review questions
 

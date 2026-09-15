@@ -77,22 +77,22 @@ Two suites read files with node fs instead of importing them:
 ## Backend (Go) tests
 
 - Colocated `*_test.go`. Run with `go test ./internal/... ./services/...`. Root `go test .` needs `frontend/dist` built.
-- Fuzz targets exist in `cache`, `compat`, `httputil`, `lyrics`, `metaloader`, `navidrome`, `subsonic`, `melog`, `update`. `task test:fuzz` smoke-runs each for 5s.
-- `task bench` runs `-benchmem` benchmarks on `cache`, `localmusic`, `subsonic`, `httputil`, `video`.
-- `task test:coverage` enforces per-package floors via `build/scripts/coverage-go.sh`: cache 85%, httputil 50%, lyrics 65%, localmusic 70%, subsonic 50%. Lowering a floor to pass CI is not allowed; raise coverage instead.
-- `task test:mutation` runs Stryker on the frontend and `build/scripts/mutation-go.sh`, which rewrites Go source mutants and runs the package tests.
+- Fuzz targets exist in `cache`, `compat`, `httputil`, `lyrics`, `metaloader`, `navidrome`, `subsonic`, `melog`, `update`. `go test -fuzz=<name> -fuzztime=5s ./internal/<pkg>` smoke-runs one; `task test:fuzz` runs them all.
+- Benchmarks: `go test -bench=. -benchmem -count=1` on `cache`, `localmusic`, `subsonic`, `httputil`, `video` (`task bench`).
+- `build/scripts/coverage-go.sh` enforces per-package floors: cache 85%, httputil 50%, lyrics 65%, localmusic 70%, subsonic 50%. Lowering a floor to pass CI is not allowed; raise coverage instead.
+- `build/scripts/mutation-go.sh` rewrites Go source mutants and runs the package tests; `cd frontend && pnpm test:mutation` runs Stryker (`task test:mutation` does both).
 - `go test -race ./...` runs under `task verify`. `testing/synctest` (stable since Go 1.25) is available for deterministic concurrency tests.
 
 ## e2e (Playwright)
 
 - Specs in `frontend/e2e/`. The `webServer` block launches `e2e/helpers/run-demo-server.mjs` (server binary in demo mode) unless `E2E_BASE_URL` points at a running instance.
-- Projects: `smoke` (specs tagged `@smoke`) and `chromium` (everything else). `task test:e2e` builds the server first.
+- Projects: `smoke` (specs tagged `@smoke`) and `chromium` (everything else). Build `bin/melovian-server` first (`go build -tags server -o bin/melovian-server .`) or use `task test:e2e` which builds it.
 - Dark color scheme, Desktop Chrome, 60s test timeout, trace on first retry.
 
 ## Pre-commit and CI gates
 
 - `lefthook.yml` pre-commit: gofmt check, golangci-lint, prettier --check, eslint on staged files. Skip only in emergencies with `LEFTHOOK=0`.
-- `task verify` (the pre-merge gate): bindings drift, format check, golangci-lint, `go test -race ./...`, property suite, eslint, svelte-check, vitest.
+- The pre-merge gate (`task verify`): bindings drift, format check, golangci-lint, `go test -race ./...`, property suite, eslint, svelte-check, vitest. Each part runs standalone (`bash build/scripts/check-bindings-drift.sh`, `bash build/scripts/check-gofmt.sh`, `pnpm lint`, `pnpm check`, `pnpm test:property`).
 - `.github/workflows/ci.yml` runs the same shape. CodeQL, Scorecard, and DeepSource also scan the repo.
 
 ## What to run before finishing
@@ -102,6 +102,6 @@ Two suites read files with node fs instead of importing them:
 | Go logic | `go test ./<pkg>/...` (or `./internal/... ./services/...` when broad) |
 | Frontend logic | `pnpm test` on the touched suite, `pnpm check` if types changed |
 | UI component | `pnpm check` + relevant `.test.ts` |
-| Service signature | `task generate:bindings`, `task test:bindings-drift` |
+| Service signature | `wails3 generate bindings -clean=true -ts` + `bash build/scripts/bindings-postprocess.sh`, then `bash build/scripts/check-bindings-drift.sh` |
 | API route | update `internal/api/testdata/api-routes.json`, run `pnpm test:property` |
-| Anything user-visible | `task verify` before calling it done |
+| Anything user-visible | `task verify` (or each gate part) before calling it done |
