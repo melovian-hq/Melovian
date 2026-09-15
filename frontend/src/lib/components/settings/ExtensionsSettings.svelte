@@ -1254,9 +1254,9 @@
     letter-spacing: 0.02em;
     line-height: 1.2;
     vertical-align: middle;
-    background: color-mix(in srgb, var(--jb-warning, #d4a017) 18%, transparent);
-    color: var(--jb-warning, #d4a017);
-    border: 1px solid color-mix(in srgb, var(--jb-warning, #d4a017) 40%, transparent);
+    background: color-mix(in srgb, var(--jb-warning) 18%, transparent);
+    color: var(--jb-warning);
+    border: 1px solid color-mix(in srgb, var(--jb-warning) 40%, transparent);
   }
 
   .extensions-settings__signed {

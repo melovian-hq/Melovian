@@ -26,7 +26,6 @@ const ALLOWLIST = new Map<string, string>([
     "Windows-style close hover #e81123 and white glyph",
   ],
   ["lib/components/layout/BottomNav.svelte", "box-shadow rgb(0 0 0 / 0.12)"],
-  ["lib/components/layout/Sidebar.svelte", "scrim / shadow rgb()"],
   [
     "lib/components/music/CollectionHero.svelte",
     "hard-coded hero gradient palette (#4c1d95, #0284c7, ...)",

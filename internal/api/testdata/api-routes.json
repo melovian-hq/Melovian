@@ -555,7 +555,19 @@
       "pattern": "/api/extensions/install"
     },
     {
+      "method": "POST",
+      "pattern": "/api/extensions/install-dir"
+    },
+    {
       "method": "GET",
+      "pattern": "/api/extensions/registry"
+    },
+    {
+      "method": "PUT",
+      "pattern": "/api/extensions/registry"
+    },
+    {
+      "method": "DELETE",
       "pattern": "/api/extensions/registry"
     },
     {
@@ -569,6 +581,14 @@
     {
       "method": "GET",
       "pattern": "/api/extensions/{id}/assets/{path...}"
+    },
+    {
+      "method": "GET",
+      "pattern": "/api/extensions/{id}/settings"
+    },
+    {
+      "method": "PUT",
+      "pattern": "/api/extensions/{id}/settings"
     },
     {
       "method": "PUT",
