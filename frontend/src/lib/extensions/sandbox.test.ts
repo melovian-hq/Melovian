@@ -2,10 +2,7 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import {
-  runExtensionScript,
-  SHADOWED_GLOBALS,
-} from "$lib/extensions/registry";
+import { runExtensionScript, SHADOWED_GLOBALS } from "$lib/extensions/registry";
 import type { ExtensionAPI } from "$lib/extensions/types";
 
 const api: ExtensionAPI = {

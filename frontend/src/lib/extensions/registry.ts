@@ -98,9 +98,7 @@ export function decorateTrack(
   return decoration;
 }
 
-function createExtensionAPI(
-  settings: Record<string, unknown>,
-): ExtensionAPI {
+function createExtensionAPI(settings: Record<string, unknown>): ExtensionAPI {
   return {
     registerTrackRule(rule) {
       declarativeRules.push(rule);
@@ -170,10 +168,7 @@ export const SHADOWED_GLOBALS = [
 // undefined. `new Function` still shares the global scope, so the shadow
 // list is what makes the audit's static blocklist real at runtime.
 // Exported for the sandbox test matrix.
-export function runExtensionScript(
-  source: string,
-  api: ExtensionAPI,
-): unknown {
+export function runExtensionScript(source: string, api: ExtensionAPI): unknown {
   const runner = new Function(
     "api",
     "register",

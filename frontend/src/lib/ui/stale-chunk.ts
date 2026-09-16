@@ -35,8 +35,7 @@ export function configureStaleChunkHandling(next: StaleChunkGuards) {
 
 /** True when the error is a missing-chunk failure from a stale build. */
 export function isStaleChunkError(error: unknown): boolean {
-  const name =
-    error instanceof Error ? error.name.toLowerCase() : "";
+  const name = error instanceof Error ? error.name.toLowerCase() : "";
   const message = (
     error instanceof Error ? error.message : String(error ?? "")
   ).toLowerCase();

@@ -339,7 +339,10 @@
   async function handleSaveSettings(item: ExtensionListItem) {
     settingsSavingId = item.id;
     try {
-      const saved = await saveExtensionSettings(item.id, settingsDraftFor(item));
+      const saved = await saveExtensionSettings(
+        item.id,
+        settingsDraftFor(item),
+      );
       item.settings = saved;
       await loadExtensions();
       toast.success(`Saved ${item.name} settings`);
@@ -564,8 +567,8 @@
     <div class="extensions-settings__dev">
       <p class="extensions-settings__dev-title">Development</p>
       <p class="extensions-settings__browse-note">
-        Link a local extension folder. Edits apply when you press Reload on
-        its row. Scripts still run in the sandbox.
+        Link a local extension folder. Edits apply when you press Reload on its
+        row. Scripts still run in the sandbox.
       </p>
       <div class="extensions-settings__dev-form">
         <input
@@ -761,7 +764,9 @@
         {/if}
       </p>
       {#if registryActiveUrl}
-        <p class="extensions-settings__browse-note extensions-settings__registry-url">
+        <p
+          class="extensions-settings__browse-note extensions-settings__registry-url"
+        >
           {registryActiveUrl}
         </p>
       {/if}
@@ -784,7 +789,8 @@
           <Button
             size="sm"
             variant="ghost"
-            disabled={registryConfigBusy || (!registryUrl.trim() && !registryKey.trim())}
+            disabled={registryConfigBusy ||
+              (!registryUrl.trim() && !registryKey.trim())}
             onclick={() => void handleSaveRegistry()}
           >
             Use custom registry
@@ -848,7 +854,8 @@
                       >v{item.version}</span
                     >
                     {#if item.delisted}
-                      <span class="extensions-settings__delisted">delisted</span>
+                      <span class="extensions-settings__delisted">delisted</span
+                      >
                     {:else if item.auditStatus === "pass"}
                       <span class="extensions-settings__audited">audited</span>
                     {/if}

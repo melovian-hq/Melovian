@@ -4,7 +4,8 @@
 import { describe, it, expect, vi, beforeEach, afterEach } from "vitest";
 
 const handlers = vi.hoisted(
-  () => new Map<string, Set<(event: { type: string; payload: unknown }) => void>>(),
+  () =>
+    new Map<string, Set<(event: { type: string; payload: unknown }) => void>>(),
 );
 const bustMock = vi.hoisted(() => vi.fn());
 const refreshHomeMock = vi.hoisted(() => vi.fn());
@@ -13,7 +14,10 @@ const sourcesMock = vi.hoisted(() => ({ mode: "subsonic" as string }));
 
 vi.mock("$lib/core/events/ws.svelte", () => ({
   eventSocket: {
-    on(type: string, handler: (event: { type: string; payload: unknown }) => void) {
+    on(
+      type: string,
+      handler: (event: { type: string; payload: unknown }) => void,
+    ) {
       let set = handlers.get(type);
       if (!set) {
         set = new Set();

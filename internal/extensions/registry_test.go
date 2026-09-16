@@ -584,11 +584,11 @@ func TestRegistryOverrideFetchAndInstall(t *testing.T) {
 	srv := httptest.NewServer(mux)
 	defer srv.Close()
 	indexJSON = bytes.ReplaceAll(indexJSON, []byte("__PKG__"), []byte(srv.URL))
-	mux.HandleFunc("/registry.json", func(w http.ResponseWriter, r *http.Request) { w.Write(indexJSON) })
+	mux.HandleFunc("/registry.json", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write(indexJSON) })
 	mux.HandleFunc("/registry.sig", func(w http.ResponseWriter, r *http.Request) {
-		w.Write([]byte(base64.StdEncoding.EncodeToString(ed25519.Sign(priv, indexJSON))))
+		_, _ = w.Write([]byte(base64.StdEncoding.EncodeToString(ed25519.Sign(priv, indexJSON))))
 	})
-	mux.HandleFunc("/demo-remote.zip", func(w http.ResponseWriter, r *http.Request) { w.Write(pkg) })
+	mux.HandleFunc("/demo-remote.zip", func(w http.ResponseWriter, r *http.Request) { _, _ = w.Write(pkg) })
 
 	if err := SaveRegistryOverride(dir, srv.URL+"/registry.json", []string{hex.EncodeToString(pub)}); err != nil {
 		t.Fatal(err)
