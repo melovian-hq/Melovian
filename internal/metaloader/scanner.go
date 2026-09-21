@@ -49,7 +49,10 @@ func (s *Scanner) SetProgressHook(fn func(libraryID string, progress ScanProgres
 }
 
 func (s *Scanner) ForgetLibrary(libraryID string) {
-	s.scanMu.Delete(libraryID)
+	// The scan mutex entry must stay: deleting it while a scan holds the
+	// lock would let a second operation create a fresh mutex and overlap.
+	// The map grows by one small entry per library ever seen, which is
+	// bounded by library count.
 	s.progress.Delete(libraryID)
 }
 

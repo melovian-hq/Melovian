@@ -42,7 +42,6 @@ type Server struct {
 	baseURL  string
 	catalog  CatalogProvider
 	httpSrv  *http.Server
-	udpConn  *net.UDPConn
 	cancel   context.CancelFunc
 }
 
@@ -97,9 +96,6 @@ func (s *Server) Start(ctx context.Context) error {
 func (s *Server) Stop(ctx context.Context) error {
 	if s.cancel != nil {
 		s.cancel()
-	}
-	if s.udpConn != nil {
-		_ = s.udpConn.Close()
 	}
 	if s.httpSrv != nil {
 		return s.httpSrv.Shutdown(ctx)
@@ -162,7 +158,9 @@ func (s *Server) ssdpLoop(ctx context.Context) {
 		slog.Warn("dlna ssdp disabled", "err", err)
 		return
 	}
-	s.udpConn = conn
+	// The loop owns the socket. Stop only cancels the context, so closing
+	// here keeps shutdown from racing a late ListenUDP.
+	defer func() { _ = conn.Close() }()
 	location := fmt.Sprintf("%s/dlna/description.xml", s.baseURL)
 	message := strings.Join([]string{
 		"NOTIFY * HTTP/1.1",

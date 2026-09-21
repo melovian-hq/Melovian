@@ -10,7 +10,7 @@ import (
 
 func TestScannerForgetLibraryClearsMaps(t *testing.T) {
 	s := &Scanner{}
-	_ = s.libraryScanMu("lib_1")
+	mu := s.libraryScanMu("lib_1")
 	s.setProgress("lib_1", "scan", 3)
 
 	s.ForgetLibrary("lib_1")
@@ -18,8 +18,10 @@ func TestScannerForgetLibraryClearsMaps(t *testing.T) {
 	if _, ok := s.Progress("lib_1"); ok {
 		t.Fatal("expected progress cleared")
 	}
-	if _, ok := s.scanMu.Load("lib_1"); ok {
-		t.Fatal("expected scan mutex cleared")
+	// The mutex entry is intentionally retained: deleting it while a scan
+	// holds the lock would let a fresh mutex overlap the running scan.
+	if got := s.libraryScanMu("lib_1"); got != mu {
+		t.Fatal("expected the same scan mutex to be reused after forget")
 	}
 }
 

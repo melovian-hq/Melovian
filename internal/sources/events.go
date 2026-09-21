@@ -117,19 +117,22 @@ func (b *EventBridge) syncInstance(userID string, inst store.SourceInstance) {
 		}
 	}
 	ctx, cancel := context.WithCancel(context.Background())
-	b.running[key] = &eventStream{key: key, cancel: cancel}
+	stream := &eventStream{key: key, cancel: cancel}
+	b.running[key] = stream
 	b.mu.Unlock()
 
-	go b.run(ctx, key, userID, streamer, inst)
+	go b.run(ctx, stream, userID, streamer, inst)
 }
 
 // run loops the stream with exponential backoff until cancelled or the
 // source is disabled.
-func (b *EventBridge) run(ctx context.Context, key, userID string, streamer EventStreamer, inst store.SourceInstance) {
+func (b *EventBridge) run(ctx context.Context, stream *eventStream, userID string, streamer EventStreamer, inst store.SourceInstance) {
 	defer func() {
 		b.mu.Lock()
-		if current, ok := b.running[key]; ok && current.key == key {
-			delete(b.running, key)
+		// Delete only if this goroutine still owns the slot. A faster
+		// replacement can already sit under the same key.
+		if current, ok := b.running[stream.key]; ok && current == stream {
+			delete(b.running, stream.key)
 		}
 		b.mu.Unlock()
 	}()

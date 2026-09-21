@@ -77,9 +77,11 @@ func (h *Handler) resolveBrowsePath(raw string) (string, error) {
 			if err != nil || !info.IsDir() {
 				continue
 			}
-			if _, err := os.Open(candidate); err != nil { //#nosec G304 -- candidate is from fixed browse roots
+			f, err := os.Open(candidate) //#nosec G304 -- candidate is from fixed browse roots
+			if err != nil {
 				continue
 			}
+			_ = f.Close()
 			return filepath.Clean(candidate), nil
 		}
 		return "", filesystemBrowseError("no readable folder found under home, /media, /mnt, or /run/media")

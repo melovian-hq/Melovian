@@ -247,10 +247,10 @@ func (s *UpdateService) statusPayload(err error) map[string]any {
 		"desktop":        true,
 		"signed":         update.Pinned(),
 	}
+	s.mu.Lock()
 	if s.app != nil && s.inited {
 		p["state"] = string(s.app.Updater.State())
 	}
-	s.mu.Lock()
 	if s.rel != nil {
 		p["latestVersion"] = s.rel.Version
 		p["notes"] = s.rel.Notes

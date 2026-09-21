@@ -705,26 +705,43 @@ func (s *ListenStore) SetPlaylistTracks(userID, playlistID string, tracks []Play
 }
 
 func (s *ListenStore) AddPlaylistTrack(userID, playlistID string, track PlaylistTrack) error {
-	pl, err := s.GetPlaylist(userID, playlistID)
-	if err != nil {
+	if _, err := s.GetPlaylist(userID, playlistID); err != nil {
 		return err
 	}
 
-	position := len(pl.Tracks)
-	_, err = s.db.exec(
+	// Position is computed inside the insert so concurrent adds cannot
+	// land on the same slot, and the whole thing runs in one transaction
+	// so the timestamp bump cannot be lost to a crash between writes.
+	tx, err := s.db.begin()
+	if err != nil {
+		return err
+	}
+	defer func() { _ = tx.Rollback() }()
+
+	res, err := tx.Exec(
 		`INSERT INTO music_playlist_tracks (
 			playlist_id, track_id, position, track_title, artist_name, album_id, album_title, duration_ms, cover_art_id
-		) VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?)
+		)
+		SELECT ?, ?, COALESCE(MAX(position), -1) + 1, ?, ?, ?, ?, ?, ?
+		FROM music_playlist_tracks
+		WHERE playlist_id = ?
 		ON CONFLICT(playlist_id, track_id) DO NOTHING`,
-		playlistID, track.TrackID, position, track.TrackTitle, track.ArtistName, track.AlbumID, track.AlbumTitle, track.DurationMs, track.CoverArtID,
+		playlistID, track.TrackID, track.TrackTitle, track.ArtistName, track.AlbumID, track.AlbumTitle, track.DurationMs, track.CoverArtID,
+		playlistID,
 	)
 	if err != nil {
 		return err
 	}
+	inserted, _ := res.RowsAffected()
+	if inserted == 0 {
+		return tx.Commit()
+	}
 
 	now := nowUnix()
-	_, err = s.db.exec(`UPDATE music_playlists SET updated_at = ? WHERE id = ?`, now, playlistID)
-	return err
+	if _, err := tx.Exec(`UPDATE music_playlists SET updated_at = ? WHERE id = ?`, now, playlistID); err != nil {
+		return err
+	}
+	return tx.Commit()
 }
 
 func (s *ListenStore) RemovePlaylistTrack(userID, playlistID, trackID string) error {
