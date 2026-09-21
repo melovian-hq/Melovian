@@ -41,6 +41,7 @@ import { toast } from "$lib/ui/toast.svelte";
 import { layout, MOBILE_MEDIA } from "$lib/components/layout/layout.svelte";
 import { loadExtensions } from "$lib/extensions/registry";
 import { checkExtensionUpdates } from "$lib/extensions/updates.svelte";
+import { initPerf, perfMark, perfMeasure } from "$lib/core/perf";
 
 let mobileMedia: MediaQuery | undefined;
 
@@ -73,6 +74,8 @@ export function syncSidebarWidthEffect(): void {
 export function runInitialBootstrap(
   setBootstrapped: (value: boolean) => void,
 ): void {
+  initPerf();
+  perfMark("bootstrap:start");
   void (async () => {
     await loadRuntimeConfig();
     if (isFakeCatalog()) {
@@ -94,6 +97,7 @@ export function runInitialBootstrap(
       await loadExtensions();
       void checkExtensionUpdates();
     }
+    perfMeasure("bootstrap", "bootstrap:start");
     setBootstrapped(true);
   })();
 }

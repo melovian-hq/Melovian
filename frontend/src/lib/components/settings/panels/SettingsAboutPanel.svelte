@@ -5,6 +5,16 @@
   import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import { API_VERSION, CLIENT_VERSION, getCompatState } from "$lib/compat";
   import { isWailsDesktop } from "$lib/config/runtime";
+  import { StorageKeys } from "$lib/brand";
+  import {
+    getLogLevel,
+    resetLogLevel,
+    setLogLevel,
+    type LogLevel,
+  } from "$lib/core/logger";
+  import { perfSummary } from "$lib/core/perf";
+  import Select from "$lib/components/ui/Select.svelte";
+  import Field from "$lib/components/ui/Field.svelte";
   import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
   import { ApiPaths } from "$lib/core/http/api-paths";
   import { parseJson } from "$lib/core/http/parse";
@@ -209,6 +219,71 @@
     }
   }
 
+  type LogLevelChoice = LogLevel | "default";
+
+  let logLevelChoice = $state<LogLevelChoice>(
+    (() => {
+      try {
+        return localStorage.getItem(StorageKeys.logLevel)
+          ? getLogLevel()
+          : "default";
+      } catch {
+        return "default";
+      }
+    })(),
+  );
+  let diagnosticsBusy = $state(false);
+
+  const logLevelOptions: { value: LogLevelChoice; label: string }[] = [
+    { value: "default", label: "Default" },
+    { value: "debug", label: "Debug" },
+    { value: "info", label: "Info" },
+    { value: "warn", label: "Warning" },
+    { value: "error", label: "Error" },
+  ];
+
+  function changeLogLevel(value: LogLevelChoice): void {
+    logLevelChoice = value;
+    if (value === "default") {
+      resetLogLevel();
+    } else {
+      setLogLevel(value);
+    }
+  }
+
+  const perf = $derived(perfSummary());
+  const perfVitalRows = $derived(
+    [
+      ["First paint", perf.vitals.fcp],
+      ["Largest paint", perf.vitals.lcp],
+      ["DOM ready", perf.vitals.domContentLoaded],
+      ["Load", perf.vitals.load],
+    ]
+      .filter((row): row is [string, number] => typeof row[1] === "number")
+      .map(([label, ms]) => `${label} ${Math.round(ms)}ms`),
+  );
+
+  async function copyDiagnostics(): Promise<void> {
+    diagnosticsBusy = true;
+    try {
+      const summary = perfSummary();
+      const payload = {
+        app: APP_NAME,
+        clientVersion: CLIENT_VERSION,
+        apiVersion: compat.apiVersion || API_VERSION,
+        serverVersion: compat.serverVersion || "unknown",
+        logLevel: getLogLevel(),
+        perf: summary,
+      };
+      await navigator.clipboard.writeText(JSON.stringify(payload, null, 2));
+      toast.success("Diagnostics copied");
+    } catch {
+      toast.error("Could not copy diagnostics");
+    } finally {
+      diagnosticsBusy = false;
+    }
+  }
+
   const updProgress = $derived(
     upd && (upd.total ?? 0) > 0
       ? Math.min(100, Math.round(((upd.written ?? 0) / (upd.total ?? 1)) * 100))
@@ -376,6 +451,62 @@
     {:else if updReady && upd?.desktop}
       <Button onclick={() => void restartToApply()}>Restart to apply</Button>
     {/if}
+  {/snippet}
+</SettingsCard>
+
+<SettingsCard
+  title="Diagnostics"
+  description="Runtime timing, main thread stalls, and log verbosity for debugging."
+>
+  <Field label="Log level" hint="Debug logging stays on this device.">
+    <Select
+      value={logLevelChoice}
+      options={logLevelOptions}
+      onchange={changeLogLevel}
+    />
+  </Field>
+
+  {#if perfVitalRows.length > 0 || perf.longtaskCount > 0}
+    <dl class="about-panel">
+      {#if perfVitalRows.length > 0}
+        <div class="about-panel__row">
+          <dt>Page timing</dt>
+          <dd>{perfVitalRows.join(" · ")}</dd>
+        </div>
+      {/if}
+      {#if perf.longtaskCount > 0}
+        <div class="about-panel__row">
+          <dt>Main thread stalls</dt>
+          <dd>
+            {perf.longtaskCount} long tasks, {perf.longtaskTotalMs}ms blocked
+          </dd>
+        </div>
+      {/if}
+      {#if perf.slowest.length > 0}
+        <div class="about-panel__row">
+          <dt>Slowest operations</dt>
+          <dd>
+            {#each perf.slowest.slice(0, 5) as entry (entry.at)}
+              <span class="about-panel__caps">
+                {entry.name}
+                {Math.round(entry.durationMs)}ms{entry.detail
+                  ? ` ${entry.detail}`
+                  : ""}
+              </span>
+            {/each}
+          </dd>
+        </div>
+      {/if}
+    </dl>
+  {/if}
+  {#snippet footer()}
+    <Button
+      variant="ghost"
+      disabled={diagnosticsBusy}
+      onclick={() => void copyDiagnostics()}
+    >
+      Copy diagnostics
+    </Button>
   {/snippet}
 </SettingsCard>
 

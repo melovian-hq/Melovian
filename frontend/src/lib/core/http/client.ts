@@ -3,6 +3,7 @@
 
 import { getActiveInstanceId } from "$lib/features/instances/context";
 import { logger, newRequestId } from "$lib/core/logger";
+import { perfRecord } from "$lib/core/perf";
 import { getOrCreateDeviceId } from "$lib/music/device-id";
 import { clientCompatHeaders } from "$lib/compat";
 import { isRemoteClient, resolveApiUrl } from "$lib/config/remote-server";
@@ -27,6 +28,34 @@ export function isTransientNetworkError(err: unknown): boolean {
   );
 }
 
+/** Path-only detail so query strings carrying auth params stay out of logs. */
+function safeUrlDetail(input: RequestInfo | URL): string {
+  try {
+    const base =
+      typeof location !== "undefined" ? location.origin : "http://localhost";
+    const url = input instanceof URL ? input : new URL(String(input), base);
+    return url.pathname || url.href.split("?")[0];
+  } catch {
+    return String(input).split("?")[0];
+  }
+}
+
+function recordHttpTiming(
+  start: number,
+  input: RequestInfo | URL,
+  outcome: string,
+): void {
+  try {
+    perfRecord(
+      "http",
+      performance.now() - start,
+      `${safeUrlDetail(input)} ${outcome}`,
+    );
+  } catch {
+    /* performance API unavailable */
+  }
+}
+
 export async function fetchWithRetry(
   input: RequestInfo | URL,
   init?: RequestInit,
@@ -34,6 +63,7 @@ export async function fetchWithRetry(
 ): Promise<Response> {
   let lastError: unknown;
   let lastRequestId = "";
+  const startedAt = typeof performance !== "undefined" ? performance.now() : 0;
   const resolvedInput =
     typeof input === "string" ? resolveApiUrl(input) : input;
   const crossOrigin = isRemoteClient();
@@ -83,6 +113,11 @@ export async function fetchWithRetry(
           responseRequestId,
         );
       }
+      recordHttpTiming(
+        startedAt,
+        resolvedInput,
+        `${response.status} attempt ${attempt + 1}`,
+      );
       return response;
     } catch (err) {
       lastError = err;
@@ -109,6 +144,7 @@ export async function fetchWithRetry(
   } else {
     logger.warn("HTTP request failed", context, "http.client", lastRequestId);
   }
+  recordHttpTiming(startedAt, resolvedInput, `failed ${attempts} attempts`);
   throw err;
 }
 

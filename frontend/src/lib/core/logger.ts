@@ -3,7 +3,7 @@
 
 import { captureClientError, captureClientMessage } from "$lib/core/sentry";
 import { ApiPaths } from "$lib/core/http/api-paths";
-import { APP_NAME } from "$lib/brand";
+import { APP_NAME, StorageKeys } from "$lib/brand";
 
 export type LogLevel = "debug" | "info" | "warn" | "error";
 
@@ -14,7 +14,18 @@ const levelRank: Record<LogLevel, number> = {
   error: 3,
 };
 
-let minLevel: LogLevel = import.meta.env.DEV ? "debug" : "info";
+function storedLogLevel(): LogLevel | null {
+  try {
+    const value = localStorage.getItem(StorageKeys.logLevel);
+    if (value && value in levelRank) return value as LogLevel;
+  } catch {
+    /* storage unavailable */
+  }
+  return null;
+}
+
+let minLevel: LogLevel =
+  storedLogLevel() ?? (import.meta.env.DEV ? "debug" : "info");
 
 export interface ClientLogPayload {
   level: LogLevel;
@@ -127,6 +138,24 @@ function log(
 
 export function setLogLevel(level: LogLevel): void {
   minLevel = level;
+  try {
+    localStorage.setItem(StorageKeys.logLevel, level);
+  } catch {
+    /* storage unavailable */
+  }
+}
+
+export function getLogLevel(): LogLevel {
+  return minLevel;
+}
+
+export function resetLogLevel(): void {
+  minLevel = import.meta.env.DEV ? "debug" : "info";
+  try {
+    localStorage.removeItem(StorageKeys.logLevel);
+  } catch {
+    /* storage unavailable */
+  }
 }
 
 export const logger = {
