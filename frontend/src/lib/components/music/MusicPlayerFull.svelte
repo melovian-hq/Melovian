@@ -533,6 +533,7 @@
     display: inline-flex;
     align-items: center;
     justify-content: center;
+    position: relative;
     width: 2.5rem;
     height: 2.5rem;
     border: none;
@@ -558,12 +559,27 @@
 
   .player__btn--active {
     /* Pull accent toward full-contrast text so low-chroma accents like
-       Graphite still read as lit instead of matching muted icons. */
-    color: color-mix(in srgb, var(--jb-accent) 50%, var(--jb-text));
+       Graphite still read as lit instead of matching muted icons. The
+       indicator dot makes the state unambiguous even when the accent
+       hue is near the muted icon color. */
+    color: color-mix(in srgb, var(--jb-accent) 60%, var(--jb-text));
+  }
+
+  .player__btn--active::after {
+    content: "";
+    position: absolute;
+    bottom: 0.2rem;
+    left: 50%;
+    width: 0.3rem;
+    height: 0.3rem;
+    border-radius: var(--jb-radius-full);
+    background: currentColor;
+    transform: translateX(-50%);
+    pointer-events: none;
   }
 
   .player__btn--active:hover {
-    color: color-mix(in srgb, var(--jb-accent) 65%, var(--jb-text));
+    color: color-mix(in srgb, var(--jb-accent) 75%, var(--jb-text));
   }
 
   .player__btn--devices {
