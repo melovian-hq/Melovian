@@ -14,7 +14,8 @@ COPY vendor/ vendor/
 COPY . .
 RUN test -d frontend/dist || (echo "missing frontend/dist: run task common:build:frontend first" && exit 1)
 RUN test -d vendor || (echo "missing vendor/: run task go:vendor" && exit 1)
-RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH:-$(go env GOARCH)}" go build -mod=vendor -tags server -trimpath \
+RUN --mount=type=cache,target=/root/.cache/go-build,id=melovian-gobuild-$TARGETARCH \
+  CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH:-$(go env GOARCH)}" go build -mod=vendor -tags server -trimpath \
   -ldflags="-s -w -X melovian/internal/compat.Version=${VERSION}" \
   -o /out/melovian .
 

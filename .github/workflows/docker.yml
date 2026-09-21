@@ -164,6 +164,8 @@ jobs:
             SOURCE=https://github.com/${{ github.repository }}
           provenance: mode=max
           sbom: true
+          compression: zstd
+          force-compression: true
           cache-from: type=gha
           cache-to: type=gha,mode=max
 
@@ -212,6 +214,7 @@ jobs:
           output: trivy-results.sarif
           severity: CRITICAL,HIGH
           ignore-unfixed: true
+          exit-code: "1"
 
       # Forked PRs get a read-only token without security-events, so only
       # upload SARIF where the permission can exist.
