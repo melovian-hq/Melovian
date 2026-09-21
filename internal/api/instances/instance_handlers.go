@@ -337,7 +337,8 @@ func (h *Handler) handlePingInstance(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 	id := r.PathValue("id")
 	userID := apishared.UserIDFromContext(r.Context())
-	if _, err := h.instances.GetForUser(userID, id); err != nil {
+	existing, err := h.instances.GetForUser(userID, id)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
 			return
@@ -361,7 +362,16 @@ func (h *Handler) handleUpdateInstance(w http.ResponseWriter, r *http.Request) {
 	}
 	username := strings.TrimSpace(req.Username)
 	password := req.Password
-	if serverURL != "" && username != "" && password != "" {
+	if serverURL != "" {
+		// Repointing a stored instance must always re-verify the target.
+		// The effective credentials come from the request or the stored
+		// record, so a URL-only update cannot bypass the ping.
+		if username == "" {
+			username = existing.Username
+		}
+		if password == "" {
+			password = existing.Password
+		}
 		client := subsonic.NewClient(serverURL, username, password)
 		serverName, _, err := client.Ping()
 		if err != nil {

@@ -87,6 +87,8 @@ func NewServer(cfg appconfig.Config, db *store.DB) *Server {
 	ConfigureCORSOrigins(cfg.CORSOrigins)
 	instances := store.NewInstanceStore(db)
 	preferences := store.NewPreferencesStore(db)
+	instances.RequireCipher()
+	preferences.RequireCipher()
 	if cipher, err := store.LoadSecretCipher(cfg.DataDir); err != nil {
 		slog.Error("instance credential encryption unavailable", "err", err)
 	} else if cipher != nil {
@@ -319,6 +321,7 @@ func (s *Server) Handler() http.Handler {
 func (s *Server) buildAPIHandler() http.Handler {
 	inner := ChainAuthInstance(s.auth, s.cfg.DemoModeEffective(), s, s.mux)
 	inner = DemoReadOnlyMiddleware(s.cfg.DemoModeEffective(), inner)
+	inner = CSRFMiddleware(ListenAddrLoopbackOnly(s.cfg.ListenAddr), inner)
 	inner = CompatMiddleware(inner)
 	inner = RequestIDMiddleware(inner)
 	inner = LoggingMiddleware(inner)

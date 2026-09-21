@@ -209,7 +209,11 @@ func (r *DeviceRegistry) EnsureInviteToken(scope, deviceID string) (sessionID, t
 	}
 	session.CrossUser = true
 	if session.InviteToken == "" {
-		session.InviteToken = newPartyInviteToken()
+		token, err := newPartyInviteToken()
+		if err != nil {
+			return "", "", false
+		}
+		session.InviteToken = token
 	}
 	return session.ID, session.InviteToken, true
 }
@@ -355,6 +359,64 @@ func (r *DeviceRegistry) SessionStatus(sessionID string) (PartyStatus, bool) {
 		CrossUser:  session.CrossUser,
 		Members:    members,
 	}, true
+}
+
+// sessionTrackAllowlistCap bounds the rolling set of track ids a party
+// session remembers. When it fills the set is reset rather than
+// evicting one by one, keeping long sessions cheap.
+const sessionTrackAllowlistCap = 1024
+
+// rememberTracks records ids the host reported as current or queued so
+// members may stream exactly what the party is sharing. Cover art ids
+// ride along because members resolve artwork through the same gate.
+func (s *ListenSession) rememberTracks(trackID, coverArt string, queueIDs []string) {
+	if s.TrackIDs == nil {
+		s.TrackIDs = make(map[string]struct{})
+	}
+	if len(s.TrackIDs) >= sessionTrackAllowlistCap {
+		s.TrackIDs = make(map[string]struct{}, sessionTrackAllowlistCap)
+	}
+	if trackID != "" {
+		s.TrackIDs[trackID] = struct{}{}
+	}
+	if coverArt != "" {
+		s.TrackIDs[coverArt] = struct{}{}
+	}
+	for _, id := range queueIDs {
+		if id != "" {
+			s.TrackIDs[id] = struct{}{}
+		}
+	}
+}
+
+// SessionAllowsTrack reports whether a party member may fetch trackID
+// through the session. The allowlist is the ids the host has reported
+// playing or queued, plus whatever the host snapshot holds right now so
+// a track queued before this code existed still resolves.
+func (r *DeviceRegistry) SessionAllowsTrack(sessionID, trackID string) bool {
+	if trackID == "" {
+		return false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	session := r.sessions[sessionID]
+	if session == nil {
+		return false
+	}
+	if _, ok := session.TrackIDs[trackID]; ok {
+		return true
+	}
+	if snap := r.hostPlaybackLocked(session); snap != nil {
+		if snap.TrackID == trackID || snap.CoverArt == trackID {
+			return true
+		}
+		for _, id := range snap.QueueIDs {
+			if id == trackID {
+				return true
+			}
+		}
+	}
+	return false
 }
 
 func (r *DeviceRegistry) IsSessionMember(sessionID, userID, scope, deviceID string) bool {

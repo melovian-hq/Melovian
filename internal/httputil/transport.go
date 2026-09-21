@@ -4,6 +4,8 @@
 package httputil
 
 import (
+	"context"
+	"fmt"
 	"net"
 	"net/http"
 	"sync"
@@ -30,6 +32,44 @@ func StreamTransport() http.RoundTripper {
 		streamTransport = newPooledTransport(8, 16)
 	})
 	return streamTransport
+}
+
+// PublicOnlyTransport dials only public addresses. The check happens at
+// connect time, so redirects and DNS answers that point at loopback,
+// private, or link-local targets (cloud metadata endpoints, LAN hosts)
+// are refused even though the request URL itself looked fine.
+func PublicOnlyTransport() *http.Transport {
+	t := newPooledTransport(8, 16)
+	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
+	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {
+		host, _, err := net.SplitHostPort(addr)
+		if err != nil {
+			return nil, err
+		}
+		ips, err := net.DefaultResolver.LookupIP(ctx, "ip", host)
+		if err != nil {
+			return nil, err
+		}
+		for _, ip := range ips {
+			if !IsPublicIP(ip) {
+				return nil, fmt.Errorf("refusing non-public address for %s", host)
+			}
+		}
+		return dialer.DialContext(ctx, network, addr)
+	}
+	return t
+}
+
+// IsPublicIP reports whether ip is a globally routable unicast address.
+// IsGlobalUnicast alone still accepts RFC1918 and link-local ranges, so
+// those are excluded explicitly.
+func IsPublicIP(ip net.IP) bool {
+	return ip.IsGlobalUnicast() &&
+		!ip.IsPrivate() &&
+		!ip.IsLoopback() &&
+		!ip.IsLinkLocalUnicast() &&
+		!ip.IsLinkLocalMulticast() &&
+		!ip.IsMulticast()
 }
 
 func newPooledTransport(idlePerHost, maxPerHost int) *http.Transport {

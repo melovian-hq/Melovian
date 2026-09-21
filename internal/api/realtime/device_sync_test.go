@@ -739,3 +739,50 @@ func TestInviteToSessionPullsSameScopeDevice(t *testing.T) {
 		t.Fatalf("expected not_hosting from guest, got %q", code)
 	}
 }
+
+func TestSessionAllowsTrack(t *testing.T) {
+	hub := NewEventHub()
+	reg := NewDeviceRegistry(hub)
+	scope := "server:local"
+
+	host := mockWSClient("", "host", scope)
+	guest := mockWSClient("", "guest", scope)
+	hub.Register(host)
+	hub.Register(guest)
+	reg.Register(host, "Host", "Mac")
+	reg.Register(guest, "Guest", "Linux")
+
+	sessionID := reg.CreateSession(host)
+	if sessionID == "" {
+		t.Fatal("expected session id")
+	}
+	if !reg.JoinSession(guest, sessionID) {
+		t.Fatal("guest should join host session")
+	}
+
+	if reg.SessionAllowsTrack(sessionID, "song-9") {
+		t.Fatal("unshared track must not be streamable by party members")
+	}
+	if reg.SessionAllowsTrack(sessionID, "") {
+		t.Fatal("empty track id must be rejected")
+	}
+
+	reg.UpdatePlayback(host, PlaybackSnapshot{
+		TrackID:  "song-1",
+		CoverArt: "cov-1",
+		Paused:   false,
+		QueueIDs: []string{"song-1", "song-2"},
+	})
+
+	for _, id := range []string{"song-1", "song-2", "cov-1"} {
+		if !reg.SessionAllowsTrack(sessionID, id) {
+			t.Fatalf("expected %s to be allowed after host report", id)
+		}
+	}
+	if reg.SessionAllowsTrack(sessionID, "song-9") {
+		t.Fatal("track outside host queue must stay blocked")
+	}
+	if reg.SessionAllowsTrack("lt-nope", "song-1") {
+		t.Fatal("unknown session must be rejected")
+	}
+}

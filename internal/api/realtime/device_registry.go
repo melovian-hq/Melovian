@@ -24,6 +24,14 @@ func (r *DeviceRegistry) Register(client *WSClient, name, userAgent string) Devi
 	if existing, ok := r.devices[key]; ok && existing.client != client {
 		existing.client.SetDeviceID("")
 	}
+	// A client can only own one device identity. Re-registering under a
+	// new device id must drop the stale entry, or it would stay
+	// addressable forever after disconnect.
+	for k, entry := range r.devices {
+		if k != key && entry.client == client {
+			delete(r.devices, k)
+		}
+	}
 
 	displayName := name
 	if displayName == "" {
@@ -58,6 +66,13 @@ func (r *DeviceRegistry) Unregister(client *WSClient) {
 		return
 	}
 	r.mu.Lock()
+	// Drop every entry this client owns, including stale ones left by an
+	// earlier re-register under a different device id.
+	for k, entry := range r.devices {
+		if entry.client == client && k != deviceKey(client.ScopeKey(), client.DeviceID()) {
+			delete(r.devices, k)
+		}
+	}
 	key := deviceKey(client.ScopeKey(), client.DeviceID())
 	dev, ok := r.devices[key]
 	if !ok || dev.client != client {
@@ -179,6 +194,9 @@ func (r *DeviceRegistry) UpdatePlayback(client *WSClient, snap PlaybackSnapshot)
 		if session := r.sessions[sessionID]; session != nil {
 			partyKeys = copyStringSet(session.MemberKeys)
 			partyCross = session.CrossUser
+			if isHost {
+				session.rememberTracks(snap.TrackID, snap.CoverArt, snap.QueueIDs)
+			}
 		}
 	}
 	r.mu.Unlock()

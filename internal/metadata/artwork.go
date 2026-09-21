@@ -130,7 +130,8 @@ func FetchArtwork(ctx context.Context, artworkURL string) ([]byte, string, error
 		return nil, "", err
 	}
 	client := &http.Client{
-		Timeout: lookupTimeout,
+		Timeout:   lookupTimeout,
+		Transport: httputil.PublicOnlyTransport(),
 		CheckRedirect: func(req *http.Request, via []*http.Request) error {
 			if len(via) >= 5 {
 				return fmt.Errorf("too many redirects")

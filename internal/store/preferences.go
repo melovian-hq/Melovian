@@ -6,16 +6,18 @@ package store
 import (
 	"database/sql"
 	"encoding/json"
+	"errors"
 	"fmt"
 	"strings"
 	"sync"
 )
 
 type PreferencesStore struct {
-	db         *DB
-	cipher     *secretCipher
-	cipherOnce sync.Once
-	cipherErr  error
+	db             *DB
+	cipher         *secretCipher
+	cipherOnce     sync.Once
+	cipherErr      error
+	cipherRequired bool
 }
 
 func NewPreferencesStore(db *DB) *PreferencesStore {
@@ -46,6 +48,13 @@ var secretPrefFields = map[string][]string{
 // upgraded by migrateSecrets or the next Set.
 func (s *PreferencesStore) SetCipher(c *secretCipher) {
 	s.cipher = c
+}
+
+// RequireCipher makes secret writes fail closed instead of storing
+// plaintext when the cipher could not be loaded. Production wiring sets
+// this; tests without a key file keep the permissive default.
+func (s *PreferencesStore) RequireCipher() {
+	s.cipherRequired = true
 }
 
 // EnsureSecretCipher lazily loads the instance secret cipher for dataDir and
@@ -117,6 +126,9 @@ func (s *PreferencesStore) decryptValue(key, raw string) (string, error) {
 
 // encryptValue returns raw with the credential fields for key encrypted.
 func (s *PreferencesStore) encryptValue(key, raw string) (string, error) {
+	if s.cipher == nil && s.cipherRequired && s.hasPlaintextSecrets(key, raw) {
+		return "", errors.New("credential encryption unavailable")
+	}
 	return s.rewriteSecretFields(key, raw, s.cipher.encrypt)
 }
 

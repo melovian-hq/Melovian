@@ -187,6 +187,10 @@ func (h *Handler) handlePartyStream(w http.ResponseWriter, r *http.Request) {
 		http.NotFound(w, r)
 		return
 	}
+	if !h.devices.SessionAllowsTrack(sessionID, trackID) {
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "track is not part of this party")
+		return
+	}
 
 	if strings.HasPrefix(trackID, "trk_") {
 		if !h.partyHostMayAccessLocalTrack(session.HostUserID, trackID) {
@@ -233,6 +237,10 @@ func (h *Handler) handlePartyCover(w http.ResponseWriter, r *http.Request) {
 	session, found := h.devices.GetSession(sessionID)
 	if !found {
 		http.NotFound(w, r)
+		return
+	}
+	if !h.devices.SessionAllowsTrack(sessionID, trackID) {
+		httputil.WriteError(w, http.StatusForbidden, "forbidden", "track is not part of this party")
 		return
 	}
 

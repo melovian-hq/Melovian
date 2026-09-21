@@ -102,6 +102,14 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 
 	httputil.CopyHeaders(upstreamReq.Header, r.Header)
+	// Inbound credentials and routing headers must never reach the
+	// upstream: a hostile or compromised server URL would otherwise get
+	// a replayable session cookie, and Set-Cookie on the way back would
+	// plant on the Melovian origin.
+	upstreamReq.Header.Del("Cookie")
+	upstreamReq.Header.Del("Authorization")
+	upstreamReq.Header.Del("X-Instance-Id")
+	upstreamReq.Header.Del("X-Device-Id")
 	upstreamReq.Host = target.Host
 
 	resp, err := httputil.DoWithRetry(r.Context(), p.httpClient, upstreamReq)
@@ -120,6 +128,8 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 	}
 	defer func() { _ = resp.Body.Close() }()
 	stripUpstreamCORS(resp.Header)
+	resp.Header.Del("Set-Cookie")
+	resp.Header.Del("WWW-Authenticate")
 
 	if !p.enabled || !cacheable || resp.StatusCode < 200 || resp.StatusCode >= 300 {
 		if resp.StatusCode >= 400 {

@@ -64,8 +64,9 @@ type UpdateInstanceInput struct {
 }
 
 type InstanceStore struct {
-	db     *DB
-	cipher *secretCipher
+	db             *DB
+	cipher         *secretCipher
+	cipherRequired bool
 }
 
 func NewInstanceStore(db *DB) *InstanceStore {
@@ -77,6 +78,20 @@ func NewInstanceStore(db *DB) *InstanceStore {
 // MigratePasswords.
 func (s *InstanceStore) SetCipher(c *secretCipher) {
 	s.cipher = c
+}
+
+// RequireCipher makes secret writes fail closed instead of storing
+// plaintext when the cipher could not be loaded. Production wiring sets
+// this; tests without a key file keep the permissive default.
+func (s *InstanceStore) RequireCipher() {
+	s.cipherRequired = true
+}
+
+func (s *InstanceStore) encryptSecret(plain string) (string, error) {
+	if plain != "" && s.cipher == nil && s.cipherRequired {
+		return "", errors.New("credential encryption unavailable")
+	}
+	return s.cipher.encrypt(plain)
 }
 
 // MigratePasswords rewrites any plaintext password column values as encrypted.
@@ -206,7 +221,7 @@ func (s *InstanceStore) create(input CreateInstanceInput) (SourceInstance, error
 		return SourceInstance{}, fmt.Errorf("password is required")
 	}
 
-	sealed, err := s.cipher.encrypt(password)
+	sealed, err := s.encryptSecret(password)
 	if err != nil {
 		return SourceInstance{}, err
 	}
@@ -259,7 +274,7 @@ func (s *InstanceStore) Update(id string, input UpdateInstanceInput) (SourceInst
 		sourceID = existing.SourceOrDefault()
 	}
 
-	sealed, err := s.cipher.encrypt(password)
+	sealed, err := s.encryptSecret(password)
 	if err != nil {
 		return SourceInstance{}, err
 	}

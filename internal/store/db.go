@@ -498,7 +498,7 @@ func (db *DB) provisionConfiguredSources(cfg appconfig.Config) error {
 		return err
 	}
 	if sourceCount == 0 {
-		if err := db.provisionSourcesTx(tx, localPath, server, user, pass, hasSubsonic); err != nil {
+		if err := db.provisionSourcesTx(tx, cfg.DataDir, localPath, server, user, pass, hasSubsonic); err != nil {
 			return err
 		}
 	}
@@ -513,7 +513,7 @@ func (db *DB) provisionConfiguredSources(cfg appconfig.Config) error {
 
 // provisionSourcesTx writes the configured sources inside tx. Callers run it
 // only while both source tables are empty.
-func (db *DB) provisionSourcesTx(tx *Tx, localPath, server, user, pass string, hasSubsonic bool) error {
+func (db *DB) provisionSourcesTx(tx *Tx, dataDir, localPath, server, user, pass string, hasSubsonic bool) error {
 	now := nowUnix()
 	if localPath != "" {
 		libID := newLocalLibraryID()
@@ -530,10 +530,25 @@ func (db *DB) provisionSourcesTx(tx *Tx, localPath, server, user, pass string, h
 	if hasSubsonic {
 		instID := newInstanceID()
 		serverURL := strings.TrimRight(strings.TrimSpace(server), "/")
+		// Seal the provisioned password inside the transaction so a crash
+		// before MigratePasswords cannot leave it at rest in plaintext. Fail
+		// closed when a cipher was expected but could not load.
+		sealed := pass
+		if pass != "" {
+			cipher, err := LoadSecretCipher(dataDir)
+			if err != nil {
+				return fmt.Errorf("credential cipher unavailable for configured source: %w", err)
+			}
+			if cipher != nil {
+				if sealed, err = cipher.encrypt(pass); err != nil {
+					return fmt.Errorf("encrypt configured source password: %w", err)
+				}
+			}
+		}
 		if _, err := tx.Exec(
 			`INSERT INTO subsonic_instances (id, name, server_url, username, password, server_name, created_at, updated_at)
 			 VALUES (?, ?, ?, ?, ?, '', ?, ?)`,
-			instID, "Default", serverURL, strings.TrimSpace(user), pass, now, now,
+			instID, "Default", serverURL, strings.TrimSpace(user), sealed, now, now,
 		); err != nil {
 			return err
 		}

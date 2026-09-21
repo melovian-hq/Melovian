@@ -7,11 +7,9 @@ import (
 	"crypto/rand"
 	"encoding/hex"
 	"encoding/json"
-	"fmt"
 	"maps"
 	"strings"
 	"sync"
-	"time"
 )
 
 const (
@@ -68,6 +66,11 @@ type ListenSession struct {
 	CrossUser     bool
 	MemberUserIDs map[string]struct{}
 	MemberKeys    map[string]struct{}
+	// TrackIDs is the rolling allowlist of track ids the host has
+	// reported playing or queuing. Party stream and cover endpoints
+	// refuse ids outside it so an invitee cannot pull arbitrary items
+	// from the host library.
+	TrackIDs map[string]struct{}
 }
 
 type PartyMemberInfo struct {
@@ -112,12 +115,12 @@ func NewDeviceRegistry(hub *EventHub) *DeviceRegistry {
 	}
 }
 
-func newPartyInviteToken() string {
+func newPartyInviteToken() (string, error) {
 	buf := make([]byte, 24)
 	if _, err := rand.Read(buf); err != nil {
-		return fmt.Sprintf("pty-%d", time.Now().UnixNano())
+		return "", err
 	}
-	return hex.EncodeToString(buf)
+	return hex.EncodeToString(buf), nil
 }
 
 func newMemberMaps() (map[string]struct{}, map[string]struct{}) {
