@@ -116,7 +116,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup build environment
-        uses: ./.github/actions/setup-build
+        uses: $/.github/actions/setup-build
         with:
           install-linux-deps: ${{ matrix.linux_deps && 'true' || 'false' }}
           install-nsis: ${{ matrix.install_nsis && 'true' || 'false' }}
@@ -136,7 +136,7 @@ jobs:
 
       - name: Setup Android SDK
         if: matrix.android
-        uses: ./.github/actions/setup-android
+        uses: $/.github/actions/setup-android
 
       - name: Cache mobile MTE Go toolchain
         if: matrix.android || matrix.ios

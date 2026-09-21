@@ -20,8 +20,6 @@ on:
 
 permissions:
   contents: read
-  pages: write
-  id-token: write
 
 concurrency:
   group: pages-demo
@@ -32,6 +30,8 @@ jobs:
     name: Build static demo
     runs-on: ubuntu-latest
     timeout-minutes: 20
+    permissions:
+      contents: read
     steps:
       - name: Harden Runner
         uses: step-security/harden-runner@e14015d583714f6e62063499dc959a02595150a1 # v2.21.1
@@ -45,7 +45,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup build environment
-        uses: ./.github/actions/setup-build
+        uses: $/.github/actions/setup-build
         with:
           install-linux-deps: "false"
           install-nsis: "false"
@@ -79,6 +79,9 @@ jobs:
     needs: build
     runs-on: ubuntu-latest
     timeout-minutes: 10
+    permissions:
+      pages: write
+      id-token: write
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

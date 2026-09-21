@@ -80,7 +80,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup development environment
-        uses: ./.github/actions/setup-dev
+        uses: $/.github/actions/setup-dev
         with:
           install-frontend: "true"
           install-wails: "true"

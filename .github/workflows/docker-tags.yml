@@ -17,7 +17,7 @@ permissions:
 jobs:
   build:
     name: Build and push
-    uses: ./.github/workflows/docker.yml
+    uses: $/.github/workflows/docker.yml
     permissions:
       contents: read
       packages: write

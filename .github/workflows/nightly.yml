@@ -74,7 +74,7 @@ jobs:
     name: Build artifacts
     needs: check
     if: needs.check.outputs.should_build == 'true'
-    uses: ./.github/workflows/build-artifacts.yml
+    uses: $/.github/workflows/build-artifacts.yml
     with:
       version: ${{ needs.check.outputs.version }}
 

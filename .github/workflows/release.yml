@@ -61,7 +61,7 @@ jobs:
   build:
     name: Build artifacts
     needs: resolve
-    uses: ./.github/workflows/build-artifacts.yml
+    uses: $/.github/workflows/build-artifacts.yml
     with:
       version: ${{ needs.resolve.outputs.version }}
       ref: ${{ needs.resolve.outputs.tag }}
@@ -92,7 +92,7 @@ jobs:
           persist-credentials: false
 
       - name: Setup build environment
-        uses: ./.github/actions/setup-build
+        uses: $/.github/actions/setup-build
         with:
           install-linux-deps: "true"
 
