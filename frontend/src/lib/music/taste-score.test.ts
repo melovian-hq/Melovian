@@ -300,12 +300,7 @@ describe("weightedSampleTracks hardening", () => {
       song("c", "Beta"),
       { id: "skip", title: "Skip", artist: "Gamma" },
     ];
-    const profile = buildTasteProfile(
-      null,
-      [],
-      new Map(),
-      new Set(["skip"]),
-    );
+    const profile = buildTasteProfile(null, [], new Map(), new Set(["skip"]));
     const picks = weightedSampleTracks(tracks, profile, 10, () => 0.5);
     const ids = picks.map((track) => track.id);
     expect(ids).not.toContain("skip");

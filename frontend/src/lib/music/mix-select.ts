@@ -311,9 +311,7 @@ export function orderForFlow(
     ? remaining.findIndex((track) => track.id === options.anchor!.id)
     : -1;
   const starterIndex =
-    anchorIndex >= 0
-      ? anchorIndex
-      : Math.floor(random() * remaining.length);
+    anchorIndex >= 0 ? anchorIndex : Math.floor(random() * remaining.length);
   const starter = remaining[starterIndex];
   ordered.push(starter);
   remaining.splice(starterIndex, 1);
