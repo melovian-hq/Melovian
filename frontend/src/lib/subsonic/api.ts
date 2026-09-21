@@ -3,6 +3,7 @@
 
 import { SubsonicClient } from "./client";
 import { parsePayload } from "$lib/core/http/parse";
+import { safeHttpUrl } from "$lib/utils/safe-url";
 import {
   subsonicAlbumListResponseSchema,
   subsonicAlbumResponseSchema,
@@ -232,7 +233,7 @@ export async function getArtistInfo(
   return {
     biography: raw.biography as string | undefined,
     musicBrainzId: raw.musicBrainzId as string | undefined,
-    lastFmUrl: raw.lastFmUrl as string | undefined,
+    lastFmUrl: safeHttpUrl(raw.lastFmUrl as string | undefined) || undefined,
     smallImageUrl: raw.smallImageUrl as string | undefined,
     mediumImageUrl: raw.mediumImageUrl as string | undefined,
     largeImageUrl: raw.largeImageUrl as string | undefined,

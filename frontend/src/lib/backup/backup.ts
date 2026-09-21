@@ -112,7 +112,11 @@ export function restoreLocalStorageBackup(data: Record<string, string>): void {
     if (!LOCAL_STORAGE_PREFIXES.some((prefix) => key.startsWith(prefix))) {
       continue;
     }
-    localStorage.setItem(key, value);
+    try {
+      localStorage.setItem(key, value);
+    } catch {
+      // A full or denied store should not abort the remaining restores.
+    }
   }
 }
 

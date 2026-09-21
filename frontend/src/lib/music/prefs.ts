@@ -50,7 +50,11 @@ export function loadVolume(): number {
 }
 
 export function saveVolume(volume: number): void {
-  localStorage.setItem(VOLUME_KEY, String(volume));
+  try {
+    localStorage.setItem(VOLUME_KEY, String(volume));
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 function playbackStorageKey(): string {
@@ -92,12 +96,20 @@ export function loadSavedPlayback(): SavedPlayback | null {
 }
 
 export function savePlayback(state: SavedPlayback): void {
-  localStorage.setItem(playbackStorageKey(), JSON.stringify(state));
+  try {
+    localStorage.setItem(playbackStorageKey(), JSON.stringify(state));
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 export function clearSavedPlayback(): void {
-  localStorage.removeItem(playbackStorageKey());
-  localStorage.removeItem(LEGACY_PLAYBACK_KEY);
+  try {
+    localStorage.removeItem(playbackStorageKey());
+    localStorage.removeItem(LEGACY_PLAYBACK_KEY);
+  } catch {
+    // Storage may be unavailable (private mode).
+  }
 }
 
 export function loadNativePlaybackPref(): boolean {
@@ -111,7 +123,11 @@ export function loadNativePlaybackPref(): boolean {
 }
 
 export function saveNativePlaybackPref(enabled: boolean): void {
-  localStorage.setItem(NATIVE_PLAYBACK_KEY, enabled ? "true" : "false");
+  try {
+    localStorage.setItem(NATIVE_PLAYBACK_KEY, enabled ? "true" : "false");
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 export function loadNativeBackendPref(): NativeBackendPref {
@@ -125,7 +141,11 @@ export function loadNativeBackendPref(): NativeBackendPref {
 }
 
 export function saveNativeBackendPref(backend: NativeBackendPref): void {
-  localStorage.setItem(NATIVE_BACKEND_KEY, backend);
+  try {
+    localStorage.setItem(NATIVE_BACKEND_KEY, backend);
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 function clampPanelCoordinate(value: number, max: number): number {
@@ -152,8 +172,11 @@ export function loadQueuePanelPosition(): QueuePanelPosition | null {
 }
 
 export function saveQueuePanelPosition(position: QueuePanelPosition): void {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(QUEUE_PANEL_POSITION_KEY, JSON.stringify(position));
+  try {
+    localStorage.setItem(QUEUE_PANEL_POSITION_KEY, JSON.stringify(position));
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 export function clampQueuePanelPosition(
@@ -195,8 +218,11 @@ export function loadLyricsPanelPosition(): QueuePanelPosition | null {
 }
 
 export function saveLyricsPanelPosition(position: QueuePanelPosition): void {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(LYRICS_PANEL_POSITION_KEY, JSON.stringify(position));
+  try {
+    localStorage.setItem(LYRICS_PANEL_POSITION_KEY, JSON.stringify(position));
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 export function loadLyricsPanelSize(): PanelSize | null {
@@ -219,8 +245,11 @@ export function loadLyricsPanelSize(): PanelSize | null {
 }
 
 export function saveLyricsPanelSize(size: PanelSize): void {
-  if (typeof localStorage === "undefined") return;
-  localStorage.setItem(LYRICS_PANEL_SIZE_KEY, JSON.stringify(size));
+  try {
+    localStorage.setItem(LYRICS_PANEL_SIZE_KEY, JSON.stringify(size));
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 export function clampLyricsPanelSize(

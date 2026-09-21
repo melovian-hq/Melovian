@@ -13,6 +13,7 @@
     type LogLevel,
   } from "$lib/core/logger";
   import { perfSummary } from "$lib/core/perf";
+  import { safeHttpUrl } from "$lib/utils/safe-url";
   import Select from "$lib/components/ui/Select.svelte";
   import Field from "$lib/components/ui/Field.svelte";
   import { fetchWithRetry, apiHeaders } from "$lib/core/http/client";
@@ -369,9 +370,11 @@
           to finish.
         {:else if upd.latestVersion && !upd.upToDate}
           v{upd.latestVersion} is available
-          {#if upd.releaseUrl}
-            <a href={upd.releaseUrl} target="_blank" rel="noreferrer"
-              >release notes</a
+          {#if safeHttpUrl(upd.releaseUrl)}
+            <a
+              href={safeHttpUrl(upd.releaseUrl)}
+              target="_blank"
+              rel="noreferrer">release notes</a
             >
           {/if}
         {:else if upd.upToDate}
@@ -443,8 +446,10 @@
         >
           Download and install
         </Button>
-      {:else if upd.releaseUrl}
-        <Button onclick={() => window.open(upd?.releaseUrl, "_blank")}>
+      {:else if safeHttpUrl(upd.releaseUrl)}
+        <Button
+          onclick={() => window.open(safeHttpUrl(upd?.releaseUrl), "_blank")}
+        >
           Download release
         </Button>
       {/if}

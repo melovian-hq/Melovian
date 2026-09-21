@@ -651,7 +651,7 @@ class DeviceSyncStore {
     try {
       switch (action) {
         case "pause_release":
-          if (music.playing) music.togglePlay();
+          if (music.playing) void music.togglePlay().catch(() => {});
           toast.info("Playback moved to another device");
           break;
         case "take_over": {
@@ -674,10 +674,10 @@ class DeviceSyncStore {
           break;
         }
         case "play":
-          if (!music.playing) music.togglePlay();
+          if (!music.playing) void music.togglePlay().catch(() => {});
           break;
         case "pause":
-          if (music.playing) music.togglePlay();
+          if (music.playing) void music.togglePlay().catch(() => {});
           break;
         case "next":
           music.next();
@@ -869,8 +869,8 @@ class DeviceSyncStore {
         music.seek(targetSec);
       }
 
-      if (paused && music.playing) music.togglePlay();
-      if (!paused && !music.playing) music.togglePlay();
+      if (paused && music.playing) void music.togglePlay().catch(() => {});
+      if (!paused && !music.playing) void music.togglePlay().catch(() => {});
       return true;
     } catch (err) {
       void err;

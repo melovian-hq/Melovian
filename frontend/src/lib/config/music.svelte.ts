@@ -1298,33 +1298,39 @@ class MusicStore {
     this.crossfadeFinishingTrack = this.currentTrack;
     const token = this.playbackEpoch;
 
-    void this.engine.activatePrepared(nextUrl, fade).then((started) => {
-      if (!started || token !== this.playbackEpoch) {
+    void this.engine
+      .activatePrepared(nextUrl, fade)
+      .then((started) => {
+        if (!started || token !== this.playbackEpoch) {
+          this.crossfadeHandled = false;
+          this.crossfadeFinishingTrack = null;
+          return;
+        }
+        // The engine already swapped elements, so the queue must advance even
+        // if the user paused mid-fade. onPlaybackStarted is what flips playing
+        // back to true, so a paused store commits the queue state without it
+        // and leaves playback stopped as the user asked.
+        this.queueIndex = nextIdx;
+        const finished = this.crossfadeFinishingTrack;
+        this.crossfadeFinishingTrack = null;
+        this.nextTrackPrepared = false;
+        this.engine?.prepareNext("");
+        this.prefetchAround();
+        // Crossfades bypass onTrackEnded, so continuous modes would never
+        // refill without an explicit kick here.
+        void this.maybeRefillContinuousQueue();
+        if (finished) void this.recordPlayCompletion(finished);
+        const track = this.currentTrack;
+        if (track && this.playing) {
+          this.onPlaybackStarted(track, token, { incrementPlay: true });
+        } else {
+          this.syncMediaSession();
+        }
+      })
+      .catch(() => {
         this.crossfadeHandled = false;
         this.crossfadeFinishingTrack = null;
-        return;
-      }
-      // The engine already swapped elements, so the queue must advance even
-      // if the user paused mid-fade. onPlaybackStarted is what flips playing
-      // back to true, so a paused store commits the queue state without it
-      // and leaves playback stopped as the user asked.
-      this.queueIndex = nextIdx;
-      const finished = this.crossfadeFinishingTrack;
-      this.crossfadeFinishingTrack = null;
-      this.nextTrackPrepared = false;
-      this.engine?.prepareNext("");
-      this.prefetchAround();
-      // Crossfades bypass onTrackEnded, so continuous modes would never
-      // refill without an explicit kick here.
-      void this.maybeRefillContinuousQueue();
-      if (finished) void this.recordPlayCompletion(finished);
-      const track = this.currentTrack;
-      if (track && this.playing) {
-        this.onPlaybackStarted(track, token, { incrementPlay: true });
-      } else {
-        this.syncMediaSession();
-      }
-    });
+      });
   }
 
   cycleRepeat() {

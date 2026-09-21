@@ -67,7 +67,11 @@ export function saveDesktopIntegrationSettings(
   settings: DesktopIntegrationSettings,
 ): void {
   if (typeof localStorage === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage can throw on quota or policy.
+  }
 }
 
 export type ResolvedCloseAction = "quit" | "background" | "minimize";

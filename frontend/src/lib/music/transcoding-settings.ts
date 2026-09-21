@@ -90,7 +90,11 @@ export function loadTranscodingSettings(): TranscodingSettings {
 }
 
 export function saveTranscodingSettings(settings: TranscodingSettings): void {
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage may be unavailable (private mode, quota).
+  }
 }
 
 export function buildStreamOptions(

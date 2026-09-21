@@ -41,7 +41,7 @@
     if (!needsHydration) return;
     mixLoading = true;
     void music.ensureMix(id).finally(() => {
-      mixLoading = false;
+      if (id === mixId) mixLoading = false;
     });
   });
 

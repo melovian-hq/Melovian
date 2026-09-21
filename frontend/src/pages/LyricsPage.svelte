@@ -11,6 +11,7 @@
   import { isInternetRadioTrack } from "$lib/subsonic";
   import type { LyricsSearchHit } from "$lib/subsonic";
   import { extensionFeatures } from "$lib/extensions/features.svelte";
+  import { toast } from "$lib/ui/toast.svelte";
   import Link from "$lib/router/Link.svelte";
 
   let searchQuery = $state("");
@@ -141,7 +142,9 @@
                 <Button
                   variant="surface"
                   onclick={() =>
-                    void music.playTrackById(hit.songId).catch(() => {})}
+                    void music.playTrackById(hit.songId).catch(() => {
+                      toast.error(`Couldn't play ${hit.title}`);
+                    })}
                 >
                   Play
                 </Button>

@@ -253,6 +253,7 @@
         <iframe
           title={pageTitle}
           src={embedUrl}
+          sandbox="allow-scripts allow-same-origin allow-presentation allow-popups"
           allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; fullscreen"
         ></iframe>
       </div>

@@ -53,7 +53,12 @@ export function loadConnectionSettings(): ConnectionSettings {
 }
 
 export function saveConnectionSettings(settings: ConnectionSettings): void {
-  localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(SETTINGS_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage can throw on quota or policy. Skip persisting rather than
+    // aborting the caller, which may be mid reconnect.
+  }
 }
 
 export function mergeConnectionSettings(
@@ -86,7 +91,12 @@ export function loadConnectionHistory(): ConnectionEvent[] {
 }
 
 export function saveConnectionHistory(history: ConnectionEvent[]): void {
-  localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  try {
+    localStorage.setItem(HISTORY_KEY, JSON.stringify(history));
+  } catch {
+    // Storage can throw on quota or policy. Skip persisting rather than
+    // aborting the caller, which may be mid reconnect.
+  }
 }
 
 export function appendConnectionEvent(

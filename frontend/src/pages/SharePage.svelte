@@ -8,6 +8,7 @@
   import * as musicApi from "$lib/music/api";
   import type { MusicShare, ShareTrack } from "$lib/music/api";
   import { trackFromOpenStream } from "$lib/music/open-uri";
+  import { listItemKey } from "$lib/core/collection";
   import Link from "$lib/router/Link.svelte";
   import { formatDurationMs } from "$lib/subsonic";
   import type { QueueTrack } from "$lib/subsonic/types";
@@ -186,7 +187,7 @@
       />
     {:else}
       <ul class="share-page__tracks">
-        {#each tracks as track, index (track.id)}
+        {#each tracks as track, index (listItemKey(track.id, index, "track"))}
           <li class="share-page__track">
             <button
               type="button"

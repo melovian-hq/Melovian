@@ -72,7 +72,12 @@ export async function toggleFavoriteAlbum(
 ) {
   if (!ctx.connected) return;
   if (ctx.isFavoriteAlbum(album.id)) {
-    await ctx.library.unstar(album.id).catch(() => {});
+    try {
+      await ctx.library.unstar(album.id);
+    } catch {
+      toast.error(`Couldn't remove ${album.name} from favorites`);
+      return;
+    }
     ctx.favoriteAlbums = ctx.favoriteAlbums.filter(
       (item) => item.id !== album.id,
     );
@@ -83,7 +88,12 @@ export async function toggleFavoriteAlbum(
     return;
   }
 
-  await ctx.library.star(album.id).catch(() => {});
+  try {
+    await ctx.library.star(album.id);
+  } catch {
+    toast.error(`Couldn't add ${album.name} to favorites`);
+    return;
+  }
   ctx.favoriteAlbums = [album, ...ctx.favoriteAlbums];
   ctx.favoriteAlbumIds = new Set([album.id, ...ctx.favoriteAlbumIds]);
   toast.success(`Added ${album.name} to favorites`);
@@ -95,7 +105,12 @@ export async function toggleFavoriteArtist(
 ) {
   if (!ctx.connected) return;
   if (ctx.isFavoriteArtist(artist.id)) {
-    await ctx.library.unstar(artist.id).catch(() => {});
+    try {
+      await ctx.library.unstar(artist.id);
+    } catch {
+      toast.error(`Couldn't remove ${artist.name} from favorites`);
+      return;
+    }
     ctx.favoriteArtists = ctx.favoriteArtists.filter(
       (item) => item.id !== artist.id,
     );
@@ -106,7 +121,12 @@ export async function toggleFavoriteArtist(
     return;
   }
 
-  await ctx.library.star(artist.id).catch(() => {});
+  try {
+    await ctx.library.star(artist.id);
+  } catch {
+    toast.error(`Couldn't add ${artist.name} to favorites`);
+    return;
+  }
   ctx.favoriteArtists = [artist, ...ctx.favoriteArtists];
   ctx.favoriteArtistIds = new Set([artist.id, ...ctx.favoriteArtistIds]);
   toast.success(`Added ${artist.name} to favorites`);
@@ -138,35 +158,53 @@ export async function toggleFavorite(
   track: SubsonicSong,
 ) {
   if (ctx.isFavorite(track.id)) {
-    await Promise.all([
-      musicApi.removeFavorite(track.id).catch(() => {}),
-      ctx.connected
-        ? ctx.library.unstar(track.id).catch(() => {})
-        : Promise.resolve(),
-    ]);
+    try {
+      await musicApi.removeFavorite(track.id);
+    } catch {
+      toast.error(`Couldn't remove ${track.title} from favorites`);
+      return;
+    }
+    const remoteFailed = ctx.connected
+      ? await ctx.library.unstar(track.id).then(
+          () => false,
+          () => true,
+        )
+      : false;
     ctx.favoriteTracks = ctx.favoriteTracks.filter(
       (item) => item.trackId !== track.id,
     );
     const next = new Set(ctx.favoriteIds);
     next.delete(track.id);
     ctx.favoriteIds = next;
+    if (remoteFailed) {
+      toast.warning(
+        `Removed ${track.title} locally, but couldn't sync to the server`,
+      );
+      return;
+    }
     toast.success(`Removed ${track.title} from favorites`);
     return;
   }
 
-  await Promise.all([
-    musicApi.addFavorite(track.id, {
+  try {
+    await musicApi.addFavorite(track.id, {
       trackTitle: track.title,
       artistName: track.artist ?? "",
       albumId: track.albumId ?? "",
       albumTitle: track.album ?? "",
       durationMs: (track.duration ?? 0) * 1000,
       coverArtId: track.coverArt ?? track.albumId ?? track.id,
-    }),
-    ctx.connected
-      ? ctx.library.star(track.id).catch(() => {})
-      : Promise.resolve(),
-  ]);
+    });
+  } catch {
+    toast.error(`Couldn't add ${track.title} to favorites`);
+    return;
+  }
+  const remoteFailed = ctx.connected
+    ? await ctx.library.star(track.id).then(
+        () => false,
+        () => true,
+      )
+    : false;
   const entry: FavoriteTrack = {
     trackId: track.id,
     trackTitle: track.title,
@@ -179,6 +217,12 @@ export async function toggleFavorite(
   };
   ctx.favoriteTracks = [entry, ...ctx.favoriteTracks];
   ctx.favoriteIds = new Set([track.id, ...ctx.favoriteIds]);
+  if (remoteFailed) {
+    toast.warning(
+      `Added ${track.title} locally, but couldn't sync to the server`,
+    );
+    return;
+  }
   toast.success(`Added ${track.title} to favorites`);
 }
 

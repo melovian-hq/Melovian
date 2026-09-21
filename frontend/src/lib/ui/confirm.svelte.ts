@@ -16,6 +16,9 @@ class ConfirmStore {
   private resolver: ((value: boolean) => void) | null = null;
 
   confirm(options: ConfirmOptions): Promise<boolean> {
+    // A second confirm while one is open supersedes the first. Resolve it
+    // so the earlier caller does not await forever.
+    this.resolver?.(false);
     return new Promise((resolve) => {
       this.options = options;
       this.open = true;

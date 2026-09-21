@@ -84,16 +84,24 @@ export function loadProfileSettings(): ProfileSettings {
 
 export function saveCustomAvatarUrl(url: string | null): void {
   if (typeof localStorage === "undefined") return;
-  if (url) {
-    localStorage.setItem(AVATAR_STORAGE_KEY, url);
-    return;
+  try {
+    if (url) {
+      localStorage.setItem(AVATAR_STORAGE_KEY, url);
+      return;
+    }
+    localStorage.removeItem(AVATAR_STORAGE_KEY);
+  } catch {
+    // Storage can throw on quota or policy.
   }
-  localStorage.removeItem(AVATAR_STORAGE_KEY);
 }
 
 export function saveSmileVariants(variants: Record<string, number>): void {
   if (typeof localStorage === "undefined") return;
-  localStorage.setItem(SMILE_VARIANTS_STORAGE_KEY, JSON.stringify(variants));
+  try {
+    localStorage.setItem(SMILE_VARIANTS_STORAGE_KEY, JSON.stringify(variants));
+  } catch {
+    // Storage can throw on quota or policy.
+  }
 }
 
 function loadImageFromFile(file: File): Promise<HTMLImageElement> {

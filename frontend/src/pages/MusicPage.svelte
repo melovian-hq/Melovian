@@ -148,10 +148,14 @@
     }
     void fetchMetadataSummary()
       .then((summary) => {
-        metadataSummary = summary;
+        if (localLibraries.active?.id === libraryId) {
+          metadataSummary = summary;
+        }
       })
       .catch(() => {
-        metadataSummary = null;
+        if (localLibraries.active?.id === libraryId) {
+          metadataSummary = null;
+        }
       });
   });
 

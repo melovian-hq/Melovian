@@ -88,7 +88,11 @@ export function loadEqFromLocalStorage(): EqSettings {
 
 export function saveEqToLocalStorage(settings: EqSettings) {
   if (typeof localStorage === "undefined") return;
-  localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  try {
+    localStorage.setItem(STORAGE_KEY, JSON.stringify(settings));
+  } catch {
+    // Storage can throw on quota or policy. EQ still applies in memory.
+  }
 }
 
 export function presetBands(presetId: string): EqBandParam[] {
