@@ -34,6 +34,7 @@
   class:favorite-btn--active={favorited}
   disabled={!track || busy || !canMutateInDemo()}
   aria-label={favorited ? "Remove from favorites" : "Add to favorites"}
+  aria-pressed={favorited}
   title={favorited ? "Remove from favorites" : "Add to favorites"}
   onclick={toggle}
 >

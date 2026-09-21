@@ -29,7 +29,14 @@
 
 <div class="local-search-box {className}">
   <MdiIcon name="search" size={20} />
-  <Input bind:value {placeholder} {disabled} autocomplete="off" />
+  <Input
+    bind:value
+    {placeholder}
+    {disabled}
+    type="search"
+    aria-label={placeholder}
+    autocomplete="off"
+  />
   {#if showCount}
     <span class="local-search-box__count" aria-live="polite">
       {resultCount} of {totalCount}
@@ -57,6 +64,11 @@
 
   .local-search-box :global(.input:focus) {
     box-shadow: none;
+  }
+
+  .local-search-box:focus-within {
+    border-color: var(--jb-accent);
+    box-shadow: var(--jb-focus-ring);
   }
 
   .local-search-box__count {

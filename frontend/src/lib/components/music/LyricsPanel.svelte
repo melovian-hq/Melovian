@@ -172,7 +172,13 @@
       window.removeEventListener("resize", onResize);
     };
   });
+
+  function onWindowKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") music.toggleLyricsPanel();
+  }
 </script>
+
+<svelte:window onkeydown={onWindowKeydown} />
 
 <aside
   bind:this={panelEl}
@@ -318,6 +324,7 @@
         <input
           type="search"
           placeholder="Search lyrics"
+          aria-label="Search lyrics"
           bind:value={searchQuery}
           autocomplete="off"
         />
@@ -485,9 +492,9 @@
   }
 
   .lyrics-sidebar__icon-btn--active {
-    color: var(--jb-accent);
-    border-color: color-mix(in srgb, var(--jb-accent) 45%, var(--jb-border));
-    background: color-mix(in srgb, var(--jb-accent) 12%, var(--jb-surface));
+    color: var(--jb-active);
+    border-color: color-mix(in srgb, var(--jb-active) 45%, var(--jb-border));
+    background: color-mix(in srgb, var(--jb-active) 12%, var(--jb-surface));
   }
 
   .lyrics-sidebar__icon-btn:disabled {
@@ -533,6 +540,11 @@
     color: var(--jb-text);
     font: inherit;
     font-size: 0.8125rem;
+  }
+
+  .lyrics-sidebar__search:focus-within {
+    box-shadow: var(--jb-focus-ring);
+    border-color: var(--jb-accent);
   }
 
   .lyrics-sidebar__search input::-webkit-search-cancel-button {

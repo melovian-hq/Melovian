@@ -107,6 +107,7 @@
     <input
       type="search"
       placeholder="Search lyrics"
+      aria-label="Search lyrics"
       bind:value={lyricsSearchQuery}
       autocomplete="off"
     />
@@ -175,9 +176,9 @@
   }
 
   .now-playing-lyrics-panel__icon-btn--active {
-    color: var(--jb-accent);
-    border-color: color-mix(in srgb, var(--jb-accent) 45%, var(--jb-border));
-    background: color-mix(in srgb, var(--jb-accent) 12%, var(--jb-surface));
+    color: var(--jb-active);
+    border-color: color-mix(in srgb, var(--jb-active) 45%, var(--jb-border));
+    background: color-mix(in srgb, var(--jb-active) 12%, var(--jb-surface));
   }
 
   .now-playing-lyrics {
@@ -221,6 +222,11 @@
     color: var(--jb-text);
     font: inherit;
     font-size: 0.8125rem;
+  }
+
+  .now-playing-lyrics__search:focus-within {
+    box-shadow: var(--jb-focus-ring);
+    border-color: var(--jb-accent);
   }
 
   .now-playing-lyrics__search input::-webkit-search-cancel-button {

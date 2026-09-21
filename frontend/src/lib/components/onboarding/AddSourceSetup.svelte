@@ -293,10 +293,14 @@
       background var(--jb-transition);
   }
 
-  .add-source__choice:hover,
+  .add-source__choice:hover {
+    border-color: var(--jb-accent);
+  }
+
   .add-source__choice:focus-visible {
     border-color: var(--jb-accent);
     outline: none;
+    box-shadow: var(--jb-focus-ring);
   }
 
   .add-source__choice-icon {

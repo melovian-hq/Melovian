@@ -272,6 +272,7 @@
               <Input
                 bind:value={usernameDraft}
                 placeholder="username"
+                aria-label="Allowed username"
                 autocomplete="off"
               />
               <Button type="submit" variant="surface" size="sm">Add</Button>

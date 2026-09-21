@@ -71,7 +71,13 @@
       inviteBusy = false;
     }
   }
+
+  function onWindowKeydown(event: KeyboardEvent) {
+    if (event.key === "Escape") deviceSync.panelOpen = false;
+  }
 </script>
+
+<svelte:window onkeydown={onWindowKeydown} />
 
 {#if deviceSync.panelOpen}
   <div class="devices-panel" role="dialog" aria-label="Devices">
@@ -307,6 +313,7 @@
                 <Input
                   bind:value={inviteUsername}
                   placeholder="Invite by username"
+                  aria-label="Invite by username"
                   id="party-invite-username"
                 />
                 <Button

@@ -99,6 +99,7 @@
                 class="command-palette__input"
                 type="search"
                 placeholder="Search pages, actions, music..."
+                aria-label="Search pages, actions, music"
                 bind:value={query}
                 autofocus
                 autocomplete="off"
@@ -228,6 +229,11 @@
     font: inherit;
     font-size: 1rem;
     outline: none;
+  }
+
+  .command-palette__input:focus-visible {
+    box-shadow: var(--jb-focus-ring);
+    border-radius: var(--jb-radius-sm);
   }
 
   .command-palette__hint {

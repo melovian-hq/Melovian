@@ -304,11 +304,16 @@
     cursor: pointer;
   }
 
-  .instance-form__detect-row:hover,
+  .instance-form__detect-row:hover {
+    background: var(--jb-accent-muted);
+    color: var(--jb-accent);
+  }
+
   .instance-form__detect-row:focus-visible {
     background: var(--jb-accent-muted);
     color: var(--jb-accent);
     outline: none;
+    box-shadow: var(--jb-focus-ring);
   }
 
   .instance-form__detect-name {
