@@ -5,7 +5,9 @@ package extensions
 
 import (
 	"io"
+	"mime"
 	"net/http"
+	"path/filepath"
 	"strings"
 
 	"melovian/internal/appconfig"
@@ -153,8 +155,8 @@ func (h *Handler) buildExtensionList() ([]extensionListItem, []ext.Manifest, err
 			HasScript:   strings.TrimSpace(manifest.Script) != "",
 			ScriptSafe:  false,
 			HasWasm:     false,
-			IconURL:     "",
-			ImageURL:    "",
+			IconURL:     extensionAssetURL(manifest.ID, manifest.Icon),
+			ImageURL:    extensionAssetURL(manifest.ID, manifest.Image),
 			AppTheme:    strings.TrimSpace(manifest.AppTheme),
 		})
 	}
@@ -208,7 +210,21 @@ func (h *Handler) handleExtensionAsset(w http.ResponseWriter, r *http.Request) {
 	}
 	full, err := ext.ResolveAssetPath(h.cfg.DataDir, id, rel)
 	if err != nil {
-		httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
+		// Bundled extensions keep their assets in the embedded tree until
+		// the user installs them, so icons still resolve pre-install.
+		data, name, berr := ext.ReadBundledAsset(id, rel)
+		if berr != nil {
+			httputil.WriteError(w, http.StatusNotFound, "not_found", "not found")
+			return
+		}
+		ctype := mime.TypeByExtension(filepath.Ext(name))
+		if ctype == "" {
+			ctype = "application/octet-stream"
+		}
+		w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
+		w.Header().Set("X-Content-Type-Options", "nosniff")
+		w.Header().Set("Content-Type", ctype)
+		_, _ = w.Write(data)
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=604800, immutable")

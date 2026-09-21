@@ -5,6 +5,7 @@ package extensions
 
 import (
 	"embed"
+	"fmt"
 	"io/fs"
 	"os"
 	"path/filepath"
@@ -31,6 +32,32 @@ var BundledOptional = map[string]bool{
 var BundledRequired = map[string]bool{
 	"subsonic":  true,
 	"navidrome": true,
+}
+
+// ReadBundledAsset returns an asset shipped inside the embedded bundle so
+// icons resolve before an optional extension is installed. The same path
+// sanitization as ResolveAssetPath applies.
+func ReadBundledAsset(id, rel string) ([]byte, string, error) {
+	if !IsValidExtensionID(id) {
+		return nil, "", fmt.Errorf("invalid extension id")
+	}
+	rel = filepath.ToSlash(strings.TrimSpace(rel))
+	rel = strings.TrimPrefix(rel, "/")
+	if rel == "" || strings.Contains(rel, "..") {
+		return nil, "", fmt.Errorf("invalid asset path")
+	}
+	candidates := []string{rel}
+	if !strings.HasPrefix(rel, "assets/") {
+		candidates = append(candidates, "assets/"+rel)
+	}
+	for _, candidate := range candidates {
+		full := filepath.ToSlash(filepath.Join(bundledRoot, id, candidate))
+		data, err := bundledFS.ReadFile(full)
+		if err == nil {
+			return data, candidate, nil
+		}
+	}
+	return nil, "", fmt.Errorf("not found")
 }
 
 func extensionInstalled(dataDir, id string) bool {
