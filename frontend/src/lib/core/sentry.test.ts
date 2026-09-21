@@ -13,6 +13,10 @@ import {
 
 vi.mock("@sentry/svelte", () => ({
   init: vi.fn(),
+  makeFetchTransport: vi.fn(() => ({
+    send: vi.fn().mockRejectedValue(new Error("net::ERR_BLOCKED_BY_CLIENT")),
+    flush: vi.fn().mockResolvedValue(true),
+  })),
   withScope: vi.fn(
     (fn: (scope: { setTag: typeof vi.fn; setLevel: typeof vi.fn }) => void) => {
       fn({
@@ -134,6 +138,25 @@ describe("sentry", () => {
       clientReporting: true,
     });
     expect(Sentry.init).toHaveBeenCalledTimes(1);
+  });
+
+  it("skips init for a dsn whose sends were blocked", async () => {
+    localStorage.clear();
+    applyRuntimeSentryConfig({
+      dsn: "https://glitchtip.example/1",
+      clientReporting: true,
+    });
+    const opts = vi.mocked(Sentry.init).mock.calls[0][0];
+    const transport = opts.transport?.({} as never);
+    await transport?.send({} as never);
+
+    resetSentryForTests();
+    applyRuntimeSentryConfig({
+      dsn: "https://glitchtip.example/1",
+      clientReporting: true,
+    });
+    expect(Sentry.init).toHaveBeenCalledTimes(1);
+    expect(sentryEnabled()).toBe(false);
   });
 
   it("captures client errors when enabled", () => {

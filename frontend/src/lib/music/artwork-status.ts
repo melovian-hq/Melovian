@@ -8,42 +8,60 @@
  * the console as an error. Remembering the misses keeps repeat renders
  * silent and lets the pixel fallback show immediately.
  *
- * The set is bounded and mirrored into sessionStorage so a reload does not
- * re-probe every known-missing image. It clears when the connection store
- * reports a recovered outage, since failures recorded while the server was
- * unreachable are not real 404s.
+ * The set is bounded and mirrored into localStorage with a TTL measured
+ * from the first recorded miss, so a reload does not re-probe every
+ * known-missing image but upstream art added later still gets retried.
+ * It clears when the connection store reports a recovered outage, since
+ * failures recorded while the server was unreachable are not real 404s.
  */
 
 import { StorageKeys } from "$lib/brand";
 import { createBoundedSet } from "$lib/core/bounded-cache";
 
 const BROKEN_MAX_ENTRIES = 800;
+const BROKEN_TTL_MS = 24 * 60 * 60 * 1000;
 
 const broken = createBoundedSet<string>(BROKEN_MAX_ENTRIES);
 let restored = false;
+let blobWrittenAt = 0;
+
+interface StoredBrokenArtwork {
+  at: number;
+  urls: string[];
+}
 
 function restore(): void {
   if (restored) return;
   restored = true;
   try {
-    const raw = sessionStorage.getItem(StorageKeys.brokenArtwork);
+    const raw = localStorage.getItem(StorageKeys.brokenArtwork);
     if (!raw) return;
-    const urls: unknown = JSON.parse(raw);
-    if (!Array.isArray(urls)) return;
-    for (const url of urls.slice(0, BROKEN_MAX_ENTRIES)) {
+    const parsed = JSON.parse(raw) as Partial<StoredBrokenArtwork>;
+    if (!Array.isArray(parsed.urls)) return;
+    if (
+      typeof parsed.at !== "number" ||
+      Date.now() - parsed.at > BROKEN_TTL_MS
+    ) {
+      localStorage.removeItem(StorageKeys.brokenArtwork);
+      return;
+    }
+    blobWrittenAt = parsed.at;
+    for (const url of parsed.urls.slice(0, BROKEN_MAX_ENTRIES)) {
       if (typeof url === "string" && url) broken.add(url);
     }
   } catch {
-    /* sessionStorage unavailable or corrupt payload */
+    /* localStorage unavailable or corrupt payload */
   }
 }
 
 function persist(): void {
   try {
-    sessionStorage.setItem(
-      StorageKeys.brokenArtwork,
-      JSON.stringify([...broken]),
-    );
+    if (!blobWrittenAt) blobWrittenAt = Date.now();
+    const payload: StoredBrokenArtwork = {
+      at: blobWrittenAt,
+      urls: [...broken],
+    };
+    localStorage.setItem(StorageKeys.brokenArtwork, JSON.stringify(payload));
   } catch {
     /* storage full or unavailable */
   }
@@ -69,8 +87,10 @@ export function markArtworkBroken(url: string | null | undefined): void {
 
 export function clearBrokenArtwork(): void {
   restored = true;
+  blobWrittenAt = 0;
   broken.clear();
   try {
+    localStorage.removeItem(StorageKeys.brokenArtwork);
     sessionStorage.removeItem(StorageKeys.brokenArtwork);
   } catch {
     /* storage unavailable */

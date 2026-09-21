@@ -95,6 +95,8 @@ export const StorageKeys = {
   homeTipsDismissed: "mel-home-tips-dismissed",
   brokenArtwork: storageKey("broken-artwork"),
   logLevel: storageKey("log-level"),
+  /** Last time an envelope send failed for a DSN, used to skip dead init. */
+  sentryBlocked: storageKey("sentry-blocked"),
   /** Legacy "mel-" key prefixes used for per-item cache entries. */
   metaArtPrefix: "mel-meta-art:",
   artistInfoPrefix: "mel-artist-info:",

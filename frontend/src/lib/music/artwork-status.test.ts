@@ -1,7 +1,7 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
-import { beforeEach, describe, expect, it } from "vitest";
+import { beforeEach, describe, expect, it, vi } from "vitest";
 import {
   clearBrokenArtwork,
   isArtworkBroken,
@@ -10,6 +10,7 @@ import {
 
 describe("artwork-status", () => {
   beforeEach(() => {
+    localStorage.clear();
     sessionStorage.clear();
     clearBrokenArtwork();
   });
@@ -39,5 +40,29 @@ describe("artwork-status", () => {
     markArtworkBroken("https://server/rest/getCoverArt?id=a");
     clearBrokenArtwork();
     expect(isArtworkBroken("https://server/rest/getCoverArt?id=a")).toBe(false);
+  });
+
+  it("survives a reload so missing art is not re-probed", async () => {
+    markArtworkBroken("https://server/rest/getCoverArt?id=a");
+    vi.resetModules();
+    const fresh = await import("./artwork-status");
+    expect(fresh.isArtworkBroken("https://server/rest/getCoverArt?id=a")).toBe(
+      true,
+    );
+  });
+
+  it("expires the blob so art added upstream gets retried", async () => {
+    vi.useFakeTimers();
+    try {
+      markArtworkBroken("https://server/rest/getCoverArt?id=old");
+      vi.setSystemTime(Date.now() + 25 * 60 * 60 * 1000);
+      vi.resetModules();
+      const fresh = await import("./artwork-status");
+      expect(
+        fresh.isArtworkBroken("https://server/rest/getCoverArt?id=old"),
+      ).toBe(false);
+    } finally {
+      vi.useRealTimers();
+    }
   });
 });

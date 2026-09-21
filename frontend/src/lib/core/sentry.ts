@@ -20,6 +20,37 @@ export type SentryRuntimeConfig = {
 let activeDSN = "";
 let clientReportingEnabled = false;
 
+// Content blockers reject the envelope POST and the browser logs each
+// attempt as a failed request. Remembering an unreachable DSN lets later
+// page loads skip init entirely, so the flood only happens once a day.
+const SENTRY_BLOCKED_TTL_MS = 24 * 60 * 60 * 1000;
+
+interface StoredSentryBlocked {
+  at: number;
+  dsn: string;
+}
+
+function sentryBlockedFor(dsn: string): boolean {
+  try {
+    const raw = localStorage.getItem(StorageKeys.sentryBlocked);
+    if (!raw) return false;
+    const parsed = JSON.parse(raw) as Partial<StoredSentryBlocked>;
+    if (parsed.dsn !== dsn || typeof parsed.at !== "number") return false;
+    return Date.now() - parsed.at < SENTRY_BLOCKED_TTL_MS;
+  } catch {
+    return false;
+  }
+}
+
+function markSentryBlocked(dsn: string): void {
+  try {
+    const payload: StoredSentryBlocked = { at: Date.now(), dsn };
+    localStorage.setItem(StorageKeys.sentryBlocked, JSON.stringify(payload));
+  } catch {
+    /* storage unavailable */
+  }
+}
+
 export function resetSentryForTests(): void {
   activeDSN = "";
   clientReportingEnabled = false;
@@ -75,7 +106,10 @@ type TransportOptions = Parameters<typeof Sentry.makeFetchTransport>[0];
 type Transport = ReturnType<typeof Sentry.makeFetchTransport>;
 type SendResult = Awaited<ReturnType<Transport["send"]>>;
 
-function blockedTolerantTransport(options: TransportOptions): Transport {
+function blockedTolerantTransport(
+  options: TransportOptions,
+  dsn: string,
+): Transport {
   const inner = Sentry.makeFetchTransport(options);
   let blocked = false;
   const dropped: SendResult = {};
@@ -84,6 +118,7 @@ function blockedTolerantTransport(options: TransportOptions): Transport {
       if (blocked) return Promise.resolve(dropped);
       return Promise.resolve(inner.send(envelope)).catch(() => {
         blocked = true;
+        if (dsn) markSentryBlocked(dsn);
         return dropped;
       });
     },
@@ -96,13 +131,14 @@ function blockedTolerantTransport(options: TransportOptions): Transport {
 function buildOptions(cfg: SentryRuntimeConfig): Sentry.BrowserOptions | null {
   const dsn = cfg.dsn?.trim() ?? "";
   if (!dsn || !cfg.clientReporting) return null;
+  if (sentryBlockedFor(dsn)) return null;
   return {
     dsn,
     environment: cfg.environment?.trim() || undefined,
     release: cfg.release?.trim() || undefined,
     tracesSampleRate: cfg.tracesSampleRate ?? 0,
     sendDefaultPii: false,
-    transport: blockedTolerantTransport,
+    transport: (options) => blockedTolerantTransport(options, dsn),
     beforeSend: (event) => scrubEvent(event),
     beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb),
   };
