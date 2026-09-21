@@ -486,7 +486,7 @@
         <div class="about-panel__row">
           <dt>Slowest operations</dt>
           <dd>
-            {#each perf.slowest.slice(0, 5) as entry (entry.at)}
+            {#each perf.slowest.slice(0, 5) as entry, i (`${entry.at}:${i}`)}
               <span class="about-panel__caps">
                 {entry.name}
                 {Math.round(entry.durationMs)}ms{entry.detail

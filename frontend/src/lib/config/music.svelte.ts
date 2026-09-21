@@ -498,7 +498,7 @@ class MusicStore {
    */
   homeFeedSettling = $state(false);
   private homeFeedSettleTimer: ReturnType<typeof setTimeout> | undefined;
-  private static readonly HOME_FEED_SETTLE_BUDGET_MS = 5000;
+  private static readonly HOME_FEED_SETTLE_BUDGET_MS = 2500;
   private playbackRestored = false;
   private reconnectResumePending = $state(false);
   private reconnectPositionMs = 0;

@@ -48,11 +48,6 @@
 
   let metadataSummary = $state<MetadataSummary | null>(null);
 
-  const loading = $derived(
-    !music.libraryReady ||
-      music.loading ||
-      (music.connected && music.homeFeedSettling),
-  );
   const unavailable = $derived(libraryUnavailable());
 
   const hideUnknown = $derived(music.hideUnknownMetadata);
@@ -122,6 +117,11 @@
   const visibleMixes = $derived(homeHidden.filterMixes(music.personalMixes));
   const visibleArtists = $derived(homeHidden.filterArtists(favoriteArtists));
   const hasContent = $derived(homeHasLibraryContent(feedInput));
+  const loading = $derived(
+    !music.libraryReady ||
+      music.loading ||
+      (music.connected && music.homeFeedSettling && !hasContent),
+  );
 
   const laterShelves = $derived.by(() => {
     const used = new Set<string>([...homeHidden.albums]);
