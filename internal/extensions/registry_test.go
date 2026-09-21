@@ -20,6 +20,8 @@ import (
 	"path/filepath"
 	"strings"
 	"testing"
+
+	"melovian/internal/compat"
 )
 
 func testZip(t *testing.T, manifest string) []byte {
@@ -384,6 +386,19 @@ func TestMinAppVersionGate(t *testing.T) {
 	_, err := InstallFromRegistry(context.Background(), t.TempDir(), "demo-remote", "")
 	if err == nil || !strings.Contains(err.Error(), "needs Melovian 99.0.0") {
 		t.Fatalf("expected minAppVersion refusal, got %v", err)
+	}
+}
+
+func TestMinAppVersionGateSkipsShaVersion(t *testing.T) {
+	pkg := testZip(t, `{"id":"demo-remote","name":"Demo Remote","version":"1.0.0"}`)
+	srv := serveRegistryEntry(t, pkg, `, "minAppVersion": "0.1.0"`)
+	defer srv.Close()
+	t.Setenv("MELOVIAN_EXTENSION_REGISTRY_URL", srv.URL+"/registry.json")
+	old := compat.Version
+	compat.Version = "bc9ca4e"
+	defer func() { compat.Version = old }()
+	if _, err := InstallFromRegistry(context.Background(), t.TempDir(), "demo-remote", ""); err != nil {
+		t.Fatalf("sha-stamped builds should skip the semver floor, got %v", err)
 	}
 }
 

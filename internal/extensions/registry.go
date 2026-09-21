@@ -463,7 +463,8 @@ func InstallFromRegistry(ctx context.Context, dataDir, id, wantVersion string) (
 		return Manifest{}, fmt.Errorf("extension was delisted: %s", reason)
 	}
 	if min := strings.TrimSpace(entry.MinAppVersion); min != "" {
-		if CompareVersions(compat.Version, min) < 0 {
+		// Sha-stamped dev builds are not comparable to semver floors.
+		if compat.IsSemverVersion(compat.Version) && CompareVersions(compat.Version, min) < 0 {
 			return Manifest{}, fmt.Errorf(
 				"extension needs Melovian %s or newer, this is %s", min, compat.Version)
 		}

@@ -232,6 +232,33 @@ func padNumeric(p string) string {
 	return strings.Repeat("0", width-len(p)) + p
 }
 
+// IsSemverVersion reports whether v looks like a dotted numeric release
+// (1.2.3, v1.2). Git-sha stamps and arbitrary labels return false, so
+// callers can skip ordered comparisons that are meaningless for them.
+func IsSemverVersion(v string) bool {
+	v = strings.TrimSpace(v)
+	v = strings.TrimPrefix(v, "v")
+	v = strings.TrimPrefix(v, "V")
+	if i := strings.IndexAny(v, "-+"); i >= 0 {
+		v = v[:i]
+	}
+	parts := strings.Split(v, ".")
+	if len(parts) < 2 {
+		return false
+	}
+	for _, p := range parts {
+		if p == "" {
+			return false
+		}
+		for _, c := range p {
+			if c < '0' || c > '9' {
+				return false
+			}
+		}
+	}
+	return true
+}
+
 // ClientTooOld reports whether the client version is below MinClientVersion.
 func ClientTooOld(clientVersion string) bool {
 	if clientVersion == "" {
