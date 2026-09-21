@@ -106,4 +106,32 @@
   .offline-banner__retry:hover {
     background: var(--jb-surface-hover);
   }
+
+  @media (max-width: 768px) {
+    .offline-banner {
+      flex-wrap: nowrap;
+      padding: var(--jb-space-1) var(--jb-space-3);
+      font-size: 0.75rem;
+      line-height: 1.4;
+    }
+
+    .offline-banner :global(svg) {
+      width: 0.875rem;
+      height: 0.875rem;
+      flex-shrink: 0;
+    }
+
+    .offline-banner > span {
+      min-width: 0;
+      overflow: hidden;
+      text-overflow: ellipsis;
+      white-space: nowrap;
+    }
+
+    .offline-banner__retry {
+      padding: 0.125rem 0.5rem;
+      font-size: 0.75rem;
+      flex-shrink: 0;
+    }
+  }
 </style>
