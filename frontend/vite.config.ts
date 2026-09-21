@@ -31,22 +31,28 @@ function resolveAppVersion(): string {
 
   // Prefer live git over frontend/.build-version. A stale stamp file is what
   // caused client/server mismatch banners after rebuilding only the Go binary.
+  // When the stamp matches the non-dirty describe it was written moments ago
+  // by the Task dep chain, before steps like go mod tidy could dirty the
+  // tree. Trusting it keeps client and server stamps identical.
+  const stampPath = path.resolve(".build-version");
+  const stamped = existsSync(stampPath)
+    ? readFileSync(stampPath, "utf8").trim()
+    : "";
   try {
     const described = execSync("git describe --tags --always --dirty", {
       encoding: "utf8",
       stdio: ["ignore", "pipe", "ignore"],
       cwd: path.resolve(".."),
     }).trim();
-    if (described) return described;
+    if (described) {
+      const clean = described.replace(/-dirty$/, "");
+      return stamped === clean ? stamped : described;
+    }
   } catch {
     // Not a git checkout or git missing.
   }
 
-  const stampPath = path.resolve(".build-version");
-  if (existsSync(stampPath)) {
-    const stamped = readFileSync(stampPath, "utf8").trim();
-    if (stamped) return stamped;
-  }
+  if (stamped) return stamped;
 
   return pkg.version || "0.1.0";
 }

@@ -16,6 +16,15 @@ async function muteAudio(page: Page): Promise<void> {
   });
 }
 
+/** Best-effort mute that tolerates a navigation mid-evaluate. */
+async function muteAudioQuiet(page: Page): Promise<void> {
+  try {
+    await muteAudio(page);
+  } catch {
+    // Page navigated or closed while muting. A later settle call retries.
+  }
+}
+
 export const test = base.extend({
   context: async ({ context }, use) => {
     await context.addInitScript(() => {
@@ -26,7 +35,7 @@ export const test = base.extend({
   },
   page: async ({ page }, use) => {
     page.on("load", () => {
-      void muteAudio(page);
+      void muteAudioQuiet(page);
     });
     await use(page);
   },
@@ -44,5 +53,5 @@ export async function waitForAppShell(page: Page): Promise<void> {
 /** Soft settle after client-side navigation. */
 export async function settle(page: Page): Promise<void> {
   await page.waitForLoadState("domcontentloaded");
-  await muteAudio(page);
+  await muteAudioQuiet(page);
 }
