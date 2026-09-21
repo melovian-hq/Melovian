@@ -291,3 +291,24 @@ describe("taste-score", () => {
     expect(ranked[0].id).toBe("a2");
   });
 });
+
+describe("weightedSampleTracks hardening", () => {
+  it("drops skipped tracks and same-song duplicates from samples", () => {
+    const tracks = [
+      { id: "a", title: "Song", artist: "Alpha" },
+      { id: "b", title: "song", artist: "alpha" },
+      song("c", "Beta"),
+      { id: "skip", title: "Skip", artist: "Gamma" },
+    ];
+    const profile = buildTasteProfile(
+      null,
+      [],
+      new Map(),
+      new Set(["skip"]),
+    );
+    const picks = weightedSampleTracks(tracks, profile, 10, () => 0.5);
+    const ids = picks.map((track) => track.id);
+    expect(ids).not.toContain("skip");
+    expect(ids.filter((id) => id === "a" || id === "b")).toHaveLength(1);
+  });
+});

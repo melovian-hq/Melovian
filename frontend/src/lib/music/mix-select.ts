@@ -7,6 +7,7 @@ import {
   type TasteProfile,
   type TasteScoreOptions,
 } from "./taste-score";
+import { dedupeTrackIdentities, trackIdentityKey } from "./track-identity";
 import type { MixSettings } from "./mix-settings";
 import type { SubsonicSong } from "$lib/subsonic/types";
 
@@ -14,6 +15,8 @@ export interface FlowOptions {
   durationPacing?: boolean;
   albumLookback?: number;
   artistFocused?: boolean;
+  /** Open the sequence with this track when it is present in the input. */
+  anchor?: SubsonicSong | null;
 }
 
 export interface MixSeedProfile {
@@ -187,7 +190,7 @@ export function orderForFlow(
 ): SubsonicSong[] {
   if (tracks.length <= 2) return [...tracks];
 
-  const remaining = dedupeTracks(tracks);
+  const remaining = dedupeTrackIdentities(dedupeTracks(tracks));
   const random = createSeededRandom(seed);
   const ordered: SubsonicSong[] = [];
   const albumLookback = options.albumLookback ?? 4;
@@ -221,6 +224,12 @@ export function orderForFlow(
         (track) => !recentAlbums.has(trackAlbumKey(track)),
       );
       if (differentAlbum.length > 0) pool = differentAlbum;
+    }
+
+    const recentIdentities = new Set<string>();
+    for (let i = 1; i <= Math.min(4, ordered.length); i++) {
+      const prev = ordered.at(-i);
+      if (prev) recentIdentities.add(trackIdentityKey(prev));
     }
 
     let best = pool[0];
@@ -267,6 +276,8 @@ export function orderForFlow(
         }
       }
 
+      if (recentIdentities.has(trackIdentityKey(candidate))) score -= 6;
+
       if (genre && lastGenre) {
         if (genresRelated(genre, lastGenre)) score += 0.7;
         else score -= 0.35;
@@ -296,10 +307,16 @@ export function orderForFlow(
     return best;
   };
 
-  const starterIndex = Math.floor(random() * remaining.length);
+  const anchorIndex = options.anchor
+    ? remaining.findIndex((track) => track.id === options.anchor!.id)
+    : -1;
+  const starterIndex =
+    anchorIndex >= 0
+      ? anchorIndex
+      : Math.floor(random() * remaining.length);
   const starter = remaining[starterIndex];
   ordered.push(starter);
-  remaining.splice(remaining.indexOf(starter), 1);
+  remaining.splice(starterIndex, 1);
 
   while (remaining.length > 0) {
     const next = pickBest(remaining);
@@ -609,15 +626,29 @@ export function selectMixTracks(
   const random = createSeededRandom(rngSeed);
   const artistCap = adaptiveArtistCap(pool, policy);
   const albumCap = policy.maxPerAlbum;
-  const target = Math.min(policy.targetCount, pool.length);
+
+  // Collapse same-song duplicates (remaster, single, compilation) and
+  // keep the variant that fits this mix best.
+  const byIdentity = new Map<
+    string,
+    { track: SubsonicSong; lane: MixLane; score: number }
+  >();
+  for (const track of pool) {
+    const candidate = {
+      track,
+      lane: classifyMixLane(track, ctx, seed),
+      score: mixFitScore(track, ctx, seed, policy),
+    };
+    const key = trackIdentityKey(track);
+    const current = byIdentity.get(key);
+    if (!current || candidate.score > current.score) {
+      byIdentity.set(key, candidate);
+    }
+  }
+  const remaining = [...byIdentity.values()];
+  const target = Math.min(policy.targetCount, remaining.length);
   const familiarNeed = Math.round(target * policy.familiarRatio);
   const discoverNeed = Math.round(target * policy.discoverRatio);
-
-  const remaining = pool.map((track) => ({
-    track,
-    lane: classifyMixLane(track, ctx, seed),
-    score: mixFitScore(track, ctx, seed, policy),
-  }));
 
   const picks: SubsonicSong[] = [];
   const artistCounts = new Map<string, number>();

@@ -6,6 +6,7 @@ import type {
   ListenStats,
   SubsonicSong,
 } from "$lib/subsonic/types";
+import { trackIdentityKey } from "./track-identity";
 
 export interface TasteProfile {
   artistAffinity: Map<string, number>;
@@ -540,26 +541,42 @@ export function weightedSampleTracks(
   excludeIds: ReadonlySet<string> = new Set(),
 ): SubsonicSong[] {
   const seen = new Set<string>();
-  const pool: { track: SubsonicSong; weight: number }[] = [];
+  const seenIdentities = new Set<string>();
+  const pool: { track: SubsonicSong; score: number }[] = [];
   for (const track of tracks) {
     const id = track.id?.trim();
     if (!id || excludeIds.has(track.id) || excludeIds.has(id) || seen.has(id)) {
       continue;
     }
+    const identity = trackIdentityKey(track);
+    if (seenIdentities.has(identity)) continue;
+    const score = scoreTrackTaste(track, profile, options);
+    // Sentinel negatives (skipped tracks) never belong in a sample.
+    if (score <= -50) continue;
     seen.add(id);
-    pool.push({
-      track,
-      weight: Math.max(0.05, scoreTrackTaste(track, profile, options) + 2),
-    });
+    seenIdentities.add(identity);
+    pool.push({ track, score });
   }
 
+  // Softmax favors strong fits over linear weights while long-tail picks
+  // still surface. Temperature 4 gives an 8-point gap roughly 7x weight.
+  const temperature = 4;
   const picks: SubsonicSong[] = [];
   while (picks.length < count && pool.length > 0) {
-    const total = pool.reduce((sum, item) => sum + item.weight, 0);
+    let maxScore = Number.NEGATIVE_INFINITY;
+    for (const item of pool) {
+      if (item.score > maxScore) maxScore = item.score;
+    }
+    let total = 0;
+    const scaled = pool.map((item) => {
+      const weight = Math.exp((item.score - maxScore) / temperature);
+      total += weight;
+      return weight;
+    });
     let roll = random() * total;
-    let index = 0;
-    for (let i = 0; i < pool.length; i++) {
-      roll -= pool[i].weight;
+    let index = pool.length - 1;
+    for (let i = 0; i < scaled.length; i++) {
+      roll -= scaled[i];
       if (roll <= 0) {
         index = i;
         break;

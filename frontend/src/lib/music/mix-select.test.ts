@@ -298,3 +298,50 @@ describe("mixFitScore", () => {
     expect(related).toBeGreaterThan(unrelated);
   });
 });
+
+describe("track identity and flow anchor", () => {
+  it("opens on the anchor track when provided", () => {
+    const tracks = [
+      song("1", "Alpha"),
+      song("2", "Beta"),
+      song("3", "Gamma"),
+      song("4", "Delta"),
+    ];
+    const ordered = orderForFlow(tracks, "anchor-seed", {
+      anchor: tracks[2],
+    });
+    expect(ordered[0].id).toBe("3");
+  });
+
+  it("drops same-song duplicates during flow ordering", () => {
+    const tracks = [
+      song("1", "Alpha", { title: "Same" }),
+      song("2", "alpha", { title: "same" }),
+      song("3", "Beta", { title: "Other" }),
+      song("4", "Gamma", { title: "Third" }),
+    ];
+    const ordered = orderForFlow(tracks, "dup-seed");
+    const ids = ordered.map((track) => track.id);
+    expect(ids.filter((id) => id === "1" || id === "2")).toHaveLength(1);
+    expect(ordered).toHaveLength(3);
+  });
+
+  it("collapses identity duplicates keeping the better-fitting variant", () => {
+    const ctx = selectCtx({
+      playCountByTrack: new Map([["hit", 12]]),
+    });
+    const seed = emptyMixSeed();
+    const policy = defaultMixPolicy(5);
+    const tracks = [
+      song("hit", "Alpha", { title: "Same Song" }),
+      song("dup", "Alpha", { title: "same song" }),
+      song("x1", "Beta"),
+      song("x2", "Gamma"),
+      song("x3", "Delta"),
+    ];
+    const picked = selectMixTracks(tracks, ctx, seed, policy, "sel-seed");
+    const ids = picked.map((track) => track.id);
+    expect(ids).toContain("hit");
+    expect(ids).not.toContain("dup");
+  });
+});

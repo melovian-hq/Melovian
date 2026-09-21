@@ -144,6 +144,11 @@ async function getCachedSimilarSongs(
   const cached = state.similarCache.get(trackId);
   if (cached) return cached;
   const songs = await fetchers.getSimilarSongs(trackId, count).catch(() => []);
+  // Keep the session cache bounded; oldest seeds age out first.
+  if (state.similarCache.size >= 64) {
+    const oldest = state.similarCache.keys().next().value;
+    if (oldest !== undefined) state.similarCache.delete(oldest);
+  }
   state.similarCache.set(trackId, songs);
   return songs;
 }

@@ -25,6 +25,7 @@ import {
   decadeFromYear,
   listenAffinityWeight,
   rankedDecadeKeys,
+  scoreTrackTaste,
 } from "../taste-score";
 import type {
   ListenEntry,
@@ -185,10 +186,24 @@ export function finalizeMix(
   );
   if (pool.length < minTracks) return null;
 
+  // Open on the strongest fit so the mix leads with a hook.
+  let anchor: SubsonicSong | null = null;
+  let anchorScore = Number.NEGATIVE_INFINITY;
+  for (const track of pool) {
+    const score = scoreTrackTaste(track, ctx.tasteProfile, {
+      starredTrackIds: state.starredTrackIds,
+    });
+    if (score > anchorScore) {
+      anchorScore = score;
+      anchor = track;
+    }
+  }
+
   const ordered = orderForFlow(pool, flowSeed, {
     durationPacing: ctx.settings.durationPacing,
     albumLookback: ctx.settings.flowAlbumLookback,
     artistFocused: seed.artistFocused,
+    anchor,
   });
   if (ordered.length < minTracks) return null;
 
