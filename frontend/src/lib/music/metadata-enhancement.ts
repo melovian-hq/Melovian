@@ -3,7 +3,12 @@
 
 import { StorageKeys } from "$lib/brand";
 import { createBoundedMap } from "$lib/core/bounded-cache";
+import { ApiPaths } from "$lib/core/http/api-paths";
+import { apiHeaders, fetchWithRetry } from "$lib/core/http/client";
 import { parseJson } from "$lib/core/http/parse";
+import { logger } from "$lib/core/logger";
+import { perfRecord } from "$lib/core/perf";
+import { isStaticDemo } from "$lib/config/runtime";
 import { itunesSearchResponseSchema } from "./schemas";
 import type { MetadataEnhancementSettings } from "./metadata-enhancement-settings";
 
@@ -136,6 +141,14 @@ export function metadataNamesMatch(
   return false;
 }
 
+function timingNow(): number {
+  try {
+    return performance.now();
+  } catch {
+    return Date.now();
+  }
+}
+
 const DATA_URL_PATTERN = /^data:/i;
 
 export function artworkNeedsEnhancement(
@@ -209,6 +222,36 @@ async function searchItunes(
   return payload.results ?? [];
 }
 
+/**
+ * lookupArtworkApi asks the Melovian backend to run the iTunes lookup server
+ * side. This survives content blockers that kill direct itunes.apple.com
+ * requests (ERR_BLOCKED_BY_CLIENT). Throws when the API is unreachable or the
+ * server predates the endpoint, in which case callers fall back to a direct
+ * fetch.
+ */
+async function lookupArtworkApi(query: {
+  kind: "artist" | "album" | "song";
+  artist?: string;
+  album?: string;
+  title?: string;
+}): Promise<string | null> {
+  const params = new URLSearchParams({ kind: query.kind });
+  if (query.artist) params.set("artist", query.artist);
+  if (query.album) params.set("album", query.album);
+  if (query.title) params.set("title", query.title);
+  const response = await fetchWithRetry(
+    `${ApiPaths.metadataArtwork}?${params}`,
+    { headers: apiHeaders() },
+    1,
+  );
+  if (!response.ok) {
+    throw new Error(`artwork lookup failed: ${response.status}`);
+  }
+  const payload = (await response.json()) as { url?: unknown };
+  const url = typeof payload?.url === "string" ? payload.url.trim() : "";
+  return url || null;
+}
+
 async function resolveCached(
   key: string,
   loader: () => Promise<string | null>,
@@ -224,17 +267,25 @@ async function resolveCached(
   const pending = inflight.get(key);
   if (pending) return pending;
 
+  const startedAt = timingNow();
   const promise = loader()
     .then((url) => {
       memoryCache.set(key, url);
       writePersistentCache(key, url);
       inflight.delete(key);
+      perfRecord("artwork-enhance", timingNow() - startedAt, key);
       return url;
     })
-    .catch(() => {
+    .catch((err) => {
       // Do not cache failures (network errors, rate limits, etc.) so flaky
       // conditions in server/web deployments can recover on the next attempt.
       inflight.delete(key);
+      logger.debug(
+        "artwork enhancement lookup failed",
+        { key, err: err instanceof Error ? err.message : String(err) },
+        "metadata-enhancement",
+      );
+      perfRecord("artwork-enhance", timingNow() - startedAt, `${key} failed`);
       return null;
     });
 
@@ -274,6 +325,7 @@ export async function enhanceArtistArtwork(
   if (!settings.enabled || !settings.artists) return null;
   if (
     settings.preferServerArtistArt &&
+    options.resolvedSrc?.trim() &&
     (artist.artistImageUrl?.trim() || artist.coverArt?.trim()) &&
     !options.primaryLoadFailed
   ) {
@@ -290,6 +342,13 @@ export async function enhanceArtistArtwork(
 
   const key = cacheKey("artist", artist.id);
   return resolveCached(key, async () => {
+    if (!isStaticDemo()) {
+      try {
+        return await lookupArtworkApi({ kind: "artist", artist: artist.name });
+      } catch {
+        /* older server or no backend, fall back to a direct lookup */
+      }
+    }
     const [artistResults, albumResults] = await Promise.all([
       searchItunes({
         term: artist.name,
@@ -349,6 +408,17 @@ export async function enhanceAlbumArtwork(
 
   const key = cacheKey("album", album.id);
   return resolveCached(key, async () => {
+    if (!isStaticDemo()) {
+      try {
+        return await lookupArtworkApi({
+          kind: "album",
+          artist: album.artist,
+          album: album.name,
+        });
+      } catch {
+        /* older server or no backend, fall back to a direct lookup */
+      }
+    }
     const term = [album.artist, album.name].filter(Boolean).join(" ");
     const results = await searchItunes({
       term,
@@ -413,6 +483,18 @@ export async function enhanceTrackArtwork(
       : Promise.resolve(null);
 
     const songPromise = (async () => {
+      if (!isStaticDemo()) {
+        try {
+          return await lookupArtworkApi({
+            kind: "song",
+            artist: track.artist,
+            album: track.album,
+            title: track.title,
+          });
+        } catch {
+          /* older server or no backend, fall back to a direct lookup */
+        }
+      }
       const term = [track.artist, track.title].filter(Boolean).join(" ");
       const results = await searchItunes({
         term,

@@ -136,6 +136,9 @@ export const ApiPaths = {
   localMusicMetadataLookup: "/api/local-music/metadata/lookup",
   localMusicMetadataAutofixBatch: "/api/local-music/metadata/autofix-batch",
 
+  /** Server-side third party artwork lookup for metadata enhancement. */
+  metadataArtwork: "/api/metadata/artwork",
+
   videoSettings: "/api/video/settings",
   videoSearch: "/api/video/search",
   videoResolve: "/api/video/resolve",

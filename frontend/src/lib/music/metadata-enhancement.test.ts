@@ -116,10 +116,36 @@ describe("metadata-enhancement helpers", () => {
 
 describe("metadata-enhancement iTunes lookup", () => {
   let fetchMock: Mock;
+  let itunesQueue: Response[];
+  let artworkApiResponse: Response | null;
+
+  function queueItunes(...responses: Response[]) {
+    itunesQueue.push(...responses);
+  }
+
+  function itunesCalls(): string[] {
+    return fetchMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.includes("itunes.apple.com"));
+  }
+
+  function apiCalls(): string[] {
+    return fetchMock.mock.calls
+      .map((call) => String(call[0]))
+      .filter((url) => url.includes("/api/metadata/artwork"));
+  }
 
   beforeEach(() => {
     clearMetadataEnhancementCache();
-    fetchMock = vi.fn();
+    itunesQueue = [];
+    artworkApiResponse = null;
+    fetchMock = vi.fn(async (input: RequestInfo | URL) => {
+      const url = String(input);
+      if (url.includes("/api/metadata/artwork")) {
+        return artworkApiResponse ?? new Response("", { status: 404 });
+      }
+      return itunesQueue.shift() ?? new Response("", { status: 500 });
+    });
     vi.stubGlobal("fetch", fetchMock);
   });
 
@@ -152,8 +178,46 @@ describe("metadata-enhancement iTunes lookup", () => {
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("uses the backend artwork lookup when it resolves a url", async () => {
+    artworkApiResponse = new Response(JSON.stringify({ url: ART_URL_600 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const url = await enhanceArtistArtwork(
+      { id: "a1", name: "Metallica" },
+      enabled,
+    );
+
+    expect(url).toBe(ART_URL_600);
+    expect(apiCalls()).toHaveLength(1);
+    expect(itunesCalls()).toHaveLength(0);
+  });
+
+  it("falls back to direct iTunes search when the backend lookup fails", async () => {
+    queueItunes(
+      itunesPayload([
+        {
+          artistName: "Metallica",
+          artworkUrl100: ART_URL,
+        },
+      ]),
+      itunesPayload([]),
+    );
+
+    const url = await enhanceArtistArtwork(
+      { id: "a1", name: "Metallica" },
+      enabled,
+    );
+
+    expect(url).toBe(ART_URL_600);
+    expect(apiCalls()).toHaveLength(1);
+    expect(itunesCalls()).toHaveLength(2);
+  });
+
   it("still looks up artwork when only a cover art id exists", async () => {
-    fetchMock.mockResolvedValueOnce(itunesPayload([])).mockResolvedValueOnce(
+    queueItunes(
+      itunesPayload([]),
       itunesPayload([
         {
           artistName: "Metallica",
@@ -174,33 +238,46 @@ describe("metadata-enhancement iTunes lookup", () => {
     const url = await enhanceArtistArtwork(
       { id: "a1", name: "Metallica", coverArt: "ar-1" },
       enabled,
+      { resolvedSrc: "https://example.com/nav-cover.jpg" },
     );
     expect(url).toBeNull();
     expect(fetchMock).not.toHaveBeenCalled();
   });
 
+  it("enhances when server art exists but failed to resolve", async () => {
+    artworkApiResponse = new Response(JSON.stringify({ url: ART_URL_600 }), {
+      status: 200,
+      headers: { "Content-Type": "application/json" },
+    });
+
+    const url = await enhanceArtistArtwork(
+      { id: "a1", name: "Metallica", coverArt: "ar-1" },
+      enabled,
+      { resolvedSrc: null },
+    );
+
+    expect(url).toBe(ART_URL_600);
+  });
+
   it("fetches artist artwork from iTunes with name verification", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        itunesPayload([
-          {
-            artistName: "Metallica",
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(
-        itunesPayload([
-          {
-            artistName: "Wrong Artist",
-            artworkUrl100: ART_URL,
-          },
-          {
-            artistName: "Metallica",
-            collectionName: "Master of Puppets",
-            artworkUrl100: ART_URL,
-          },
-        ]),
-      );
+    queueItunes(
+      itunesPayload([
+        {
+          artistName: "Metallica",
+        },
+      ]),
+      itunesPayload([
+        {
+          artistName: "Wrong Artist",
+          artworkUrl100: ART_URL,
+        },
+        {
+          artistName: "Metallica",
+          collectionName: "Master of Puppets",
+          artworkUrl100: ART_URL,
+        },
+      ]),
+    );
 
     const url = await enhanceArtistArtwork(
       { id: "artist-metallica", name: "Metallica" },
@@ -208,13 +285,13 @@ describe("metadata-enhancement iTunes lookup", () => {
     );
 
     expect(url).toBe(ART_URL_600);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(parseItunesUrl(String(fetchMock.mock.calls[0]?.[0]))).toEqual({
+    expect(itunesCalls()).toHaveLength(2);
+    expect(parseItunesUrl(itunesCalls()[0])).toEqual({
       term: "Metallica",
       entity: "musicArtist",
       limit: "8",
     });
-    expect(parseItunesUrl(String(fetchMock.mock.calls[1]?.[0]))).toEqual({
+    expect(parseItunesUrl(itunesCalls()[1])).toEqual({
       term: "Metallica",
       entity: "album",
       limit: "12",
@@ -222,7 +299,8 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("rejects artist album results that do not match the requested name", async () => {
-    fetchMock.mockResolvedValueOnce(itunesPayload([])).mockResolvedValueOnce(
+    queueItunes(
+      itunesPayload([]),
       itunesPayload([
         {
           artistName: "Metal Church",
@@ -241,7 +319,7 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("fetches album artwork when album and artist names match", async () => {
-    fetchMock.mockResolvedValueOnce(
+    queueItunes(
       itunesPayload([
         {
           artistName: "Pink Floyd",
@@ -261,7 +339,7 @@ describe("metadata-enhancement iTunes lookup", () => {
     );
 
     expect(url).toBe(ART_URL_600);
-    const requestUrl = String(fetchMock.mock.calls[0]?.[0]);
+    const requestUrl = itunesCalls()[0];
     expect(parseItunesUrl(requestUrl)).toEqual({
       term: "Pink Floyd The Dark Side of the Moon",
       entity: "album",
@@ -270,7 +348,7 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("rejects album results with a mismatched artist", async () => {
-    fetchMock.mockResolvedValueOnce(
+    queueItunes(
       itunesPayload([
         {
           artistName: "Various Artists",
@@ -293,17 +371,16 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("uses album artwork for tracks when album lookup succeeds", async () => {
-    fetchMock
-      .mockResolvedValueOnce(
-        itunesPayload([
-          {
-            artistName: "Nirvana",
-            collectionName: "Nevermind",
-            artworkUrl100: ART_URL,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(itunesPayload([]));
+    queueItunes(
+      itunesPayload([
+        {
+          artistName: "Nirvana",
+          collectionName: "Nevermind",
+          artworkUrl100: ART_URL,
+        },
+      ]),
+      itunesPayload([]),
+    );
 
     const url = await enhanceTrackArtwork(
       {
@@ -316,16 +393,14 @@ describe("metadata-enhancement iTunes lookup", () => {
     );
 
     expect(url).toBe(ART_URL_600);
-    expect(fetchMock).toHaveBeenCalled();
     expect(
-      fetchMock.mock.calls.some(
-        (call) => parseItunesUrl(String(call[0])).entity === "album",
-      ),
+      itunesCalls().some((u) => parseItunesUrl(u).entity === "album"),
     ).toBe(true);
   });
 
   it("falls back to song lookup when album lookup misses", async () => {
-    fetchMock.mockResolvedValueOnce(itunesPayload([])).mockResolvedValueOnce(
+    queueItunes(
+      itunesPayload([]),
       itunesPayload([
         {
           artistName: "Nirvana",
@@ -346,8 +421,8 @@ describe("metadata-enhancement iTunes lookup", () => {
     );
 
     expect(url).toBe(ART_URL_600);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
-    expect(parseItunesUrl(String(fetchMock.mock.calls[1]?.[0]))).toEqual({
+    expect(itunesCalls()).toHaveLength(2);
+    expect(parseItunesUrl(itunesCalls()[1])).toEqual({
       term: "Nirvana Smells Like Teen Spirit",
       entity: "song",
       limit: "8",
@@ -355,7 +430,15 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("caches successful lookups in memory", async () => {
-    fetchMock.mockResolvedValueOnce(itunesPayload([])).mockResolvedValue(
+    queueItunes(
+      itunesPayload([]),
+      itunesPayload([
+        {
+          artistName: "Daft Punk",
+          collectionName: "Discovery",
+          artworkUrl100: ART_URL,
+        },
+      ]),
       itunesPayload([
         {
           artistName: "Daft Punk",
@@ -371,11 +454,12 @@ describe("metadata-enhancement iTunes lookup", () => {
 
     expect(first).toBe(ART_URL_600);
     expect(second).toBe(ART_URL_600);
-    expect(fetchMock).toHaveBeenCalledTimes(2);
+    expect(itunesCalls()).toHaveLength(2);
   });
 
   it("persists successful lookups to localStorage", async () => {
-    fetchMock.mockResolvedValueOnce(itunesPayload([])).mockResolvedValueOnce(
+    queueItunes(
+      itunesPayload([]),
       itunesPayload([
         {
           artistName: "Bjork",
@@ -399,8 +483,7 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("returns null when iTunes responds with an error", async () => {
-    fetchMock.mockResolvedValue(new Response("", { status: 500 }));
-
+    // The queue default is an HTTP 500 for any iTunes call.
     const url = await enhanceArtistArtwork(
       { id: "artist-error", name: "Test Artist" },
       enabled,
@@ -410,26 +493,23 @@ describe("metadata-enhancement iTunes lookup", () => {
   });
 
   it("retries iTunes lookups after a transient error", async () => {
-    fetchMock
-      .mockResolvedValueOnce(new Response("", { status: 500 }))
-      .mockResolvedValueOnce(
-        itunesPayload([
-          {
-            artistName: "Test Artist",
-            collectionName: "Album",
-            artworkUrl100: ART_URL,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(
-        itunesPayload([
-          {
-            artistName: "Test Artist",
-            artworkUrl100: ART_URL,
-          },
-        ]),
-      )
-      .mockResolvedValueOnce(itunesPayload([]));
+    queueItunes(
+      new Response("", { status: 500 }),
+      itunesPayload([
+        {
+          artistName: "Test Artist",
+          collectionName: "Album",
+          artworkUrl100: ART_URL,
+        },
+      ]),
+      itunesPayload([
+        {
+          artistName: "Test Artist",
+          artworkUrl100: ART_URL,
+        },
+      ]),
+      itunesPayload([]),
+    );
 
     const first = await enhanceArtistArtwork(
       { id: "artist-retry", name: "Test Artist" },
@@ -442,7 +522,7 @@ describe("metadata-enhancement iTunes lookup", () => {
       enabled,
     );
     expect(second).toBe(ART_URL_600);
-    expect(fetchMock).toHaveBeenCalledTimes(4);
+    expect(itunesCalls()).toHaveLength(4);
   });
 });
 

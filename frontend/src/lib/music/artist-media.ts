@@ -14,12 +14,22 @@ import { getActiveInstanceId } from "$lib/features/instances/context";
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 import { isLocalMusicId } from "$lib/music/library-adapter";
 import { coverArtUrl } from "$lib/subsonic/urls";
+import { logger } from "$lib/core/logger";
+import { perfRecord } from "$lib/core/perf";
 import { isArtworkBroken } from "./artwork-status";
 import type {
   SubsonicArtist,
   SubsonicArtistInfo,
   SubsonicConfig,
 } from "$lib/subsonic/types";
+
+function timingNow(): number {
+  try {
+    return performance.now();
+  } catch {
+    return Date.now();
+  }
+}
 
 function isLoopbackHostname(hostname: string): boolean {
   const host = hostname.toLowerCase();
@@ -213,12 +223,19 @@ export async function fetchArtistInfoWithCache(
   const pending = inflight.get(id);
   if (pending) return pending;
 
+  const startedAt = timingNow();
   const promise = (async () => {
-    const fresh = await library
-      .getArtistInfo(id)
-      .catch(() => emptyArtistInfo());
+    const fresh = await library.getArtistInfo(id).catch((err) => {
+      logger.debug(
+        "artist info fetch failed",
+        { artistId: id, err: err instanceof Error ? err.message : String(err) },
+        "artist-media",
+      );
+      return emptyArtistInfo();
+    });
     infoCache.set(id, fresh);
     writePersistentArtistInfo(id, fresh);
+    perfRecord("artist-info", timingNow() - startedAt, id);
     return fresh;
   })();
 
@@ -238,8 +255,12 @@ async function revalidateArtistInfo(
     const fresh = await library.getArtistInfo(id);
     infoCache.set(id, fresh);
     writePersistentArtistInfo(id, fresh);
-  } catch {
-    /* keep stale cache */
+  } catch (err) {
+    logger.debug(
+      "artist info revalidation failed",
+      { artistId: id, err: err instanceof Error ? err.message : String(err) },
+      "artist-media",
+    );
   }
 }
 

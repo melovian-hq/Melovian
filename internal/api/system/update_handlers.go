@@ -477,6 +477,7 @@ func (h *Handler) Register(mux *http.ServeMux) {
 	h.registerMetricsRoutes(mux)
 	h.registerDebugRoutes(mux)
 	h.registerClientLogRoutes(mux)
+	h.registerArtworkRoutes(mux)
 	h.registerSentrySettingsRoutes(mux)
 	h.registerJukeboxRoutes(mux)
 	h.registerUpdateRoutes(mux)

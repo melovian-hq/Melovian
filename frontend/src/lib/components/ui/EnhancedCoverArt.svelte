@@ -78,6 +78,7 @@
     if (
       kind === "artist" &&
       settings.preferServerArtistArt &&
+      src &&
       (entity.artistImageUrl?.trim() || entity.coverArt?.trim()) &&
       !primaryFailed
     ) {

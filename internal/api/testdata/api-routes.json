@@ -260,6 +260,10 @@
     },
     {
       "method": "GET",
+      "pattern": "/api/metadata/artwork"
+    },
+    {
+      "method": "GET",
       "pattern": "/api/local-music/metadata/lookup"
     },
     {
