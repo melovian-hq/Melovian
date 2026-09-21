@@ -997,13 +997,15 @@
   .extensions-settings__row {
     display: grid;
     gap: var(--jb-space-2);
-    padding: var(--jb-space-2) 0;
-    border-bottom: 1px solid
-      color-mix(in srgb, var(--jb-border, currentColor) 35%, transparent);
+    padding: var(--jb-space-3);
+    border: 1px solid var(--jb-border);
+    border-radius: var(--jb-radius-lg);
+    background: var(--jb-surface);
+    transition: border-color var(--jb-transition);
   }
 
-  .extensions-settings__row:last-child {
-    border-bottom: none;
+  .extensions-settings__row:hover {
+    border-color: var(--jb-border-strong);
   }
 
   .extensions-settings__banner {
@@ -1011,37 +1013,38 @@
     max-height: 3.5rem;
     object-fit: cover;
     border-radius: var(--jb-radius-md, 6px);
-    image-rendering: pixelated;
   }
 
   .extensions-settings__body {
     display: flex;
-    align-items: center;
+    align-items: flex-start;
     gap: var(--jb-space-3);
   }
 
   .extensions-settings__icon,
   .extensions-settings__letter {
-    width: 2.25rem;
-    height: 2.25rem;
+    width: 2.5rem;
+    height: 2.5rem;
     flex-shrink: 0;
-    border-radius: 2px;
+    border-radius: var(--jb-radius-md);
   }
 
   .extensions-settings__icon {
     object-fit: contain;
-    image-rendering: pixelated;
+    padding: 0.25rem;
+    background: var(--jb-bg-muted);
+    border: 1px solid var(--jb-border);
   }
 
   .extensions-settings__letter {
     display: inline-flex;
     align-items: center;
     justify-content: center;
-    font-size: 0.9375rem;
+    font-size: 1rem;
     font-weight: 700;
-    background: var(--jb-bg-muted);
-    color: var(--jb-text);
-    border: 1px solid var(--jb-border);
+    background: var(--jb-accent-muted);
+    color: var(--jb-accent);
+    border: 1px solid color-mix(in srgb, var(--jb-accent) 30%, transparent);
   }
 
   .extensions-settings__copy {
@@ -1086,6 +1089,14 @@
     font-size: 0.8125rem;
     line-height: 1.5;
     color: var(--jb-text-muted);
+  }
+
+  .extensions-settings__description {
+    display: -webkit-box;
+    -webkit-line-clamp: 3;
+    line-clamp: 3;
+    -webkit-box-orient: vertical;
+    overflow: hidden;
   }
 
   .extensions-settings__meta,

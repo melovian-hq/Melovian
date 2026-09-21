@@ -141,6 +141,7 @@
     --jb-accent-hover: color-mix(in srgb, var(--jb-accent) 85%, black);
     --jb-accent-muted: color-mix(in srgb, var(--jb-accent) 22%, transparent);
     --jb-accent-text: var(--jb-raw-accent-text);
+    --jb-active: var(--jb-accent);
 
     --jb-music-accent: var(--jb-accent);
     --jb-music-accent-hover: var(--jb-accent-hover);
@@ -255,6 +256,7 @@
     --jb-accent-hover: color-mix(in srgb, var(--jb-accent) 88%, black);
     --jb-accent-muted: color-mix(in srgb, var(--jb-accent) 14%, transparent);
     --jb-accent-text: var(--jb-raw-accent-text);
+    --jb-active: var(--jb-accent);
 
     --jb-music-accent: var(--jb-accent);
     --jb-music-accent-hover: var(--jb-accent-hover);

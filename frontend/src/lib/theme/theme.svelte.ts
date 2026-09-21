@@ -4,6 +4,7 @@
 import { StorageKeys } from "$lib/brand";
 import {
   accentTextFor,
+  activeColorFor,
   CUSTOM_ACCENT_ID,
   DEFAULT_ACCENT_HUE,
   DEFAULT_ACCENT_PRESET_ID,
@@ -201,6 +202,7 @@ function loadStoredUiSize(): UiSizeId {
 function applyPalette(
   palette: string,
   custom: CustomPaletteColors | undefined,
+  resolved: ResolvedTheme,
 ) {
   const root = document.documentElement;
   if (palette === CUSTOM_PALETTE_ID && custom) {
@@ -209,11 +211,17 @@ function applyPalette(
     root.style.setProperty("--jb-custom-surface", custom.surface);
     if (custom.accent) {
       root.style.setProperty("--jb-custom-accent", custom.accent);
+      root.style.setProperty(
+        "--jb-active",
+        activeColorFor(custom.accent, resolved),
+      );
     } else {
       root.style.removeProperty("--jb-custom-accent");
+      root.style.removeProperty("--jb-active");
     }
     return;
   }
+  root.style.removeProperty("--jb-active");
   root.style.removeProperty("--jb-custom-bg");
   root.style.removeProperty("--jb-custom-surface");
   root.style.removeProperty("--jb-custom-accent");
@@ -251,16 +259,18 @@ function applyUiSize(size: UiSizeId) {
   root.setProperty("font-size", UI_SIZE_FONT_SCALE[size]);
 }
 
-function applyAccent(hex: string) {
+function applyAccent(hex: string, resolved: ResolvedTheme) {
   const root = document.documentElement.style;
   root.setProperty("--jb-accent", hex);
   root.setProperty("--jb-accent-text", accentTextFor(hex));
+  root.setProperty("--jb-active", activeColorFor(hex, resolved));
 }
 
 function clearAccentOverrides() {
   const root = document.documentElement.style;
   root.removeProperty("--jb-accent");
   root.removeProperty("--jb-accent-text");
+  root.removeProperty("--jb-active");
 }
 
 function applyCustomCss(css: string) {
@@ -339,7 +349,10 @@ export class ThemeStore {
       $effect(() => {
         const preset = this.accentPreset;
         // Reading accentColor also tracks resolved, so preset accents are
-        // re-applied with their per-theme hex when the theme flips.
+        // re-applied with their per-theme hex when the theme flips. Reading
+        // palette re-applies after applyPalette clears --jb-active on the
+        // custom to builtin transition.
+        void this.palette;
         const hex = this.accentColor;
         if (preset === DEFAULT_ACCENT_PRESET_ID) {
           removeStorage(ACCENT_PRESET_KEY);
@@ -347,7 +360,7 @@ export class ThemeStore {
           return;
         }
         writeStorage(ACCENT_PRESET_KEY, preset);
-        applyAccent(hex);
+        applyAccent(hex, this.resolved);
       });
 
       $effect(() => {
@@ -366,7 +379,7 @@ export class ThemeStore {
           else writeStorage(key, value);
         }
         writeStorage(CUSTOM_PALETTE_KEY, JSON.stringify(this.customPalettes));
-        applyPalette(palette, custom);
+        applyPalette(palette, custom, mode);
       });
 
       $effect(() => {

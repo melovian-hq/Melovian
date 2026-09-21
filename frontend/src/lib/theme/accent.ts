@@ -76,6 +76,32 @@ export function normalizeHue(hue: number): number {
   return ((Math.round(hue) % 360) + 360) % 360;
 }
 
+/**
+ * Gold used for binary on indicators when the accent is achromatic. Mirrors
+ * --jb-raw-warning so lit toggles stay visible on gray accents like Graphite.
+ */
+const ACTIVE_FALLBACK = { dark: "#eab308", light: "#a16207" } as const;
+
+/** Channel spread below which an accent reads as gray next to muted icons. */
+const ACTIVE_CHROMA_THRESHOLD = 48;
+
+/**
+ * Color for active toggle and playing indicators. Returns the accent when it
+ * carries enough chroma to stand apart from muted controls, otherwise a tuned
+ * gold so the on state stays unambiguous.
+ */
+export function activeColorFor(
+  accentHex: string,
+  resolved: ResolvedTheme,
+): string {
+  const rgb = parseHexColor(accentHex);
+  if (!rgb) return accentHex;
+  const chroma = Math.max(rgb.r, rgb.g, rgb.b) - Math.min(rgb.r, rgb.g, rgb.b);
+  return chroma < ACTIVE_CHROMA_THRESHOLD
+    ? ACTIVE_FALLBACK[resolved]
+    : accentHex;
+}
+
 /** Pick the accent foreground that best contrasts with the accent fill. */
 export function accentTextFor(accentHex: string): string {
   const accent = parseHexColor(accentHex);

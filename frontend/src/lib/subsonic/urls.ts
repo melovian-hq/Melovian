@@ -113,13 +113,13 @@ function subsonicMediaParams(
 }
 
 export function formatDuration(seconds?: number): string {
-  if (!seconds || seconds <= 0) return "--:--";
+  if (!seconds || seconds <= 0 || !Number.isFinite(seconds)) return "--:--";
   const mins = Math.floor(seconds / 60);
   const secs = seconds % 60;
   return `${mins}:${secs.toString().padStart(2, "0")}`;
 }
 
 export function formatDurationMs(ms?: number): string {
-  if (!ms || ms <= 0) return "--:--";
+  if (!ms || ms <= 0 || !Number.isFinite(ms)) return "--:--";
   return formatDuration(Math.floor(ms / 1000));
 }

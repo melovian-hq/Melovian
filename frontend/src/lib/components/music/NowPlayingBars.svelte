@@ -43,7 +43,7 @@
     display: block;
     width: 3px;
     border-radius: 1px;
-    background: var(--now-playing-bar-color, var(--jb-accent));
+    background: var(--now-playing-bar-color, var(--jb-active));
     animation: bar-bounce 0.9s ease-in-out infinite;
   }
 

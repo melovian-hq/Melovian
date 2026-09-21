@@ -124,12 +124,12 @@
 
   .bottom-nav :global(.bottom-nav__item--active),
   .bottom-nav__item--active {
-    color: var(--jb-accent);
+    color: var(--jb-active);
   }
 
   .bottom-nav :global(.bottom-nav__item--active:hover),
   .bottom-nav__item--active:hover {
-    color: var(--jb-accent);
+    color: var(--jb-active);
     background: color-mix(in srgb, var(--jb-accent) 12%, transparent);
   }
 
