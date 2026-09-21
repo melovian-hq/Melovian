@@ -557,16 +557,13 @@
   }
 
   .player__btn--active {
-    color: var(--jb-accent);
-    background: var(--jb-accent-muted);
-    /* Low-chroma accents like Graphite need a ring too; tint alone is too
-       faint against the player surface. */
-    box-shadow: inset 0 0 0 1px
-      color-mix(in srgb, var(--jb-accent) 55%, transparent);
+    /* Pull accent toward full-contrast text so low-chroma accents like
+       Graphite still read as lit instead of matching muted icons. */
+    color: color-mix(in srgb, var(--jb-accent) 50%, var(--jb-text));
   }
 
   .player__btn--active:hover {
-    background: color-mix(in srgb, var(--jb-accent) 30%, transparent);
+    color: color-mix(in srgb, var(--jb-accent) 65%, var(--jb-text));
   }
 
   .player__btn--devices {

@@ -3,5 +3,6 @@
   "name": "ListenBrainz",
   "version": "0.1.0",
   "description": "Scrobble listens to a ListenBrainz-compatible endpoint. Supports self-hosted and Maloja ListenBrainz URLs.",
-  "author": "Melovian"
+  "author": "Melovian",
+  "icon": "assets/icon.svg"
 }
