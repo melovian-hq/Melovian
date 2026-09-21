@@ -31,6 +31,17 @@ func (h *CombinedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// The @wailsio/runtime probes /wails/custom.js with a HEAD request on
+	// every load. Serve an empty script so the probe resolves quietly instead
+	// of logging a 404 in the console.
+	if r.URL.Path == "/wails/custom.js" {
+		w.Header().Set("Content-Type", "text/javascript; charset=utf-8")
+		w.Header().Set("Cache-Control", "no-cache")
+		w.WriteHeader(http.StatusOK)
+		_, _ = w.Write([]byte("// Reserved for Wails server-mode runtime hooks.\n"))
+		return
+	}
+
 	// In dev, Wails proxies to the Vite server. Do not SPA-fallback paths like
 	// /@vite/client here or the webview receives HTML with a JS MIME type.
 	if frontendDevServerEnabled() {

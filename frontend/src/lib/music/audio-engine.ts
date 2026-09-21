@@ -264,16 +264,17 @@ export class AudioEngine implements PlaybackEngine {
   }
 
   applyEq(settings: EqSettings) {
-    if (!settings.enabled) return;
-    this.ensureContext();
+    if (settings.enabled) this.ensureContext();
     if (!this.context || this.filters.length !== EQ_BAND_COUNT) return;
     for (let i = 0; i < this.filters.length; i++) {
-      const band = settings.bands[i];
       if (settings.enabled) {
+        const band = settings.bands[i];
         this.filters[i].frequency.value = band.frequency;
         this.filters[i].Q.value = band.q;
         this.filters[i].gain.value = band.gain;
       } else {
+        // Disabled EQ must flatten the live chain, not leave the last
+        // curve in place. Only reached when a context already exists.
         this.filters[i].gain.value = 0;
       }
     }

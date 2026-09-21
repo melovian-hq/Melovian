@@ -17,6 +17,7 @@ import {
   phaseForAttempt,
   type ConnectionPhase,
 } from "./connection-schedule";
+import { clearBrokenArtwork } from "./artwork-status";
 import * as musicApi from "./api";
 
 type ConnectFn = () => Promise<boolean>;
@@ -148,6 +149,8 @@ class ConnectionStore {
 
     if (this.hadOutage) {
       this.hadOutage = false;
+      // Artwork marked broken while the server was down deserves a retry.
+      clearBrokenArtwork();
       this.callbacks.onReconnected?.();
     }
   }

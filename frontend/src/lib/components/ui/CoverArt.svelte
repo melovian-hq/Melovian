@@ -1,6 +1,10 @@
 <script lang="ts">
   import { coverArtFallbackUrl } from "$lib/music/cover-art-fallback";
   import { isCoverArtPrefetched } from "$lib/music/cover-art-prefetch";
+  import {
+    isArtworkBroken,
+    markArtworkBroken,
+  } from "$lib/music/artwork-status";
 
   interface Props {
     src?: string | null;
@@ -61,6 +65,16 @@
     fullReady = false;
     preferPreview = false;
 
+    // A URL that already 404d is not worth re-requesting. Show the preview
+    // or generated fallback right away and still report the miss so
+    // enhancement can substitute art.
+    if (src && isArtworkBroken(src)) {
+      failed = true;
+      preferPreview = hasPreview;
+      onPrimaryFailed?.();
+      return;
+    }
+
     if (!src || !previewSrc || previewSrc === src) {
       fullReady = true;
       return;
@@ -82,6 +96,7 @@
     };
     img.onerror = () => {
       // Keep the working preview visible. Never jump straight to pixel art.
+      markArtworkBroken(src);
       preferPreview = true;
       fullReady = false;
       onPrimaryFailed?.();
@@ -97,16 +112,19 @@
 
   function handleError() {
     if (hasPreview && displaySrc === src) {
+      markArtworkBroken(src);
       preferPreview = true;
       fullReady = false;
       onPrimaryFailed?.();
       return;
     }
     if (hasPreview && displaySrc === previewSrc) {
+      markArtworkBroken(previewSrc);
       failed = true;
       return;
     }
     if (!failed) {
+      markArtworkBroken(src);
       failed = true;
       onPrimaryFailed?.();
     }

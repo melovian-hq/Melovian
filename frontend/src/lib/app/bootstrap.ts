@@ -236,6 +236,10 @@ export function bindExtensionDeepLinksEffect(
   bootstrapped: boolean,
 ): (() => void) | undefined {
   if (!bootstrapped) return;
+  // Deep links are emitted by the desktop shell only. Importing the wails
+  // runtime in a plain browser logs a "browser environment" warning and
+  // probes /wails/custom.js, so skip it entirely in server mode.
+  if (!nativeDesktopAvailable()) return;
   return bindExtensionDeepLinks();
 }
 

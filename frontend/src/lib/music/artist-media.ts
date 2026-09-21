@@ -14,6 +14,7 @@ import { getActiveInstanceId } from "$lib/features/instances/context";
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 import { isLocalMusicId } from "$lib/music/library-adapter";
 import { coverArtUrl } from "$lib/subsonic/urls";
+import { isArtworkBroken } from "./artwork-status";
 import type {
   SubsonicArtist,
   SubsonicArtistInfo,
@@ -107,10 +108,14 @@ export function resolveServerArtistArtUrl(
   if (imageUrl) {
     const normalized = normalizeExternalMediaUrl(config, imageUrl);
     if (!isBrowserUnreachableAbsoluteUrl(normalized)) {
-      return resolveMedia(normalized);
+      const resolved = resolveMedia(normalized);
+      if (!isArtworkBroken(resolved)) return resolved;
     }
   }
-  if (artist.coverArt) return coverArtUrl(config, artist.coverArt, size);
+  if (artist.coverArt) {
+    const cover = coverArtUrl(config, artist.coverArt, size);
+    if (cover && !isArtworkBroken(cover)) return cover;
+  }
   return null;
 }
 

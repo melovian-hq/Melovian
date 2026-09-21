@@ -380,8 +380,14 @@
     display: none;
     flex-shrink: 0;
     margin-top: auto;
-    min-height: calc(var(--jb-space-3) + 2.25rem);
-    padding-top: var(--jb-space-3);
+    /* The player bar reports its real height into --jb-player-bar-height.
+       Matching it puts the footer hairline level with the player top edge
+       so the two bottom rows read as one line instead of a seam. */
+    min-height: max(
+      calc(var(--jb-space-3) + 2.25rem),
+      var(--jb-player-bar-height, 0px)
+    );
+    padding-block: var(--jb-space-2);
     border-top: 1px solid var(--jb-border);
     position: relative;
     z-index: 1;
@@ -406,7 +412,7 @@
   .sidebar__collapse {
     position: absolute;
     left: 0;
-    bottom: 0;
+    top: 50%;
     display: inline-flex;
     align-items: center;
     justify-content: center;
@@ -417,11 +423,12 @@
     background: transparent;
     color: var(--jb-text-muted);
     cursor: pointer;
-    transform: translateX(
+    transform: translate(
       calc(
         var(--jb-sidebar-current-width, var(--jb-sidebar-width)) -
           var(--jb-space-8) - 2.25rem
-      )
+      ),
+      -50%
     );
     transition:
       transform var(--jb-transition),

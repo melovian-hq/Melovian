@@ -93,6 +93,7 @@ export const StorageKeys = {
   deviceName: "mel-device-name",
   desktopIntegration: "mel-desktop-integration",
   homeTipsDismissed: "mel-home-tips-dismissed",
+  brokenArtwork: storageKey("broken-artwork"),
   /** Legacy "mel-" key prefixes used for per-item cache entries. */
   metaArtPrefix: "mel-meta-art:",
   artistInfoPrefix: "mel-artist-info:",

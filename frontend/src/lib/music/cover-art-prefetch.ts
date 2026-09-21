@@ -4,6 +4,7 @@
 import { coverArtUrl } from "$lib/subsonic";
 import type { SubsonicConfig, SubsonicSong } from "$lib/subsonic";
 import { createBoundedSet } from "$lib/core/bounded-cache";
+import { isArtworkBroken, markArtworkBroken } from "./artwork-status";
 import { COVER_SIZE_NOW_PLAYING, COVER_SIZE_PLAYER } from "./cover-art-sizes";
 
 const LOADED_MAX_ENTRIES = 150;
@@ -30,7 +31,9 @@ export function isCoverArtPrefetched(url: string | null | undefined): boolean {
 }
 
 export function prefetchCoverArt(url: string | null | undefined): void {
-  if (!url || loaded.has(url) || inflight.has(url)) return;
+  if (!url || loaded.has(url) || inflight.has(url) || isArtworkBroken(url)) {
+    return;
+  }
 
   const promise = new Promise<void>((resolve) => {
     const img = new Image();
@@ -39,7 +42,10 @@ export function prefetchCoverArt(url: string | null | undefined): void {
       loaded.add(url);
       resolve();
     };
-    img.onerror = () => resolve();
+    img.onerror = () => {
+      markArtworkBroken(url);
+      resolve();
+    };
     img.src = url;
   });
 

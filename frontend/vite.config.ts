@@ -140,9 +140,33 @@ function pwaPlugin(): Plugin {
   };
 }
 
+/**
+ * The @wailsio/runtime probes /wails/custom.js on load. Answer the probe in
+ * dev so the console stays free of a 404; production answers it in
+ * internal/api/spa_shell.go.
+ */
+function wailsStubPlugin(): Plugin {
+  return {
+    name: "melovian-wails-stub",
+    configureServer(server) {
+      server.middlewares.use("/wails/custom.js", (_req, res) => {
+        res.setHeader("Content-Type", "text/javascript; charset=utf-8");
+        res.setHeader("Cache-Control", "no-cache");
+        res.end("// Reserved for Wails server-mode runtime hooks.\n");
+      });
+    },
+  };
+}
+
 export default defineConfig({
   base,
-  plugins: [svelte(), tailwindcss(), wails("./bindings"), pwaPlugin()],
+  plugins: [
+    svelte(),
+    tailwindcss(),
+    wails("./bindings"),
+    pwaPlugin(),
+    wailsStubPlugin(),
+  ],
   define: {
     "import.meta.env.VITE_APP_VERSION": JSON.stringify(appVersion),
     "import.meta.env.VITE_STATIC_DEMO": JSON.stringify(

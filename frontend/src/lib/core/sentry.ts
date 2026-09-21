@@ -67,6 +67,32 @@ function scrubBreadcrumb(crumb: Sentry.Breadcrumb): Sentry.Breadcrumb | null {
   return crumb;
 }
 
+// Content blockers and offline servers reject the envelope POST with a
+// network error, which the browser logs as a failed request and the SDK
+// would otherwise keep retrying. Once a send fails, report success so the
+// SDK drains its queue and stop hitting the network for this session.
+type TransportOptions = Parameters<typeof Sentry.makeFetchTransport>[0];
+type Transport = ReturnType<typeof Sentry.makeFetchTransport>;
+type SendResult = Awaited<ReturnType<Transport["send"]>>;
+
+function blockedTolerantTransport(options: TransportOptions): Transport {
+  const inner = Sentry.makeFetchTransport(options);
+  let blocked = false;
+  const dropped: SendResult = {};
+  return {
+    send(envelope) {
+      if (blocked) return Promise.resolve(dropped);
+      return Promise.resolve(inner.send(envelope)).catch(() => {
+        blocked = true;
+        return dropped;
+      });
+    },
+    flush(timeout) {
+      return inner.flush(timeout);
+    },
+  };
+}
+
 function buildOptions(cfg: SentryRuntimeConfig): Sentry.BrowserOptions | null {
   const dsn = cfg.dsn?.trim() ?? "";
   if (!dsn || !cfg.clientReporting) return null;
@@ -76,6 +102,7 @@ function buildOptions(cfg: SentryRuntimeConfig): Sentry.BrowserOptions | null {
     release: cfg.release?.trim() || undefined,
     tracesSampleRate: cfg.tracesSampleRate ?? 0,
     sendDefaultPii: false,
+    transport: blockedTolerantTransport,
     beforeSend: (event) => scrubEvent(event),
     beforeBreadcrumb: (crumb) => scrubBreadcrumb(crumb),
   };

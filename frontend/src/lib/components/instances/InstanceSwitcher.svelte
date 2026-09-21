@@ -30,9 +30,15 @@
     maxHeight: number;
   } | null>(null);
 
-  // The sidebar clips descendants with clip-path, so an absolutely
-  // positioned menu can never escape it. Position the menu in viewport
-  // coordinates instead, recomputed when the trigger moves.
+  // The sidebar clips descendants with clip-path, which also makes it the
+  // containing block for fixed-position children. The menu has to leave the
+  // sidebar DOM entirely, so it is attached under document.body and
+  // positioned in viewport coordinates recomputed when the trigger moves.
+  function portalToBody(node: HTMLElement) {
+    document.body.appendChild(node);
+    return () => node.remove();
+  }
+
   function syncMenuPosition() {
     if (!triggerEl) return;
     const rect = triggerEl.getBoundingClientRect();
@@ -184,6 +190,7 @@
 
   {#if open && menuPos}
     <div
+      {@attach portalToBody}
       class="instance-switcher__menu"
       role="listbox"
       bind:this={menuEl}
