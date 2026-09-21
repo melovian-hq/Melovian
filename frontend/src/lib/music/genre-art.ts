@@ -34,6 +34,84 @@ const PALETTE_PATTERNS = Object.entries(GENRE_PALETTES).sort(
   (a, b) => b[0].length - a[0].length,
 );
 
+/**
+ * Genre glyph map, longest substring match wins. Icon names must stay
+ * string literals so scripts/gen-icon-data.cjs bundles them.
+ */
+const GENRE_ICONS: Record<string, string> = {
+  "hip hop": "mdi:microphone-variant",
+  "hip-hop": "mdi:microphone-variant",
+  rap: "mdi:microphone-variant",
+  trap: "mdi:microphone-variant",
+  reggaeton: "mdi:microphone-variant",
+  "k-pop": "mdi:star-outline",
+  "j-pop": "mdi:star-outline",
+  metal: "mdi:skull-outline",
+  hardcore: "mdi:skull-crossbones",
+  punk: "mdi:skull-crossbones",
+  rock: "mdi:guitar-electric",
+  grunge: "mdi:guitar-electric",
+  pop: "mdi:microphone",
+  karaoke: "mdi:microphone",
+  jazz: "mdi:saxophone",
+  blues: "mdi:trumpet",
+  swing: "mdi:trumpet",
+  "big band": "mdi:trumpet",
+  classical: "mdi:violin",
+  orchestra: "mdi:violin",
+  opera: "mdi:drama-masks",
+  soundtrack: "mdi:filmstrip",
+  score: "mdi:filmstrip",
+  film: "mdi:filmstrip",
+  electronic: "mdi:sine-wave",
+  techno: "mdi:sine-wave",
+  house: "mdi:sine-wave",
+  trance: "mdi:sine-wave",
+  dubstep: "mdi:sine-wave",
+  synth: "mdi:sine-wave",
+  edm: "mdi:sine-wave",
+  ambient: "mdi:waves",
+  chill: "mdi:waves",
+  "new age": "mdi:moon-waning-crescent",
+  meditation: "mdi:moon-waning-crescent",
+  country: "mdi:guitar-acoustic",
+  folk: "mdi:guitar-pick",
+  acoustic: "mdi:guitar-pick",
+  indie: "mdi:guitar-pick-outline",
+  alternative: "mdi:guitar-pick-outline",
+  reggae: "mdi:palm-tree",
+  soul: "mdi:heart-outline",
+  rnb: "mdi:heart-outline",
+  "r&b": "mdi:heart-outline",
+  funk: "mdi:record-player",
+  disco: "mdi:disc",
+  dance: "mdi:disc",
+  latin: "mdi:fire",
+  salsa: "mdi:fire",
+  world: "mdi:earth",
+  gospel: "mdi:church-outline",
+  christian: "mdi:church-outline",
+  worship: "mdi:church-outline",
+  podcast: "mdi:podcast",
+  spoken: "mdi:podcast",
+  audiobook: "mdi:podcast",
+  holiday: "mdi:pine-tree",
+  christmas: "mdi:pine-tree",
+  children: "mdi:balloon",
+  kids: "mdi:balloon",
+  instrumental: "mdi:piano",
+  piano: "mdi:piano",
+  radio: "mdi:radio",
+  drum: "mdi:speaker",
+  bass: "mdi:speaker",
+};
+
+const GENRE_ICON_PATTERNS = Object.entries(GENRE_ICONS).sort(
+  (a, b) => b[0].length - a[0].length,
+);
+
+const DEFAULT_GENRE_ICON = "mdi:music-note";
+
 const ART_URL_CACHE_MAX_ENTRIES = 500;
 
 const artUrlCache = createBoundedMap<string, string>(ART_URL_CACHE_MAX_ENTRIES);
@@ -69,28 +147,37 @@ export function genrePalette(name: string): [string, string, string] {
   ];
 }
 
-function buildArtUrl(name: string, cells = 8): string {
+export function genreIcon(name: string): string {
+  const key = normalizeGenre(name);
+  const exact = GENRE_ICONS[key];
+  if (exact) return exact;
+  for (const [pattern, icon] of GENRE_ICON_PATTERNS) {
+    if (key.includes(pattern)) return icon;
+  }
+  return DEFAULT_GENRE_ICON;
+}
+
+function buildArtUrl(name: string): string {
   const key = normalizeGenre(name);
   const cached = artUrlCache.get(key);
   if (cached) return cached;
 
   const [bg, accent, mid] = genrePalette(name);
   const hash = hashString(key);
-  const parts: string[] = [];
-  const last = cells - 1;
-
-  for (let y = 0; y < cells; y++) {
-    for (let x = 0; x < cells; x++) {
-      const bit = (hash >> ((x + y * cells) % 32)) & 1;
-      const corner = (x === 0 || x === last) && (y === 0 || y === last);
-      const fill = corner ? accent : bit ? mid : bg;
-      parts.push(
-        `<rect x='${x}' y='${y}' width='1' height='1' fill='${fill}'/>`,
-      );
-    }
-  }
-
-  const svg = `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 ${cells} ${cells}' shape-rendering='crispEdges'>${parts.join("")}</svg>`;
+  const cx = 0.2 + ((hash >> 5) % 50) / 100;
+  const cy = 0.15 + ((hash >> 11) % 40) / 100;
+  const svg =
+    `<svg xmlns='http://www.w3.org/2000/svg' viewBox='0 0 64 64'>` +
+    `<defs><linearGradient id='g' x1='0' y1='0' x2='1' y2='1'>` +
+    `<stop offset='0' stop-color='${bg}'/><stop offset='1' stop-color='${mid}'/>` +
+    `</linearGradient>` +
+    `<radialGradient id='r' cx='${cx.toFixed(2)}' cy='${cy.toFixed(2)}' r='0.95'>` +
+    `<stop offset='0' stop-color='${accent}' stop-opacity='0.55'/>` +
+    `<stop offset='1' stop-color='${accent}' stop-opacity='0'/>` +
+    `</radialGradient></defs>` +
+    `<rect width='64' height='64' fill='url(#g)'/>` +
+    `<rect width='64' height='64' fill='url(#r)'/>` +
+    `</svg>`;
   const url = `data:image/svg+xml,${encodeURIComponent(svg)}`;
   artUrlCache.set(key, url);
   return url;
@@ -104,10 +191,4 @@ export function prewarmGenreArt(names: readonly string[]): void {
   for (const name of names) {
     genreArtUrl(name);
   }
-}
-
-export function genreInitial(name: string): string {
-  const trimmed = name.trim();
-  if (!trimmed) return "?";
-  return trimmed.charAt(0).toUpperCase();
 }

@@ -32,6 +32,14 @@ while (stack.length) {
   }
 }
 
+// Dynamic icon sources that pass "prefix:name" strings through variables
+// instead of icon= literals (genre art picks a glyph per genre name).
+for (const extra of ["src/lib/music/genre-art.ts"]) {
+  for (const m of readFileSync(extra, "utf8").matchAll(/"(mdi:[a-z0-9-]+)"/g)) {
+    names.add(m[1]);
+  }
+}
+
 const sets = {};
 const missing = [];
 const data = {};

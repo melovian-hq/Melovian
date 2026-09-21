@@ -1,5 +1,6 @@
 <script lang="ts">
-  import { genreArtUrl, genreInitial } from "$lib/music/genre-art";
+  import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
+  import { genreArtUrl, genreIcon } from "$lib/music/genre-art";
 
   interface Props {
     name: string;
@@ -9,7 +10,7 @@
   let { name, class: className = "" }: Props = $props();
 
   const src = $derived(genreArtUrl(name));
-  const initial = $derived(genreInitial(name));
+  const icon = $derived(genreIcon(name));
 </script>
 
 <div class="genre-art {className}" aria-hidden="true">
@@ -23,7 +24,7 @@
     loading="lazy"
     draggable="false"
   />
-  <span class="genre-art__initial">{initial}</span>
+  <MdiIcon name={icon} size={20} class="genre-art__icon" aria-hidden={true} />
 </div>
 
 <style>
@@ -43,18 +44,14 @@
     width: 100%;
     height: 100%;
     object-fit: cover;
-    image-rendering: pixelated;
   }
 
-  .genre-art__initial {
+  .genre-art :global(.genre-art__icon) {
     position: absolute;
     inset: 0;
-    display: grid;
-    place-content: center;
-    font-size: 0.875rem;
-    font-weight: 800;
-    color: rgb(255 255 255 / 0.85);
-    text-shadow: 0 1px 3px rgb(0 0 0 / 0.6);
+    margin: auto;
+    color: rgb(255 255 255 / 0.9);
+    filter: drop-shadow(0 1px 3px rgb(0 0 0 / 0.6));
     pointer-events: none;
   }
 </style>
