@@ -2,16 +2,19 @@
 # SPDX-License-Identifier: Apache-2.0
 # syntax=docker/dockerfile:1
 
-FROM golang:1.26-alpine@sha256:ce864e7223ac17b1775e6fd0b4c0db580c2eb50e7953a427916379e4b92a1628 AS backend
+FROM --platform=$BUILDPLATFORM golang:1.26-alpine@sha256:ce864e7223ac17b1775e6fd0b4c0db580c2eb50e7953a427916379e4b92a1628 AS backend
 WORKDIR /src
 ARG VERSION=dev
+# CGO is off so the Go toolchain can cross-compile natively instead of running
+# the whole build under QEMU for the arm64 leg.
+ARG TARGETARCH
 RUN apk add --no-cache ca-certificates
 COPY go.mod go.sum ./
 COPY vendor/ vendor/
 COPY . .
 RUN test -d frontend/dist || (echo "missing frontend/dist: run task common:build:frontend first" && exit 1)
 RUN test -d vendor || (echo "missing vendor/: run task go:vendor" && exit 1)
-RUN CGO_ENABLED=0 GOOS=linux go build -mod=vendor -tags server -trimpath \
+RUN CGO_ENABLED=0 GOOS=linux GOARCH="${TARGETARCH:-$(go env GOARCH)}" go build -mod=vendor -tags server -trimpath \
   -ldflags="-s -w -X melovian/internal/compat.Version=${VERSION}" \
   -o /out/melovian .
 

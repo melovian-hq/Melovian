@@ -52,6 +52,22 @@ const PATHS = [
   `/listen/${DEMO.listenToken}`,
 ];
 
+/**
+ * Layouts audited on every push and PR. Distinct page types only: home grid,
+ * search, shelf grid, detail pages, lists, and the now-playing hero. The full
+ * PATHS list runs on workflow_dispatch via LHCI_SCOPE=full.
+ */
+const CORE_PATHS = [
+  "/setup",
+  "/music",
+  "/music/search",
+  "/music/albums",
+  `/music/album/${DEMO.albumId}`,
+  `/music/artist/${DEMO.artistId}`,
+  "/music/playlists",
+  "/music/now-playing",
+];
+
 /** Paths that redirect away under demo mode (not audited). */
 const DEMO_REDIRECT_PATHS = [
   "/",
@@ -66,6 +82,8 @@ module.exports = {
   BASE,
   DEMO,
   PATHS,
+  CORE_PATHS,
   DEMO_REDIRECT_PATHS,
   urls: PATHS.map((path) => `${BASE}${path}`),
+  coreUrls: CORE_PATHS.map((path) => `${BASE}${path}`),
 };

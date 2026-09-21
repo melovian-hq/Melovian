@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import os from "node:os";
+
 /** @type {import('@stryker-mutator/api/core').PartialStrykerOptions} */
 const config = {
   $schema: "./node_modules/@stryker-mutator/core/schema/stryker-schema.json",
@@ -29,7 +31,8 @@ const config = {
     break: null,
   },
   timeoutMS: 60_000,
-  concurrency: 2,
+  // Leave one core for the main process so runners stay responsive.
+  concurrency: Math.max((os.cpus().length || 2) - 1, 2),
   htmlReporter: {
     fileName: "reports/mutation/mutation.html",
   },

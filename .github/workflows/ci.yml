@@ -64,6 +64,10 @@ on:
         description: Check Wails bindings drift
         type: boolean
         default: true
+      run_full_lighthouse:
+        description: Audit every route with three Lighthouse runs
+        type: boolean
+        default: true
 
 concurrency:
   group: ci-${{ github.workflow }}-${{ github.event.pull_request.number || github.ref }}
@@ -402,6 +406,12 @@ jobs:
       - name: Build server binary
         run: task build:server
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+
       - name: Install Playwright Chromium
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
@@ -592,6 +602,12 @@ jobs:
         with:
           install-wails: "true"
 
+      - name: Cache Playwright browsers
+        uses: actions/cache@55cc8345863c7cc4c66a329aec7e433d2d1c52a9 # v6.1.0
+        with:
+          path: ~/.cache/ms-playwright
+          key: playwright-${{ runner.os }}-${{ hashFiles('frontend/pnpm-lock.yaml') }}
+
       - name: Install Chromium for Lighthouse
         working-directory: frontend
         run: pnpm exec playwright install --with-deps chromium
@@ -605,6 +621,7 @@ jobs:
       - name: Run Lighthouse CI
         env:
           CHROME_PATH: ${{ steps.chrome.outputs.path }}
+          LHCI_SCOPE: ${{ github.event.inputs.run_full_lighthouse == 'true' && 'full' || 'core' }}
         run: task lighthouse
 
       - name: Upload Lighthouse report

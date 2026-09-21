@@ -2,18 +2,26 @@
 // SPDX-License-Identifier: Apache-2.0
 
 /** @type {import('@lhci/cli').Config} */
-const { urls } = require("./lighthouse-urls.cjs");
+const { urls, coreUrls } = require("./lighthouse-urls.cjs");
+
+// Push/PR runs audit the core layouts to keep CI fast. workflow_dispatch sets
+// LHCI_SCOPE=full to audit every route. LHCI_RUNS overrides the run count.
+const scope = process.env.LHCI_SCOPE === "full" ? "full" : "core";
+const numberOfRuns = Number(
+  process.env.LHCI_RUNS || (scope === "full" ? 3 : 2),
+);
 
 module.exports = {
   ci: {
     collect: {
-      // Three runs per URL. Single-run numeric metrics (notably CLS) are
-      // flaky on shared CI runners; the assert matrix aggregates by median.
-      numberOfRuns: 3,
+      // Two runs per URL on the core scope. Single-run numeric metrics
+      // (notably CLS) are flaky on shared CI runners; the assert matrix
+      // aggregates by median.
+      numberOfRuns,
+      url: scope === "full" ? urls : coreUrls,
       startServerCommand: "pnpm preview --host 127.0.0.1 --port 4173",
       startServerReadyPattern: "Local:",
       startServerReadyTimeout: 120000,
-      url: urls,
       settings: {
         ...(process.env.CHROME_PATH
           ? { chromePath: process.env.CHROME_PATH }
