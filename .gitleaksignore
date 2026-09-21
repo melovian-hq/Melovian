@@ -1,0 +1,4 @@
+# DefaultRegistryKey is a public Ed25519 verification key, not a secret.
+0e357344062c205a9cb3107174f00e05610fe2e0:internal/extensions/registry.go:generic-api-key:31
+# RFC 6455 example Sec-WebSocket-Key nonce used in a regression test.
+3fadaefff9eae70c5cc3cc6331212be4e537ee9f:internal/api/security_regression_test.go:generic-api-key:450

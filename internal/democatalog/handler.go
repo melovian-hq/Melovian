@@ -258,7 +258,7 @@ func serveRandomSongs(w http.ResponseWriter, c *Catalog, size int) {
 	if size > len(songs) {
 		size = len(songs)
 	}
-	perm := rand.Perm(len(songs))
+	perm := rand.Perm(len(songs)) //#nosec G404 -- demo catalog shuffle is not security sensitive
 	out := make([]map[string]any, 0, size)
 	for i := 0; i < size; i++ {
 		out = append(out, songMap(songs[perm[i]]))

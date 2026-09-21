@@ -89,7 +89,7 @@ func SaveSettings(dataDir string, manifest Manifest, values map[string]any) erro
 		}
 		clean[key] = val
 	}
-	if err := os.MkdirAll(settingsDir(dataDir), 0o755); err != nil {
+	if err := os.MkdirAll(settingsDir(dataDir), 0o750); err != nil {
 		return err
 	}
 	data, err := json.MarshalIndent(clean, "", "  ")
@@ -105,17 +105,17 @@ func SaveSettings(dataDir string, manifest Manifest, values map[string]any) erro
 	}
 	tmpName := tmp.Name()
 	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Chmod(0o600); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
+		_ = tmp.Close()
+		_ = os.Remove(tmpName)
 		return err
 	}
 	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
+		_ = os.Remove(tmpName)
 		return err
 	}
 	return os.Rename(tmpName, path)

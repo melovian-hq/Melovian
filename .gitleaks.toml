@@ -1,0 +1,14 @@
+# SPDX-FileCopyrightText: 2026 Quad4 Software
+# SPDX-License-Identifier: Apache-2.0
+# gitleaks config: vendored and generated trees are skipped.
+[extend]
+useDefault = true
+
+[allowlist]
+description = "Skip vendored and generated trees that trigger generic rules"
+paths = [
+  '''^vendor/''',
+  '''^frontend/node_modules/''',
+  '''^frontend/bindings/''',
+  '''^build/android/wails-v3/''',
+]

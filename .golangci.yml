@@ -11,6 +11,7 @@ linters:
   default: none
   enable:
     - errcheck
+    - gosec
     - govet
     - ineffassign
     - staticcheck
@@ -33,6 +34,11 @@ linters:
       - common-false-positives
       - legacy
       - std-error-handling
+    rules:
+      # Seeded math/rand and relaxed file handling in tests are intentional.
+      - path: _test\.go
+        linters:
+          - gosec
     paths:
       - vendor
       - frontend

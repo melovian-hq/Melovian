@@ -212,14 +212,14 @@ func InstallFromZip(dataDir string, zipData []byte) (Manifest, error) {
 		if !strings.HasPrefix(target, tmp+string(os.PathSeparator)) && target != tmp {
 			return Manifest{}, fmt.Errorf("zip slip blocked: %s", rel)
 		}
-		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil {
+		if err := os.MkdirAll(filepath.Dir(target), 0o750); err != nil { //#nosec G703 -- target passed the zip slip guard above
 			return Manifest{}, err
 		}
 		data, err := readZipFile(file, maxAssetBytes)
 		if err != nil {
 			return Manifest{}, err
 		}
-		if err := os.WriteFile(target, data, 0o600); err != nil {
+		if err := os.WriteFile(target, data, 0o600); err != nil { //#nosec G703 -- target passed the zip slip guard above
 			return Manifest{}, err
 		}
 	}
@@ -250,7 +250,7 @@ func InstallFromDir(dataDir, src string) (Manifest, error) {
 	if err != nil || !info.IsDir() {
 		return Manifest{}, fmt.Errorf("extension directory not found")
 	}
-	data, err := os.ReadFile(filepath.Join(abs, ManifestName))
+	data, err := os.ReadFile(filepath.Join(abs, ManifestName)) //#nosec G304 -- reads the manifest inside a user-specified dev extension dir
 	if err != nil {
 		return Manifest{}, fmt.Errorf("missing %s", ManifestName)
 	}

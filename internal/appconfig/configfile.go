@@ -71,7 +71,7 @@ var configFileEnvKeys = map[string]string{
 	"sentry.environment":        "MELOVIAN_SENTRY_ENVIRONMENT",
 	"sentry.release":            "MELOVIAN_SENTRY_RELEASE",
 	"sentry.traces_sample_rate": "MELOVIAN_SENTRY_TRACES_SAMPLE_RATE",
-}
+} //#nosec G101 -- key names, not credentials
 
 // ResolveConfigPath picks the config file to load. An explicit path wins
 // over the default search order: ./melovian.toml, ./config.toml,
@@ -90,7 +90,7 @@ func ResolveConfigPath(explicit string) (string, bool) {
 		}
 	}
 	for _, path := range candidates {
-		info, err := os.Stat(path)
+		info, err := os.Stat(path) //#nosec G703 -- path is an explicit user config flag or fixed default
 		if err == nil && info.Mode().IsRegular() {
 			return path, true
 		}
