@@ -57,6 +57,7 @@ import {
 } from "$lib/music/eq";
 import { loadVolume, type NativeBackendPref } from "$lib/music/prefs";
 import { nextSequentialIndex, shuffleIndices } from "$lib/music/playback-queue";
+import { trackIdentityKey } from "$lib/music/track-identity";
 import { loadMixSettings, type MixSettings } from "$lib/music/mix-settings";
 import {
   enforceQueueLimit,
@@ -1537,7 +1538,34 @@ class MusicStore {
         return false;
       }
     }
-    const next = this.shuffleUpcoming.shift();
+    // Rotate past queued duplicates of the current song, like a second
+    // encode of the same track. They stay deferred in upcoming; if every
+    // upcoming entry is a duplicate the first one plays anyway.
+    const currentIdentity =
+      current >= 0 ? trackIdentityKey(this.queue[current] ?? {}) : "";
+    let next: number | undefined;
+    let fallbackDup: number | undefined;
+    const upcomingAtEntry = this.shuffleUpcoming.length;
+    for (let rotated = 0; rotated < upcomingAtEntry; rotated += 1) {
+      const candidate = this.shuffleUpcoming.shift();
+      if (candidate === undefined) break;
+      const track = this.queue[candidate];
+      if (track && trackIdentityKey(track) === currentIdentity) {
+        if (fallbackDup === undefined) {
+          fallbackDup = candidate;
+        } else {
+          this.shuffleUpcoming.push(candidate);
+        }
+        continue;
+      }
+      next = candidate;
+      break;
+    }
+    if (next === undefined) {
+      next = fallbackDup;
+    } else if (fallbackDup !== undefined) {
+      this.shuffleUpcoming.push(fallbackDup);
+    }
     if (next === undefined) return false;
     if (current >= 0) this.shuffleHistory.push(current);
     this.queueIndex = next;
@@ -1551,11 +1579,24 @@ class MusicStore {
     if (this.shuffle && this.queue.length > 1) {
       return this.advanceShuffleIndex();
     }
-    const nextIdx = nextSequentialIndex(
+    const currentIdentity =
+      this.queueIndex >= 0
+        ? trackIdentityKey(this.queue[this.queueIndex] ?? {})
+        : "";
+    let nextIdx = nextSequentialIndex(
       this.queueIndex,
       this.queue.length,
       this.repeat,
     );
+    // Skip same-song duplicates under different ids so a lossy and a
+    // lossless copy never play back to back.
+    let guard = 0;
+    while (nextIdx !== null && guard < this.queue.length) {
+      const next = this.queue[nextIdx];
+      if (!next || trackIdentityKey(next) !== currentIdentity) break;
+      guard += 1;
+      nextIdx = nextSequentialIndex(nextIdx, this.queue.length, this.repeat);
+    }
     if (nextIdx === null) return false;
     this.queueIndex = nextIdx;
     this.syncMediaSession();

@@ -134,6 +134,10 @@ export function createTrackBoundaryContext(
     get nativePlayback() {
       return store.nativePlayback;
     },
+    get preferLowBandwidth() {
+      const t = store.transcodingSettings;
+      return t.alwaysTranscode || t.maxBitRate > 0;
+    },
     get transcodedTrackIds() {
       return store.transcodedTrackIds;
     },

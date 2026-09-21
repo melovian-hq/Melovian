@@ -45,6 +45,10 @@ import {
   trackNeedsLinkMetadata,
 } from "$lib/music/track-metadata";
 import {
+  dedupeTracksByQuality,
+  trackIdentityKey,
+} from "$lib/music/track-identity";
+import {
   isInternetRadioTrack,
   type QueueTrack,
   type SubsonicSong,
@@ -86,6 +90,7 @@ export interface MusicTrackBoundaryContext {
   stats: ListenStats | null;
   library: MusicLibraryAdapter;
   nativePlayback: boolean;
+  preferLowBandwidth: boolean;
   transcodedTrackIds: Set<string>;
   failedTrackSkips: number;
   error: string | null;
@@ -529,10 +534,17 @@ export function appendTracksToQueue(
   if (slots <= 0) return false;
 
   const existingIds = new Set(ctx.queue.map((track) => track.id));
-  const unique = filterUniqueTracks(tracks, existingIds).slice(
-    0,
-    Number.isFinite(slots) ? slots : tracks.length,
-  );
+  const lastIdentity = ctx.queue.length
+    ? trackIdentityKey(ctx.queue[ctx.queue.length - 1])
+    : "";
+  // Collapse same-song duplicates in the incoming batch (different quality
+  // encodes share an identity) and never append a repeat of the tail track.
+  const unique = filterUniqueTracks(
+    dedupeTracksByQuality(tracks, !ctx.preferLowBandwidth),
+    existingIds,
+  )
+    .filter((track) => trackIdentityKey(track) !== lastIdentity)
+    .slice(0, Number.isFinite(slots) ? slots : tracks.length);
   if (unique.length === 0) return false;
 
   const prevLength = ctx.queue.length;

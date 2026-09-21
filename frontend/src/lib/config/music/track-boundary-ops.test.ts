@@ -7,6 +7,7 @@ import { connection } from "$lib/music/connection.svelte";
 import { OFFLINE_SUSPECT_SKIP_THRESHOLD } from "$lib/music/offline-gate";
 import {
   appendRandomSongsToQueue,
+  appendTracksToQueue,
   maybeRefillContinuousQueue,
   onTrackEnded,
   skipFailedTrack,
@@ -276,6 +277,85 @@ describe("maybeRefillContinuousQueue", () => {
     expect(ok).toBe(true);
     // Soft target is 25 upcoming and only 4 remain, so it draws 21.
     expect(getRandomSongs).toHaveBeenCalledWith(21);
+  });
+});
+
+describe("appendTracksToQueue", () => {
+  function queueCtx(
+    overrides: Record<string, unknown> = {},
+  ): MusicTrackBoundaryContext {
+    return {
+      queue: [track("a"), track("b")],
+      queueIndex: 0,
+      shuffle: false,
+      shuffleUpcoming: [] as number[],
+      queueSettings: { maxQueueSize: 500 },
+      preferLowBandwidth: false,
+      persistPlaybackState: vi.fn(),
+      ...overrides,
+    } as unknown as MusicTrackBoundaryContext;
+  }
+
+  function variant(
+    id: string,
+    suffix: string,
+    bitRate: number,
+    title = "Same Song",
+  ): SubsonicSong {
+    return {
+      id,
+      title,
+      artist: "Same Artist",
+      suffix,
+      bitRate,
+    } as SubsonicSong;
+  }
+
+  it("collapses same-song quality variants keeping the best encode", () => {
+    const ctx = queueCtx();
+    const ok = appendTracksToQueue(ctx, [
+      variant("mp3", "mp3", 128),
+      variant("flac", "flac", 900),
+    ]);
+
+    expect(ok).toBe(true);
+    expect(ctx.queue.map((t) => t.id)).toEqual(["a", "b", "flac"]);
+  });
+
+  it("prefers the lossy encode when low bandwidth is set", () => {
+    const ctx = queueCtx({ preferLowBandwidth: true });
+    const ok = appendTracksToQueue(ctx, [
+      variant("flac", "flac", 900),
+      variant("mp3", "mp3", 128),
+    ]);
+
+    expect(ok).toBe(true);
+    expect(ctx.queue.map((t) => t.id)).toEqual(["a", "b", "mp3"]);
+  });
+
+  it("never appends a repeat of the tail track identity", () => {
+    const ctx = queueCtx({
+      queue: [
+        track("a"),
+        { ...track("tail"), title: "Same Song", artist: "Same Artist" },
+      ],
+    });
+    const ok = appendTracksToQueue(ctx, [variant("mp3", "mp3", 128)]);
+
+    expect(ok).toBe(false);
+    expect(ctx.queue).toHaveLength(2);
+  });
+
+  it("still appends distinct songs alongside a dropped duplicate", () => {
+    const ctx = queueCtx();
+    const ok = appendTracksToQueue(ctx, [
+      variant("mp3", "mp3", 128),
+      variant("flac", "flac", 900),
+      { ...track("new"), title: "New Song", artist: "Other Artist" },
+    ]);
+
+    expect(ok).toBe(true);
+    expect(ctx.queue.map((t) => t.id)).toEqual(["a", "b", "flac", "new"]);
   });
 });
 
