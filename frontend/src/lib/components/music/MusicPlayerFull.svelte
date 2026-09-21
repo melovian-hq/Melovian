@@ -558,6 +558,15 @@
 
   .player__btn--active {
     color: var(--jb-accent);
+    background: var(--jb-accent-muted);
+    /* Low-chroma accents like Graphite need a ring too; tint alone is too
+       faint against the player surface. */
+    box-shadow: inset 0 0 0 1px
+      color-mix(in srgb, var(--jb-accent) 55%, transparent);
+  }
+
+  .player__btn--active:hover {
+    background: color-mix(in srgb, var(--jb-accent) 30%, transparent);
   }
 
   .player__btn--devices {

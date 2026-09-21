@@ -7,10 +7,8 @@
   import HomeShortcutGrid from "$lib/components/music/HomeShortcutGrid.svelte";
   import MixCard from "$lib/components/music/MixCard.svelte";
   import LibraryUnavailable from "$lib/components/music/LibraryUnavailable.svelte";
-  import HomeCustomizeDialog from "$lib/components/home/HomeCustomizeDialog.svelte";
   import HomeTipsBanner from "$lib/components/home/HomeTipsBanner.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
-  import Button from "$lib/components/ui/Button.svelte";
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
   import Link from "$lib/router/Link.svelte";
@@ -48,7 +46,6 @@
   });
   const greeting = greetingNow();
 
-  let customizeOpen = $state(false);
   let metadataSummary = $state<MetadataSummary | null>(null);
 
   const loading = $derived(
@@ -175,16 +172,6 @@
     <p class="home-head__eyebrow">{music.serverName}</p>
     <div class="home-head__row">
       <h1 class="home-head__title">{greeting}</h1>
-      {#if hasContent}
-        <Button
-          variant="surface"
-          size="sm"
-          onclick={() => (customizeOpen = true)}
-        >
-          <MdiIcon name="slidersHorizontal" size={16} />
-          Customize
-        </Button>
-      {/if}
     </div>
   </header>
 
@@ -322,11 +309,6 @@
     {/if}
   {/if}
 </div>
-
-<HomeCustomizeDialog
-  open={customizeOpen}
-  onclose={() => (customizeOpen = false)}
-/>
 
 <style>
   .music-home {
