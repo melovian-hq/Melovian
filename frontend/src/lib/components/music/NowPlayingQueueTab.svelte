@@ -4,7 +4,10 @@
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import VirtualList from "$lib/components/ui/VirtualList.svelte";
   import CoverArtPlayOverlay from "$lib/components/music/CoverArtPlayOverlay.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+  } from "$lib/components/ui/context-menu";
   import { music } from "$lib/config/music.svelte";
   import {
     trackCoverPaletteKey,
@@ -117,10 +120,8 @@
               music.playQueueIndex(index);
             }
           }}
-          oncontextmenu={(event) => {
+          use:contextMenu={(pos) => {
             if (isInternetRadioTrack(queueTrack)) return;
-            const pos = contextMenuPositionFromEvent(event);
-            if (!pos) return;
             ontrackmenu?.({
               ...pos,
               track: queueTrack,
@@ -140,14 +141,36 @@
             />
           </div>
           <div class="now-playing-queue__meta">
-            <span class="now-playing-queue__track">{queueTrack.title}</span>
-            <span class="now-playing-queue__artist"
+            <span class="now-playing-queue__track" title={queueTrack.title}
+              >{queueTrack.title}</span
+            >
+            <span
+              class="now-playing-queue__artist"
+              title={queueTrack.artist ?? "Unknown"}
               >{queueTrack.artist ?? "Unknown"}</span
             >
           </div>
           <span class="now-playing-queue__duration"
             >{formatDuration(queueTrack.duration)}</span
           >
+          {#if !isInternetRadioTrack(queueTrack)}
+            <button
+              type="button"
+              class="now-playing-queue__remove"
+              aria-label="More actions"
+              onclick={(event) => {
+                const pos = contextMenuPositionForTrigger(event);
+                if (!pos) return;
+                ontrackmenu?.({
+                  ...pos,
+                  track: queueTrack,
+                  queueIndex: index,
+                });
+              }}
+            >
+              <MdiIcon name="dotsHorizontal" size={14} />
+            </button>
+          {/if}
           <button
             type="button"
             class="now-playing-queue__remove"

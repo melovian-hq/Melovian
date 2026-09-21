@@ -6,7 +6,12 @@
   import { mixTrackCount } from "$lib/music/mix-storage";
   import { coverArtUrl } from "$lib/subsonic";
   import CoverArtPlayOverlay from "./CoverArtPlayOverlay.svelte";
+  import CardMenuButton from "./CardMenuButton.svelte";
   import MixContextMenu from "./MixContextMenu.svelte";
+  import {
+    contextMenuPositionForTrigger,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
 
   interface Props {
     mix: PersonalMix;
@@ -25,10 +30,8 @@
 
   let menu = $state<{ x: number; y: number } | null>(null);
 
-  function onContextMenu(event: MouseEvent) {
-    event.preventDefault();
-    event.stopPropagation();
-    menu = { x: event.clientX, y: event.clientY };
+  function onContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 
   function playMix(event: MouseEvent) {
@@ -42,7 +45,7 @@
   href="/music/mix/{mix.id}"
   class={isDisc ? "mix-card mix-card--disc" : "mix-card"}
   style="--mix-gradient: {mix.gradient}"
-  oncontextmenu={onContextMenu}
+  onmenu={onContextMenu}
 >
   <div class="mix-card__art">
     <CoverArt src={image} seed={mix.id} paletteKey={mix.title} />
@@ -54,6 +57,10 @@
     >
       <CoverArtPlayOverlay size={isDisc ? 22 : 18} />
     </button>
+    <CardMenuButton
+      label="{mix.title} actions"
+      onclick={(event) => (menu = contextMenuPositionForTrigger(event))}
+    />
   </div>
   <div class="mix-card__copy">
     <h3 class="mix-card__title">{mix.title}</h3>

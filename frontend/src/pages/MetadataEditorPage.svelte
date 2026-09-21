@@ -11,8 +11,9 @@
   import TrackContextMenu from "$lib/components/music/TrackContextMenu.svelte";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import {
-    contextMenuPositionFromEvent,
+    contextMenu,
     type ContextMenuEntry,
+    type ContextMenuPosition,
   } from "$lib/components/ui/context-menu";
   import { router } from "$lib/router/router.svelte";
   import { toast } from "$lib/ui/toast.svelte";
@@ -420,14 +421,12 @@
     router.navigate("/settings/servers#local-library");
   }
 
-  function onTrackContextMenu(event: MouseEvent, track: MetadataTrack) {
-    const pos = contextMenuPositionFromEvent(event);
-    if (!pos) return;
+  function onTrackContextMenu(pos: ContextMenuPosition, track: MetadataTrack) {
     trackMenu = { ...pos, track };
   }
 
-  function onListContextMenu(event: MouseEvent) {
-    listMenu = contextMenuPositionFromEvent(event);
+  function onListContextMenu(pos: ContextMenuPosition) {
+    listMenu = pos;
   }
 
   const listMenuItems = $derived.by((): ContextMenuEntry[] => [
@@ -553,7 +552,7 @@
       <aside
         class="metadata-page__list-panel"
         role="group"
-        oncontextmenu={onListContextMenu}
+        use:contextMenu={onListContextMenu}
       >
         <div class="metadata-page__filters">
           {#each issueFilters as filter (filter.id)}
@@ -610,7 +609,7 @@
                   class="metadata-page__track"
                   class:metadata-page__track--active={track.id === selectedId}
                   onclick={() => void selectTrack(track.id)}
-                  oncontextmenu={(event) => onTrackContextMenu(event, track)}
+                  use:contextMenu={(pos) => onTrackContextMenu(pos, track)}
                 >
                   <span class="metadata-page__track-title">{track.title}</span>
                   <span class="metadata-page__track-meta">

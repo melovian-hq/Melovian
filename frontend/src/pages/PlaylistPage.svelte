@@ -10,7 +10,7 @@
   import Link from "$lib/router/Link.svelte";
   import PlaylistContextMenu from "$lib/components/music/PlaylistContextMenu.svelte";
   import SharePlaylistDialog from "$lib/components/music/SharePlaylistDialog.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import { contextMenu } from "$lib/components/ui/context-menu";
   import { music } from "$lib/config/music.svelte";
   import { filterByLocalSearch } from "$lib/utils/local-search";
   import { formatPlaylistDuration } from "$lib/music/playlist-duration";
@@ -206,8 +206,8 @@
     <header
       class="playlist-hero"
       role="group"
-      oncontextmenu={(event) => {
-        heroMenu = contextMenuPositionFromEvent(event);
+      use:contextMenu={(pos) => {
+        heroMenu = pos;
       }}
     >
       <p class="playlist-hero__type">

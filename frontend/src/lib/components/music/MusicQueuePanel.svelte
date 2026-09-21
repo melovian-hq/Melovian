@@ -17,7 +17,10 @@
   import { coverArtUrl, formatDuration } from "$lib/subsonic";
   import CoverArtPlayOverlay from "./CoverArtPlayOverlay.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+  } from "$lib/components/ui/context-menu";
   import { confirmDialog } from "$lib/ui/confirm.svelte";
 
   let dragIndex = $state(-1);
@@ -135,6 +138,12 @@
     }
   }
 
+  function onWindowKeydown(event: KeyboardEvent) {
+    // Let an open context menu or confirm dialog consume Escape first.
+    if (event.key !== "Escape" || queueMenu || confirmDialog.open) return;
+    music.queueOpen = false;
+  }
+
   $effect(() => {
     if (typeof window === "undefined") return;
     const onResize = () => {
@@ -147,6 +156,8 @@
     return () => window.removeEventListener("resize", onResize);
   });
 </script>
+
+<svelte:window onkeydown={onWindowKeydown} />
 
 {#if music.queueOpen && music.queue.length > 0 && !music.onPlayRoute}
   <div
@@ -231,9 +242,7 @@
             ondrop={() => onDrop(index)}
             ondragend={onDragEnd}
             onclick={() => music.playQueueIndex(index)}
-            oncontextmenu={(event) => {
-              const pos = contextMenuPositionFromEvent(event);
-              if (!pos) return;
+            use:contextMenu={(pos) => {
               queueMenu = { ...pos, index };
             }}
             onkeydown={(event) => {
@@ -255,14 +264,29 @@
               />
             </div>
             <div class="queue-panel__meta">
-              <span class="queue-panel__track">{track.title}</span>
-              <span class="queue-panel__artist"
+              <span class="queue-panel__track" title={track.title}
+                >{track.title}</span
+              >
+              <span
+                class="queue-panel__artist"
+                title={track.artist ?? "Unknown"}
                 >{track.artist ?? "Unknown"}</span
               >
             </div>
             <span class="queue-panel__duration"
               >{formatDuration(track.duration)}</span
             >
+            <button
+              type="button"
+              class="queue-panel__remove"
+              aria-label="More actions"
+              onclick={(event) => {
+                const pos = contextMenuPositionForTrigger(event);
+                if (pos) queueMenu = { ...pos, index };
+              }}
+            >
+              <MdiIcon name="dotsHorizontal" size={14} />
+            </button>
             <button
               type="button"
               class="queue-panel__remove"
@@ -374,8 +398,8 @@
     margin-left: var(--jb-space-1);
     padding: 0.1rem 0.45rem;
     border-radius: var(--jb-radius-sm);
-    background: color-mix(in srgb, var(--jb-accent) 18%, transparent);
-    color: var(--jb-accent);
+    background: color-mix(in srgb, var(--jb-active) 18%, transparent);
+    color: var(--jb-active);
     font-size: 0.6875rem;
     font-weight: 700;
     text-transform: uppercase;

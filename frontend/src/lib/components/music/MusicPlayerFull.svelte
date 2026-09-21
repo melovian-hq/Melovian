@@ -14,7 +14,10 @@
   import ListenTogetherChip from "./ListenTogetherChip.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
   import { reportPlayerBarHeight } from "$lib/music/player-height";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+  } from "$lib/components/ui/context-menu";
   import Link from "$lib/router/Link.svelte";
   import {
     coverArtUrl,
@@ -63,9 +66,9 @@
     use:reportPlayerBarHeight
     class:player--together={deviceSync.inListenTogether}
     role="group"
-    oncontextmenu={(event) => {
+    use:contextMenu={(pos) => {
       if (liveStream) return;
-      trackMenu = contextMenuPositionFromEvent(event);
+      trackMenu = pos;
     }}
   >
     <ProgressSeek
@@ -315,6 +318,18 @@
         >
           <MdiIcon name="slidersHorizontal" size={16} />
         </button>
+        {#if track && !liveStream}
+          <button
+            type="button"
+            class="player__btn player__btn--ghost"
+            onclick={(event) =>
+              (trackMenu = contextMenuPositionForTrigger(event))}
+            aria-label="More actions for {track.title}"
+            title="More actions"
+          >
+            <MdiIcon name="dotsHorizontal" size={16} />
+          </button>
+        {/if}
         <div class="player__volume">
           <MdiIcon name="volume2" size={16} />
           <Slider.Root
@@ -558,28 +573,12 @@
   }
 
   .player__btn--active {
-    /* Pull accent toward full-contrast text so low-chroma accents like
-       Graphite still read as lit instead of matching muted icons. The
-       indicator dot makes the state unambiguous even when the accent
-       hue is near the muted icon color. */
-    color: color-mix(in srgb, var(--jb-accent) 60%, var(--jb-text));
-  }
-
-  .player__btn--active::after {
-    content: "";
-    position: absolute;
-    bottom: 0.2rem;
-    left: 50%;
-    width: 0.3rem;
-    height: 0.3rem;
-    border-radius: var(--jb-radius-full);
-    background: currentColor;
-    transform: translateX(-50%);
-    pointer-events: none;
+    color: var(--jb-active);
   }
 
   .player__btn--active:hover {
-    color: color-mix(in srgb, var(--jb-accent) 75%, var(--jb-text));
+    color: var(--jb-active);
+    filter: brightness(1.15);
   }
 
   .player__btn--devices {
@@ -593,11 +592,15 @@
 
   .player__btn:disabled {
     opacity: 0.55;
-    cursor: wait;
+    cursor: not-allowed;
   }
 
   .player__btn--busy {
-    color: var(--jb-accent);
+    color: var(--jb-active);
+  }
+
+  .player__btn--busy:disabled {
+    cursor: wait;
   }
 
   .player__busy {

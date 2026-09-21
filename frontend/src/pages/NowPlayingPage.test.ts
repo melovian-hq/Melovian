@@ -353,7 +353,9 @@ describe("NowPlayingPage", () => {
     (queueItems[1] as HTMLDivElement).click();
     expect(music.playQueueIndex).toHaveBeenCalledWith(1);
 
-    const removeButtons = target.querySelectorAll(".now-playing-queue__remove");
+    const removeButtons = target.querySelectorAll(
+      '.now-playing-queue__remove[aria-label="Remove from queue"]',
+    );
     (removeButtons[0] as HTMLButtonElement).click();
     expect(music.removeFromQueue).toHaveBeenCalledWith(0);
 

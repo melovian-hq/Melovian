@@ -29,8 +29,9 @@
   import { confirmDialog } from "$lib/ui/confirm.svelte";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import {
-    contextMenuPositionFromEvent,
+    contextMenu,
     type ContextMenuEntry,
+    type ContextMenuPosition,
   } from "$lib/components/ui/context-menu";
   import { Tabs } from "bits-ui";
 
@@ -183,8 +184,8 @@
     lastQuery.length > 0 && !searching && !hasResults && !searchError,
   );
 
-  function onPageContextMenu(event: MouseEvent) {
-    pageMenu = contextMenuPositionFromEvent(event);
+  function onPageContextMenu(pos: ContextMenuPosition) {
+    pageMenu = pos;
   }
 
   const pageMenuItems = $derived.by((): ContextMenuEntry[] => {
@@ -221,7 +222,7 @@
   });
 </script>
 
-<div class="search-page" role="group" oncontextmenu={onPageContextMenu}>
+<div class="search-page" role="group" use:contextMenu={onPageContextMenu}>
   <PageHeader title="Search" subtitle="Find artists, albums, and tracks." />
 
   {#if unavailable}

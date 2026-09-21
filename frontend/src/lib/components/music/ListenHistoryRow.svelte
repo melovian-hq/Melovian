@@ -13,8 +13,13 @@
   } from "$lib/music/relative-time";
   import { coverArtUrl, formatDurationMs } from "$lib/subsonic";
   import CoverArtPlayOverlay from "./CoverArtPlayOverlay.svelte";
+  import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import type { ListenEvent } from "$lib/subsonic/types";
   import type { SubsonicSong } from "$lib/subsonic";
 
@@ -36,8 +41,8 @@
     duration: Math.floor(event.durationMs / 1000),
   } satisfies SubsonicSong);
 
-  function onContextMenu(event: MouseEvent) {
-    menu = contextMenuPositionFromEvent(event);
+  function onContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 
   const image = $derived(
@@ -71,7 +76,7 @@
       onplay?.();
     }
   }}
-  oncontextmenu={onContextMenu}
+  use:contextMenu={onContextMenu}
 >
   <div class="history-row__main">
     <div class="history-row__thumb">
@@ -84,8 +89,9 @@
       <CoverArtPlayOverlay playing={isCurrent && music.playing} />
     </div>
     <span class="history-row__text">
-      <span class="history-row__title">{track.title}</span>
-      <span class="history-row__artist">{track.artist ?? "Unknown artist"}</span
+      <span class="history-row__title" title={track.title}>{track.title}</span>
+      <span class="history-row__artist" title={track.artist ?? "Unknown artist"}
+        >{track.artist ?? "Unknown artist"}</span
       >
     </span>
   </div>
@@ -109,12 +115,21 @@
   </span>
 
   <span class="history-row__duration">{duration}</span>
+
+  <button
+    type="button"
+    class="history-row__menu"
+    aria-label="More actions for {track.title}"
+    onclick={(event) => (menu = contextMenuPositionForTrigger(event))}
+  >
+    <MdiIcon name="dotsHorizontal" size={16} />
+  </button>
 </div>
 
 <style>
   .history-row {
     display: grid;
-    grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) 6.5rem 4rem;
+    grid-template-columns: minmax(0, 2fr) minmax(0, 1.2fr) 6.5rem 4rem auto;
     align-items: center;
     content-visibility: auto;
     contain-intrinsic-size: auto 3.625rem;
@@ -235,9 +250,48 @@
     pointer-events: none;
   }
 
+  .history-row__menu {
+    display: grid;
+    place-content: center;
+    width: 1.75rem;
+    height: 1.75rem;
+    padding: 0;
+    border: none;
+    border-radius: var(--jb-radius-full);
+    background: transparent;
+    color: var(--jb-text-subtle);
+    cursor: pointer;
+    opacity: 0;
+    transition:
+      opacity var(--jb-transition),
+      color var(--jb-transition);
+  }
+
+  .history-row__menu:hover {
+    color: var(--jb-text);
+  }
+
+  .history-row__menu:focus-visible {
+    outline: none;
+    box-shadow: var(--jb-focus-ring);
+  }
+
+  @media (hover: hover) {
+    .history-row:hover .history-row__menu,
+    .history-row:focus-within .history-row__menu {
+      opacity: 1;
+    }
+  }
+
+  @media (hover: none) {
+    .history-row__menu {
+      opacity: 1;
+    }
+  }
+
   @media (max-width: 768px) {
     .history-row {
-      grid-template-columns: minmax(0, 1fr) auto;
+      grid-template-columns: minmax(0, 1fr) auto auto;
       padding-inline: var(--jb-space-3);
     }
 

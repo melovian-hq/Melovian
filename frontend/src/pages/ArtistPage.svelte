@@ -9,7 +9,10 @@
   import StarButton from "$lib/components/music/StarButton.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import Link from "$lib/router/Link.svelte";
   import { music } from "$lib/config/music.svelte";
   import {
@@ -204,9 +207,8 @@
     });
   });
 
-  function onArtistHeroContextMenu(event: MouseEvent) {
-    const pos = contextMenuPositionFromEvent(event);
-    if (pos) artistMenu = pos;
+  function onArtistHeroContextMenu(pos: ContextMenuPosition) {
+    artistMenu = pos;
   }
 
   async function playAllAlbums(shuffle = false) {
@@ -276,7 +278,7 @@
       <header
         class="artist-hero"
         role="group"
-        oncontextmenu={onArtistHeroContextMenu}
+        use:contextMenu={onArtistHeroContextMenu}
       >
         <div class="artist-hero__layout">
           <div

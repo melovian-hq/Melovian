@@ -14,7 +14,11 @@
   import FavoriteButton from "./FavoriteButton.svelte";
   import CoverArtPlayOverlay from "./CoverArtPlayOverlay.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+  } from "$lib/components/ui/context-menu";
+  import type { ContextMenuPosition } from "$lib/components/ui/context-menu";
   import type { SubsonicSong } from "$lib/subsonic";
 
   interface Props {
@@ -62,7 +66,7 @@
 
   let pickerOpen = $state(false);
   let versionsOpen = $state(false);
-  let contextMenu = $state<{ x: number; y: number } | null>(null);
+  let menu = $state<{ x: number; y: number } | null>(null);
 
   function handlePlay() {
     onplay?.();
@@ -90,19 +94,17 @@
     versionsOpen = false;
   }
 
-  function openContextMenu(event: MouseEvent) {
-    const pos = contextMenuPositionFromEvent(event);
-    if (!pos) return;
-    contextMenu = pos;
+  function openContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 </script>
 
-{#if contextMenu}
+{#if menu}
   <TrackContextMenu
     {track}
-    x={contextMenu.x}
-    y={contextMenu.y}
-    onclose={() => (contextMenu = null)}
+    x={menu.x}
+    y={menu.y}
+    onclose={() => (menu = null)}
   />
 {/if}
 
@@ -122,7 +124,7 @@
       handlePlay();
     }
   }}
-  oncontextmenu={openContextMenu}
+  use:contextMenu={openContextMenu}
 >
   {#if selectable}
     <button
@@ -171,7 +173,8 @@
       </div>
       <span class="track-row__text">
         <span class="track-row__title-row">
-          <span class="track-row__title">{track.title}</span>
+          <span class="track-row__title" title={track.title}>{track.title}</span
+          >
           {#if !versionList}
             <TrackQualityBadge {track} />
           {/if}
@@ -240,6 +243,18 @@
     </button>
 
     <FavoriteButton {track} size={16} class="track-row__btn" />
+
+    <button
+      type="button"
+      class="track-row__btn"
+      onclick={(event) => {
+        event.stopPropagation();
+        menu = contextMenuPositionForTrigger(event);
+      }}
+      aria-label={`More actions for ${track.title}`}
+    >
+      <MdiIcon name="dotsHorizontal" size={16} />
+    </button>
   </div>
 
   {#if versionsOpen && versionList}
@@ -345,7 +360,7 @@
   }
 
   .track-row--playing .track-row__title {
-    color: var(--jb-accent);
+    color: var(--jb-active);
   }
 
   .track-row__check {

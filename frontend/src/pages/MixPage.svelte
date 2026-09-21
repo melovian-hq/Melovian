@@ -7,7 +7,7 @@
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Link from "$lib/router/Link.svelte";
   import MixContextMenu from "$lib/components/music/MixContextMenu.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import { contextMenu } from "$lib/components/ui/context-menu";
   import { music } from "$lib/config/music.svelte";
   import { mixTrackCount } from "$lib/music/mix-storage";
   import { coverArtUrl } from "$lib/subsonic";
@@ -73,8 +73,8 @@
       class="mix-hero"
       style="--mix-gradient: {mix.gradient}"
       role="group"
-      oncontextmenu={(event) => {
-        heroMenu = contextMenuPositionFromEvent(event);
+      use:contextMenu={(pos) => {
+        heroMenu = pos;
       }}
     >
       {#if image}

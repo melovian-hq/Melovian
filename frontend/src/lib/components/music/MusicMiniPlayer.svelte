@@ -13,7 +13,10 @@
   import ListenTogetherChip from "./ListenTogetherChip.svelte";
   import TrackContextMenu from "./TrackContextMenu.svelte";
   import { reportPlayerBarHeight } from "$lib/music/player-height";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+  } from "$lib/components/ui/context-menu";
   import Link from "$lib/router/Link.svelte";
   import { router } from "$lib/router/router.svelte";
   import { isWailsMobile } from "$lib/config/runtime";
@@ -71,9 +74,9 @@
     onfocusout={(e) => {
       if (!e.currentTarget.contains(e.relatedTarget as Node)) expanded = false;
     }}
-    oncontextmenu={(event) => {
+    use:contextMenu={(pos) => {
       if (!track || liveStream) return;
-      trackMenu = contextMenuPositionFromEvent(event);
+      trackMenu = pos;
     }}
   >
     {#if showExpanded}
@@ -182,6 +185,17 @@
           >
             <MdiIcon name="skipForward" size={16} />
           </button>
+          {#if track && !liveStream}
+            <button
+              type="button"
+              class="mini-player__btn"
+              onclick={(event) =>
+                (trackMenu = contextMenuPositionForTrigger(event))}
+              aria-label="More actions for {track.title}"
+            >
+              <MdiIcon name="dotsHorizontal" size={16} />
+            </button>
+          {/if}
           <Link
             href="/music/now-playing"
             class="mini-player__btn"

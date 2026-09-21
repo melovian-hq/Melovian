@@ -5,7 +5,7 @@
   import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
   import TrackMetaLinks from "$lib/components/music/TrackMetaLinks.svelte";
   import TrackContextMenu from "$lib/components/music/TrackContextMenu.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import { contextMenu } from "$lib/components/ui/context-menu";
   import { music } from "$lib/config/music.svelte";
   import { layout } from "$lib/components/layout/layout.svelte";
   import { deviceSync } from "$lib/music/device-sync.svelte";
@@ -110,10 +110,8 @@
         class="tv-mode__art"
         role="img"
         aria-label="Album artwork"
-        oncontextmenu={(event) => {
+        use:contextMenu={(pos) => {
           if (liveStream) return;
-          const pos = contextMenuPositionFromEvent(event);
-          if (!pos) return;
           trackMenu = pos;
         }}
       >

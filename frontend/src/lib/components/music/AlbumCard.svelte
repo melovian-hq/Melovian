@@ -9,8 +9,13 @@
   } from "$lib/music/cover-art-fallback";
   import { coverArtUrl } from "$lib/subsonic";
   import type { SubsonicAlbum } from "$lib/subsonic";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import AlbumContextMenu from "./AlbumContextMenu.svelte";
+  import CardMenuButton from "./CardMenuButton.svelte";
   import SourceBadge from "$lib/components/ui/SourceBadge.svelte";
 
   interface Props {
@@ -34,8 +39,8 @@
     music.playAlbum(detail.songs, 0);
   }
 
-  function onContextMenu(event: MouseEvent) {
-    menu = contextMenuPositionFromEvent(event);
+  function onContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 </script>
 
@@ -52,7 +57,7 @@
 <div
   class="album-card-wrap album-card-wrap--{size}"
   role="group"
-  oncontextmenu={onContextMenu}
+  use:contextMenu={onContextMenu}
 >
   <Link href="/music/album/{album.id}" class="album-card album-card--{size}">
     <div class="album-card__art">
@@ -79,19 +84,26 @@
     </div>
     <div class="album-card__meta">
       <span class="album-card__title-row">
-        <span class="album-card__title">{album.name}</span>
+        <span class="album-card__title" title={album.name}>{album.name}</span>
         <SourceBadge id={album.id} />
       </span>
-      <span class="album-card__artist">{album.artist ?? "Unknown artist"}</span>
+      <span class="album-card__artist" title={album.artist ?? "Unknown artist"}
+        >{album.artist ?? "Unknown artist"}</span
+      >
       {#if album.year}
         <span class="album-card__year">{album.year}</span>
       {/if}
     </div>
   </Link>
+  <CardMenuButton
+    label="{album.name} actions"
+    onclick={(event) => (menu = contextMenuPositionForTrigger(event))}
+  />
 </div>
 
 <style>
   .album-card-wrap {
+    position: relative;
     min-width: 0;
   }
 

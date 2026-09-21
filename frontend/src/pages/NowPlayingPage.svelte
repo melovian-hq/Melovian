@@ -9,7 +9,7 @@
   import TrackContextMenu from "$lib/components/music/TrackContextMenu.svelte";
   import NowPlayingTvMode from "$lib/components/music/NowPlayingTvMode.svelte";
   import VideoWatchPanel from "$lib/components/music/VideoWatchPanel.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+
   import { music } from "$lib/config/music.svelte";
   import { layout } from "$lib/components/layout/layout.svelte";
   import { videoFeature } from "$lib/video/feature.svelte";
@@ -181,10 +181,8 @@
           {liveStream}
           {image}
           {previewImage}
-          oncontextmenu={(event) => {
+          oncontextmenu={(pos) => {
             if (!track || liveStream) return;
-            const pos = contextMenuPositionFromEvent(event);
-            if (!pos) return;
             trackMenu = { ...pos, track };
           }}
         >

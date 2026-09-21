@@ -12,7 +12,10 @@
   import StarButton from "$lib/components/music/StarButton.svelte";
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Skeleton from "$lib/components/ui/Skeleton.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import Link from "$lib/router/Link.svelte";
   import { music } from "$lib/config/music.svelte";
   import { trackSelection } from "$lib/music/selection.svelte";
@@ -168,9 +171,8 @@
     return items;
   });
 
-  function onAlbumHeroContextMenu(event: MouseEvent) {
-    const pos = contextMenuPositionFromEvent(event);
-    if (pos) albumMenu = pos;
+  function onAlbumHeroContextMenu(pos: ContextMenuPosition) {
+    albumMenu = pos;
   }
 </script>
 
@@ -230,7 +232,7 @@
       <header
         class="album-hero"
         role="group"
-        oncontextmenu={onAlbumHeroContextMenu}
+        use:contextMenu={onAlbumHeroContextMenu}
       >
         <div class="album-hero__layout">
           <div class="album-hero__cover-wrap">

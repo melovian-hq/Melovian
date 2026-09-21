@@ -11,8 +11,9 @@
   import Link from "$lib/router/Link.svelte";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import {
-    contextMenuPositionFromEvent,
+    contextMenu,
     type ContextMenuEntry,
+    type ContextMenuPosition,
   } from "$lib/components/ui/context-menu";
   import { music } from "$lib/config/music.svelte";
   import { trackSelection } from "$lib/music/selection.svelte";
@@ -144,8 +145,8 @@
     music.playTracks(filteredFavoriteSongs, 0);
   }
 
-  function onPageContextMenu(event: MouseEvent) {
-    pageMenu = contextMenuPositionFromEvent(event);
+  function onPageContextMenu(pos: ContextMenuPosition) {
+    pageMenu = pos;
   }
 
   const pageMenuItems = $derived.by((): ContextMenuEntry[] => {
@@ -201,7 +202,7 @@
   });
 </script>
 
-<div class="favorites-page" role="group" oncontextmenu={onPageContextMenu}>
+<div class="favorites-page" role="group" use:contextMenu={onPageContextMenu}>
   <MusicBreadcrumbs items={[{ label: "Favorites" }]} />
 
   <CollectionHero

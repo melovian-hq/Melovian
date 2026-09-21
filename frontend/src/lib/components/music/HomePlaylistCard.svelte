@@ -2,7 +2,12 @@
   import Link from "$lib/router/Link.svelte";
   import PlaylistListCovers from "./PlaylistListCovers.svelte";
   import PlaylistContextMenu from "./PlaylistContextMenu.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import CardMenuButton from "./CardMenuButton.svelte";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import type { HomePlaylistRef } from "$lib/music/home-feed";
 
   interface Props {
@@ -13,8 +18,8 @@
   let { playlist, hideable = false }: Props = $props();
   let menu = $state<{ x: number; y: number } | null>(null);
 
-  function onContextMenu(event: MouseEvent) {
-    menu = contextMenuPositionFromEvent(event);
+  function onContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 </script>
 
@@ -30,7 +35,7 @@
   />
 {/if}
 
-<div class="home-playlist-wrap" role="group" oncontextmenu={onContextMenu}>
+<div class="home-playlist-wrap" role="group" use:contextMenu={onContextMenu}>
   <Link href={playlist.href} class="home-playlist">
     <div class="home-playlist__art">
       <PlaylistListCovers
@@ -50,10 +55,15 @@
       </span>
     </span>
   </Link>
+  <CardMenuButton
+    label="{playlist.name} actions"
+    onclick={(event) => (menu = contextMenuPositionForTrigger(event))}
+  />
 </div>
 
 <style>
   .home-playlist-wrap {
+    position: relative;
     min-width: 0;
   }
 

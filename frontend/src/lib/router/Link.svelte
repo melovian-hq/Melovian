@@ -1,11 +1,16 @@
 <script lang="ts">
   import { link, router, withBase } from "./router.svelte";
+  import {
+    contextMenuAttachment,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
 
   interface Props {
     href: string;
     class?: string;
     activeClass?: string;
     matchPrefix?: string;
+    onmenu?: (pos: ContextMenuPosition) => void;
     children?: import("svelte").Snippet;
     [key: string]: unknown;
   }
@@ -15,6 +20,7 @@
     class: className = "",
     activeClass = "",
     matchPrefix = "",
+    onmenu,
     children,
     ...rest
   }: Props = $props();
@@ -35,6 +41,7 @@
   class="{className}{active && activeClass ? ` ${activeClass}` : ''}"
   aria-current={active ? "page" : undefined}
   use:link={href}
+  {@attach contextMenuAttachment(onmenu)}
   {...rest}
 >
   {@render children?.()}

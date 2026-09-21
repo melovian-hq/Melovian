@@ -1,6 +1,8 @@
 // SPDX-FileCopyrightText: 2026 Quad4 Software
 // SPDX-License-Identifier: Apache-2.0
 
+import type { Attachment } from "svelte/attachments";
+
 export interface ContextMenuItem {
   id: string;
   label: string;
@@ -44,6 +46,140 @@ export function contextMenuPositionFromEvent(
   event.preventDefault();
   event.stopPropagation();
   return { x: event.clientX, y: event.clientY };
+}
+
+// contextMenuPositionForTrigger positions a menu opened from a "more
+// actions" button. Pointer clicks anchor at the cursor while keyboard
+// activation reports clientX/Y of 0 and anchors to the button instead.
+export function contextMenuPositionForTrigger(
+  event: MouseEvent,
+): ContextMenuPosition | null {
+  event.preventDefault();
+  event.stopPropagation();
+  if (event.clientX !== 0 || event.clientY !== 0) {
+    return { x: event.clientX, y: event.clientY };
+  }
+  const el = event.currentTarget;
+  if (!(el instanceof HTMLElement)) return null;
+  const rect = el.getBoundingClientRect();
+  return { x: rect.left + rect.width / 2, y: rect.bottom + 4 };
+}
+
+const LONG_PRESS_MS = 500;
+const LONG_PRESS_MOVE_TOLERANCE_PX = 10;
+
+/**
+ * Svelte action unifying right-click and touch long-press into one callback.
+ * Use instead of oncontextmenu so every menu works on touch devices too.
+ * Long-press fires after 500ms without finger movement, suppresses the
+ * trailing click so rows do not also run their primary action, and skips
+ * editable targets so text fields keep the native menu.
+ */
+export function contextMenu(
+  node: HTMLElement,
+  onMenu: (pos: ContextMenuPosition) => void,
+) {
+  let handler = onMenu;
+  let timer: ReturnType<typeof setTimeout> | undefined;
+  let startX = 0;
+  let startY = 0;
+  let fired = false;
+
+  function clearTimer() {
+    if (timer === undefined) return;
+    clearTimeout(timer);
+    timer = undefined;
+  }
+
+  function onContextMenu(event: MouseEvent) {
+    const pos = contextMenuPositionFromEvent(event);
+    if (pos) handler(pos);
+  }
+
+  function onTouchStart(event: TouchEvent) {
+    fired = false;
+    if (event.touches.length !== 1 || isEditableContextTarget(event.target)) {
+      return;
+    }
+    const touch = event.touches[0];
+    startX = touch.clientX;
+    startY = touch.clientY;
+    clearTimer();
+    timer = setTimeout(() => {
+      timer = undefined;
+      fired = true;
+      handler({ x: startX, y: startY });
+      if (typeof navigator !== "undefined" && navigator.vibrate) {
+        navigator.vibrate(10);
+      }
+    }, LONG_PRESS_MS);
+  }
+
+  function onTouchMove(event: TouchEvent) {
+    if (timer === undefined) return;
+    const touch = event.touches[0];
+    if (!touch) return;
+    if (
+      Math.abs(touch.clientX - startX) > LONG_PRESS_MOVE_TOLERANCE_PX ||
+      Math.abs(touch.clientY - startY) > LONG_PRESS_MOVE_TOLERANCE_PX
+    ) {
+      clearTimer();
+    }
+  }
+
+  // The click that follows a long-press must not trigger the row action.
+  function onClickCapture(event: MouseEvent) {
+    if (!fired) return;
+    fired = false;
+    event.preventDefault();
+    event.stopPropagation();
+  }
+
+  // Suppress the iOS callout so long-press reaches our timer instead.
+  const previousCallout = node.style.getPropertyValue("-webkit-touch-callout");
+  node.style.setProperty("-webkit-touch-callout", "none");
+
+  node.addEventListener("contextmenu", onContextMenu);
+  node.addEventListener("touchstart", onTouchStart, { passive: true });
+  node.addEventListener("touchmove", onTouchMove, { passive: true });
+  node.addEventListener("touchend", clearTimer);
+  node.addEventListener("touchcancel", clearTimer);
+  node.addEventListener("click", onClickCapture, { capture: true });
+
+  return {
+    update(next: typeof onMenu) {
+      handler = next;
+    },
+    destroy() {
+      clearTimer();
+      if (previousCallout) {
+        node.style.setProperty("-webkit-touch-callout", previousCallout);
+      } else {
+        node.style.removeProperty("-webkit-touch-callout");
+      }
+      node.removeEventListener("contextmenu", onContextMenu);
+      node.removeEventListener("touchstart", onTouchStart);
+      node.removeEventListener("touchmove", onTouchMove);
+      node.removeEventListener("touchend", clearTimer);
+      node.removeEventListener("touchcancel", clearTimer);
+      node.removeEventListener("click", onClickCapture, { capture: true });
+    },
+  };
+}
+
+/**
+ * Attachment adapter for components that cannot take use:contextMenu, like
+ * Link. Renders nothing when no handler is given so links without menus keep
+ * the native browser context menu.
+ */
+export function contextMenuAttachment(
+  onMenu: ((pos: ContextMenuPosition) => void) | undefined,
+): Attachment<HTMLElement> {
+  return (node) => {
+    if (!onMenu) return;
+    const action = contextMenu(node, onMenu);
+    return () => action.destroy?.();
+  };
 }
 
 function parseCssLengthPx(value: string, fallback = 0): number {

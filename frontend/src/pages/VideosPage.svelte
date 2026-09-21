@@ -13,10 +13,48 @@
   import { videoFeature } from "$lib/video/feature.svelte";
   import { videoPlayerPath, type LocalVideo } from "$lib/video/ids";
   import { createAsyncPage } from "$lib/ui/async-page.svelte";
+  import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
+  import { router } from "$lib/router/router.svelte";
+  import {
+    contextMenu,
+    type ContextMenuEntry,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
 
   let videos = $state<LocalVideo[]>([]);
   let searchQuery = $state("");
   let enabled = $state(false);
+  let videoMenu = $state<(ContextMenuPosition & { video: LocalVideo }) | null>(
+    null,
+  );
+
+  function videoMenuItems(video: LocalVideo): ContextMenuEntry[] {
+    return [
+      {
+        id: "play",
+        label: "Play",
+        icon: "play",
+        onclick: () => router.navigate(videoPlayerPath(video.id)),
+      },
+      {
+        id: "download",
+        label: "Download",
+        icon: "download",
+        onclick: () => {
+          const anchor = document.createElement("a");
+          anchor.href = mediaTrackDownloadUrl(video.id, {
+            title: video.title,
+            artist: video.artist,
+          });
+          anchor.download = "";
+          anchor.rel = "noopener";
+          document.body.append(anchor);
+          anchor.click();
+          anchor.remove();
+        },
+      },
+    ];
+  }
 
   const hasLibrary = $derived(Boolean(localLibraries.active?.id));
   const filtered = $derived(
@@ -89,7 +127,10 @@
     {:else}
       <ul class="videos-page__list">
         {#each filtered as video (video.id)}
-          <li class="videos-page__row">
+          <li
+            class="videos-page__row"
+            use:contextMenu={(pos) => (videoMenu = { ...pos, video })}
+          >
             <Link href={videoPlayerPath(video.id)} class="videos-page__play">
               <span class="videos-page__icon" aria-hidden="true">
                 <MdiIcon name="video" size={22} />
@@ -127,6 +168,16 @@
     {/if}
   {/if}
 </div>
+
+{#if videoMenu}
+  <ContextMenu
+    x={videoMenu.x}
+    y={videoMenu.y}
+    label="{videoMenu.video.title} actions"
+    items={videoMenuItems(videoMenu.video)}
+    onclose={() => (videoMenu = null)}
+  />
+{/if}
 
 <style>
   .videos-page {

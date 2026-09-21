@@ -9,13 +9,17 @@
     trackCoverSeed,
   } from "$lib/music/cover-art-fallback";
   import type { SubsonicSong } from "$lib/subsonic";
+  import {
+    contextMenu,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
 
   interface Props {
     track: SubsonicSong;
     liveStream: boolean;
     image: string | null;
     previewImage: string | null;
-    oncontextmenu?: (event: MouseEvent) => void;
+    oncontextmenu?: (pos: ContextMenuPosition) => void;
     /** Extra actions under the favorite control (e.g. Watch video). */
     actions?: import("svelte").Snippet;
   }
@@ -30,7 +34,11 @@
   }: Props = $props();
 </script>
 
-<section class="now-playing-art" aria-label="Current track" {oncontextmenu}>
+<section
+  class="now-playing-art"
+  aria-label="Current track"
+  use:contextMenu={(pos) => oncontextmenu?.(pos)}
+>
   <div class="now-playing-art__frame">
     <CoverArt
       src={image}

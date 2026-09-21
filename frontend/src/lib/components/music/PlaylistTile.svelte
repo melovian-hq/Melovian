@@ -12,7 +12,11 @@
     type PlaylistViewMode,
   } from "$lib/music/playlist-display";
   import type { MusicPlaylist, ServerPlaylist } from "$lib/subsonic";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import PlaylistContextMenu from "./PlaylistContextMenu.svelte";
 
   interface Props {
@@ -27,8 +31,8 @@
   let { playlist, kind, view, onExport, onDelete, onShare }: Props = $props();
   let menu = $state<{ x: number; y: number } | null>(null);
 
-  function onContextMenu(event: MouseEvent) {
-    menu = contextMenuPositionFromEvent(event);
+  function onContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 
   const href = $derived(playlistHref(kind, playlist.id));
@@ -48,7 +52,7 @@
 
 <article
   class="playlist-tile playlist-tile--{view}"
-  oncontextmenu={onContextMenu}
+  use:contextMenu={onContextMenu}
 >
   <Link {href} class="playlist-tile__link">
     <div class="playlist-tile__art">
@@ -80,6 +84,14 @@
   </Link>
 
   <div class="playlist-tile__actions">
+    <button
+      type="button"
+      class="playlist-tile__action"
+      aria-label="{playlist.name} actions"
+      onclick={(event) => (menu = contextMenuPositionForTrigger(event))}
+    >
+      <MdiIcon name="dotsHorizontal" size={16} />
+    </button>
     <button
       type="button"
       class="playlist-tile__action"

@@ -12,8 +12,13 @@
     resolveServerArtistArtUrl,
   } from "$lib/music/artist-media";
   import type { SubsonicArtist } from "$lib/subsonic";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    contextMenuPositionForTrigger,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import ArtistContextMenu from "./ArtistContextMenu.svelte";
+  import CardMenuButton from "./CardMenuButton.svelte";
   import SourceBadge from "$lib/components/ui/SourceBadge.svelte";
 
   interface Props {
@@ -25,8 +30,8 @@
   let { artist, size = "md", hideable = false }: Props = $props();
   let menu = $state<{ x: number; y: number } | null>(null);
 
-  function onContextMenu(event: MouseEvent) {
-    menu = contextMenuPositionFromEvent(event);
+  function onContextMenu(pos: ContextMenuPosition) {
+    menu = pos;
   }
 
   const image = $derived(
@@ -49,7 +54,7 @@
   />
 {/if}
 
-<div class="artist-card-wrap" role="group" oncontextmenu={onContextMenu}>
+<div class="artist-card-wrap" role="group" use:contextMenu={onContextMenu}>
   <Link
     href="/music/artist/{artist.id}"
     class="artist-card artist-card--{size}"
@@ -67,7 +72,7 @@
     </div>
     <div class="artist-card__meta">
       <span class="artist-card__name-row">
-        <span class="artist-card__name">{artist.name}</span>
+        <span class="artist-card__name" title={artist.name}>{artist.name}</span>
         <SourceBadge id={artist.id} />
       </span>
       {#if artist.albumCount}
@@ -77,10 +82,15 @@
       {/if}
     </div>
   </Link>
+  <CardMenuButton
+    label="{artist.name} actions"
+    onclick={(event) => (menu = contextMenuPositionForTrigger(event))}
+  />
 </div>
 
 <style>
   .artist-card-wrap {
+    position: relative;
     min-width: 0;
   }
 

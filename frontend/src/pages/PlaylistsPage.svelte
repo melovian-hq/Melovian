@@ -37,8 +37,9 @@
   } from "$lib/music/playlist-display";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import {
-    contextMenuPositionFromEvent,
+    contextMenu,
     type ContextMenuEntry,
+    type ContextMenuPosition,
   } from "$lib/components/ui/context-menu";
   import SharePlaylistDialog from "$lib/components/music/SharePlaylistDialog.svelte";
   import { auth } from "$lib/features/auth/store.svelte";
@@ -262,8 +263,8 @@
     void importPlaylistFile(file);
   }
 
-  function onPageContextMenu(event: MouseEvent) {
-    pageMenu = contextMenuPositionFromEvent(event);
+  function onPageContextMenu(pos: ContextMenuPosition) {
+    pageMenu = pos;
   }
 
   const pageMenuItems = $derived.by((): ContextMenuEntry[] => {
@@ -294,7 +295,7 @@
   class:playlists-page--grid={playlistView === "grid"}
   class:playlists-page--card={playlistView === "card"}
   role="group"
-  oncontextmenu={onPageContextMenu}
+  use:contextMenu={onPageContextMenu}
 >
   <MusicBreadcrumbs items={[{ label: "Playlists" }]} />
 

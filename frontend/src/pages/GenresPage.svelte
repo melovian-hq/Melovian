@@ -12,7 +12,10 @@
   import { stableItemKey } from "$lib/core/collection";
   import GenreContextMenu from "$lib/components/music/GenreContextMenu.svelte";
   import LibraryUnavailable from "$lib/components/music/LibraryUnavailable.svelte";
-  import { contextMenuPositionFromEvent } from "$lib/components/ui/context-menu";
+  import {
+    contextMenu,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
   import { libraryUnavailable } from "$lib/music/library-gate";
   import { createAsyncPage } from "$lib/ui/async-page.svelte";
 
@@ -54,9 +57,7 @@
     }
   });
 
-  function onGenreContextMenu(event: MouseEvent, name: string) {
-    const pos = contextMenuPositionFromEvent(event);
-    if (!pos) return;
+  function onGenreContextMenu(pos: ContextMenuPosition, name: string) {
     genreMenu = { ...pos, name };
   }
 </script>
@@ -98,7 +99,7 @@
         <div
           class="genre-card"
           role="group"
-          oncontextmenu={(event) => onGenreContextMenu(event, genre.name)}
+          use:contextMenu={(pos) => onGenreContextMenu(pos, genre.name)}
         >
           <Link
             href="/music/genre/{encodeURIComponent(genre.name)}"

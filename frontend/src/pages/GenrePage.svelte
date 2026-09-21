@@ -8,8 +8,9 @@
   import LocalSearchBox from "$lib/components/ui/LocalSearchBox.svelte";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import {
-    contextMenuPositionFromEvent,
+    contextMenu,
     type ContextMenuEntry,
+    type ContextMenuPosition,
   } from "$lib/components/ui/context-menu";
   import { trackSelection } from "$lib/music/selection.svelte";
   import { music } from "$lib/config/music.svelte";
@@ -79,8 +80,8 @@
     list.loading && list.items.length === 0 && !hasSearch,
   );
 
-  function onPageContextMenu(event: MouseEvent) {
-    pageMenu = contextMenuPositionFromEvent(event);
+  function onPageContextMenu(pos: ContextMenuPosition) {
+    pageMenu = pos;
   }
 
   function playGenreNow(shuffle = false) {
@@ -126,7 +127,7 @@
   ]);
 </script>
 
-<div class="genre-page" role="group" oncontextmenu={onPageContextMenu}>
+<div class="genre-page" role="group" use:contextMenu={onPageContextMenu}>
   <PageHeader
     title={name}
     subtitle={list.loading && list.items.length === 0

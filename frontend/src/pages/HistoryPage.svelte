@@ -13,8 +13,9 @@
   import { libraryUnavailable } from "$lib/music/library-gate";
   import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
   import {
-    contextMenuPositionFromEvent,
+    contextMenu,
     type ContextMenuEntry,
+    type ContextMenuPosition,
   } from "$lib/components/ui/context-menu";
   import { toast } from "$lib/ui/toast.svelte";
   import { createPagedList } from "$lib/ui/async-page.svelte";
@@ -169,8 +170,8 @@
     music.playTracks(playTracks, 0);
   }
 
-  function onPageContextMenu(event: MouseEvent) {
-    pageMenu = contextMenuPositionFromEvent(event);
+  function onPageContextMenu(pos: ContextMenuPosition) {
+    pageMenu = pos;
   }
 
   async function clearHistory() {
@@ -235,7 +236,7 @@
   ]);
 </script>
 
-<div class="history-page" role="group" oncontextmenu={onPageContextMenu}>
+<div class="history-page" role="group" use:contextMenu={onPageContextMenu}>
   <MusicBreadcrumbs items={[{ label: "History" }]} />
 
   <CollectionHero
