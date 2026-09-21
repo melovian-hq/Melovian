@@ -3,8 +3,10 @@
 
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 import {
+  createForeverPoolState,
   createLibraryPoolState,
   type ContinuousMode,
+  type ForeverPoolState,
   type LibraryPoolState,
 } from "$lib/music/continuous-pool";
 import {
@@ -28,6 +30,7 @@ import type { PlayerLayout } from "./types";
 export interface MusicPlayLaunchContext {
   continuousMode: ContinuousMode;
   libraryPool: LibraryPoolState;
+  foreverPool: ForeverPoolState;
   personalRadio: PersonalRadioState;
   queueSettings: QueueSettings;
   queue: QueueTrack[];
@@ -54,6 +57,7 @@ export interface MusicPlayLaunchContext {
       feedback?: "play" | "shuffle" | "queue" | false;
       preservePersonalRadio?: boolean;
       preserveLibraryPool?: boolean;
+      preserveForeverPool?: boolean;
     },
   ): void;
   bootstrapOfflinePlayback(): Promise<void>;
@@ -77,6 +81,7 @@ export function playTracks(
     feedback?: "play" | "shuffle" | "queue" | false;
     preservePersonalRadio?: boolean;
     preserveLibraryPool?: boolean;
+    preserveForeverPool?: boolean;
   } = {},
 ) {
   ctx.continuousMode =
@@ -87,6 +92,9 @@ export function playTracks(
       : continuousMode;
   if (ctx.continuousMode === "library" && !options.preserveLibraryPool) {
     ctx.libraryPool = createLibraryPoolState();
+  }
+  if (ctx.continuousMode === "all" && !options.preserveForeverPool) {
+    ctx.foreverPool = createForeverPoolState();
   }
   if (ctx.continuousMode === "personal" && !options.preservePersonalRadio) {
     ctx.personalRadio = createPersonalRadioState();

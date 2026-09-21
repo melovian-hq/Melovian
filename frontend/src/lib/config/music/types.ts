@@ -66,6 +66,7 @@ export interface MusicStoreHost {
   favoriteIds: MusicStore["favoriteIds"];
   favoriteToSong: MusicStore["favoriteToSong"];
   favoriteTracks: MusicStore["favoriteTracks"];
+  foreverPool: MusicStore["foreverPool"];
   frequentAlbums: MusicStore["frequentAlbums"];
   genres: MusicStore["genres"];
   handlePlaybackNetworkFailure: MusicStore["handlePlaybackNetworkFailure"];
@@ -160,6 +161,7 @@ export interface MusicStoreHost {
   reconnectResumeTrackId: MusicStore["reconnectResumeTrackId"];
   recordNowPlaying: MusicStore["recordNowPlaying"];
   recordPlayCompletion: MusicStore["recordPlayCompletion"];
+  refillForeverQueue: MusicStore["refillForeverQueue"];
   refillLibraryQueue: MusicStore["refillLibraryQueue"];
   refillPersonalQueue: MusicStore["refillPersonalQueue"];
   refreshFavorites: MusicStore["refreshFavorites"];

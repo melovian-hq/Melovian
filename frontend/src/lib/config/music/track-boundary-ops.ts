@@ -17,8 +17,10 @@ import {
   continuousRefillCount,
   filterUniqueTracks,
   migrateContinuousMode,
+  pullForeverTracks,
   pullLibraryTracks,
   type ContinuousMode,
+  type ForeverPoolState,
   type LibraryPoolState,
 } from "$lib/music/continuous-pool";
 import {
@@ -78,6 +80,7 @@ export interface MusicTrackBoundaryContext {
   queueSettings: QueueSettings;
   continuousRefillInFlight: Promise<boolean> | null;
   libraryPool: LibraryPoolState;
+  foreverPool: ForeverPoolState;
   personalRadio: PersonalRadioState;
   listenHistory: ListenEntry[];
   stats: ListenStats | null;
@@ -100,6 +103,7 @@ export interface MusicTrackBoundaryContext {
   markTrackTranscoded(trackId: string): void;
   maybeRefillContinuousQueue(): Promise<boolean>;
   refillLibraryQueue(count: number): Promise<boolean>;
+  refillForeverQueue(count: number): Promise<boolean>;
   refillPersonalQueue(count: number): Promise<boolean>;
   appendRandomSongsToQueue(count: number): Promise<boolean>;
   appendTracksToQueue(tracks: SubsonicSong[]): boolean;
@@ -381,6 +385,9 @@ export async function maybeRefillContinuousQueue(
   if (ctx.continuousMode === "library") {
     return ctx.refillLibraryQueue(count);
   }
+  if (ctx.continuousMode === "all") {
+    return ctx.refillForeverQueue(count);
+  }
   if (ctx.continuousMode === "personal") {
     return ctx.refillPersonalQueue(count);
   }
@@ -399,6 +406,38 @@ export async function refillLibraryQueue(
     const existingIds = new Set(ctx.queue.map((track) => track.id));
     const more = await pullLibraryTracks(
       ctx.libraryPool,
+      {
+        getAlbumList2: (type, size, offset) =>
+          ctx.library.getAlbumList2(type, size, offset),
+        getAlbumSongs: async (albumId) => {
+          const album = await ctx.library.getAlbum(albumId).catch(() => null);
+          return album?.songs ?? [];
+        },
+      },
+      count,
+      existingIds,
+    );
+    return ctx.appendTracksToQueue(more);
+  };
+
+  ctx.continuousRefillInFlight = run().finally(() => {
+    ctx.continuousRefillInFlight = null;
+  });
+  return ctx.continuousRefillInFlight;
+}
+
+export async function refillForeverQueue(
+  ctx: MusicTrackBoundaryContext,
+  count: number,
+): Promise<boolean> {
+  if (ctx.continuousRefillInFlight) {
+    return ctx.continuousRefillInFlight;
+  }
+
+  const run = async (): Promise<boolean> => {
+    const existingIds = new Set(ctx.queue.map((track) => track.id));
+    const more = await pullForeverTracks(
+      ctx.foreverPool,
       {
         getAlbumList2: (type, size, offset) =>
           ctx.library.getAlbumList2(type, size, offset),
@@ -695,6 +734,7 @@ export function createTrackBoundaryOps(ctx: MusicTrackBoundaryContext) {
     onTrackEnded: () => onTrackEnded(ctx),
     maybeRefillContinuousQueue: () => maybeRefillContinuousQueue(ctx),
     refillLibraryQueue: (count: number) => refillLibraryQueue(ctx, count),
+    refillForeverQueue: (count: number) => refillForeverQueue(ctx, count),
     refillPersonalQueue: (count: number) => refillPersonalQueue(ctx, count),
     appendTracksToQueue: (tracks: SubsonicSong[]) =>
       appendTracksToQueue(ctx, tracks),

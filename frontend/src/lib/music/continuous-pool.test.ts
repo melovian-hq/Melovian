@@ -5,9 +5,12 @@ import { describe, expect, it } from "vitest";
 import {
   continuousQueueTarget,
   continuousRefillCount,
+  createForeverPoolState,
   createLibraryPoolState,
   filterUniqueTracks,
   migrateContinuousMode,
+  parseContinuousMode,
+  pullForeverTracks,
   pullLibraryTracks,
   resetLibraryPool,
 } from "./continuous-pool";
@@ -80,5 +83,120 @@ describe("continuous-pool", () => {
     resetLibraryPool(state);
     expect(state.seenTrackIds.size).toBe(0);
     expect(state.exhaustedPasses).toBe(1);
+  });
+
+  it("parses the all mode", () => {
+    expect(parseContinuousMode("all")).toBe("all");
+    expect(migrateContinuousMode({ continuousMode: "all" })).toBe("all");
+  });
+
+  it("walks every album once per pass without repeats", async () => {
+    const state = createForeverPoolState();
+    const albumIds = ["a", "b", "c"];
+    const fetchers = {
+      getAlbumList2: async (
+        type: "random" | "alphabeticalByName",
+        size: number,
+        offset = 0,
+      ) => {
+        expect(type).toBe("alphabeticalByName");
+        return albumIds.slice(offset, offset + size).map((id) => album(id));
+      },
+      getAlbumSongs: async (albumId: string) => [
+        song(`${albumId}-1`),
+        song(`${albumId}-2`),
+      ],
+    };
+
+    const first = await pullForeverTracks(
+      state,
+      fetchers,
+      6,
+      new Set(),
+      () => 0.5,
+    );
+    expect(first.length).toBe(6);
+    expect(new Set(first.map((t) => t.id)).size).toBe(6);
+    expect(state.albumIds.sort()).toEqual(albumIds);
+    expect(state.enumerated).toBe(true);
+  });
+
+  it("starts a new pass when the walk ends", async () => {
+    const state = createForeverPoolState();
+    const fetchers = {
+      getAlbumList2: async (
+        _type: "random" | "alphabeticalByName",
+        size: number,
+        offset = 0,
+      ) => ["a", "b"].slice(offset, offset + size).map((id) => album(id)),
+      getAlbumSongs: async (albumId: string) => [song(`${albumId}-1`)],
+    };
+
+    const first = await pullForeverTracks(state, fetchers, 2, new Set());
+    expect(first.length).toBe(2);
+    expect(state.pass).toBe(0);
+
+    // Both albums are consumed, so the next pull rolls into a fresh pass.
+    const second = await pullForeverTracks(state, fetchers, 2, new Set());
+    expect(second.length).toBe(2);
+    expect(state.pass).toBe(1);
+  });
+
+  it("never repeats a track within one pull", async () => {
+    const state = createForeverPoolState();
+    const fetchers = {
+      getAlbumList2: async (
+        _type: "random" | "alphabeticalByName",
+        size: number,
+        offset = 0,
+      ) => ["a", "b"].slice(offset, offset + size).map((id) => album(id)),
+      getAlbumSongs: async (albumId: string) => [
+        song(`${albumId}-1`),
+        song(`${albumId}-2`),
+      ],
+    };
+
+    // count exceeds the catalog, forcing a rollover mid-pull.
+    const tracks = await pullForeverTracks(state, fetchers, 6, new Set());
+    expect(tracks.length).toBe(4);
+    expect(new Set(tracks.map((t) => t.id)).size).toBe(4);
+  });
+
+  it("excludes ids already in the queue", async () => {
+    const state = createForeverPoolState();
+    const fetchers = {
+      getAlbumList2: async (
+        _type: "random" | "alphabeticalByName",
+        size: number,
+        offset = 0,
+      ) => ["a", "b"].slice(offset, offset + size).map((id) => album(id)),
+      getAlbumSongs: async (albumId: string) => [
+        song(`${albumId}-1`),
+        song(`${albumId}-2`),
+      ],
+    };
+
+    const tracks = await pullForeverTracks(
+      state,
+      fetchers,
+      2,
+      new Set(["a-1", "b-2"]),
+    );
+    expect(tracks.map((t) => t.id).sort()).toEqual(["a-2", "b-1"]);
+  });
+
+  it("returns nothing when the library is empty", async () => {
+    const state = createForeverPoolState();
+    const tracks = await pullForeverTracks(
+      state,
+      {
+        getAlbumList2: async () => [],
+        getAlbumSongs: async () => [],
+      },
+      10,
+      new Set(),
+    );
+    expect(tracks).toEqual([]);
+    expect(state.enumerated).toBe(true);
   });
 });

@@ -45,6 +45,12 @@ export function createRadioContext(store: MusicStoreHost): MusicRadioContext {
     set libraryPool(v) {
       store.libraryPool = v;
     },
+    get foreverPool() {
+      return store.foreverPool;
+    },
+    set foreverPool(v) {
+      store.foreverPool = v;
+    },
     get personalRadio() {
       return store.personalRadio;
     },

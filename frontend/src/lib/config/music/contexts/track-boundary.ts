@@ -116,6 +116,9 @@ export function createTrackBoundaryContext(
     get libraryPool() {
       return store.libraryPool;
     },
+    get foreverPool() {
+      return store.foreverPool;
+    },
     get personalRadio() {
       return store.personalRadio;
     },
@@ -169,6 +172,7 @@ export function createTrackBoundaryContext(
     markTrackTranscoded: (trackId) => store.markTrackTranscoded(trackId),
     maybeRefillContinuousQueue: () => store.maybeRefillContinuousQueue(),
     refillLibraryQueue: (count) => store.refillLibraryQueue(count),
+    refillForeverQueue: (count) => store.refillForeverQueue(count),
     refillPersonalQueue: (count) => store.refillPersonalQueue(count),
     appendRandomSongsToQueue: (count) => store.appendRandomSongsToQueue(count),
     appendTracksToQueue: (tracks) => store.appendTracksToQueue(tracks),

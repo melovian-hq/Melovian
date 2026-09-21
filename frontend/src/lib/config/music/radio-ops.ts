@@ -5,9 +5,12 @@ import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 import {
   CONTINUOUS_REFILL_BATCH,
   continuousRefillCount,
+  createForeverPoolState,
   createLibraryPoolState,
+  pullForeverTracks,
   pullLibraryTracks,
   type ContinuousMode,
+  type ForeverPoolState,
   type LibraryPoolState,
 } from "$lib/music/continuous-pool";
 import {
@@ -36,6 +39,7 @@ export interface MusicRadioContext {
   repeat: "off" | "all" | "one";
   library: MusicLibraryAdapter;
   libraryPool: LibraryPoolState;
+  foreverPool: ForeverPoolState;
   personalRadio: PersonalRadioState;
   queueSettings: QueueSettings;
   listenHistory: ListenEntry[];
@@ -51,6 +55,7 @@ export interface MusicRadioContext {
       feedback?: "play" | "shuffle" | "queue" | false;
       preservePersonalRadio?: boolean;
       preserveLibraryPool?: boolean;
+      preserveForeverPool?: boolean;
     },
   ): void;
   startRandomRadio(count?: number): Promise<void>;
@@ -226,6 +231,57 @@ export async function playPersonalRadio(ctx: MusicRadioContext, count = 25) {
   }
 }
 
+/**
+ * Forever play. Walks every album in the library in a shuffled pass and
+ * refills the queue in small album batches, so playback never ends and the
+ * catalog is never loaded into memory at once. A completed pass re-shuffles
+ * and starts over.
+ */
+export async function playAllForever(ctx: MusicRadioContext) {
+  if (ctx.continuousBusy !== "off") return;
+  ctx.continuousBusy = "all";
+  toast.info("Building your everything queue…");
+  try {
+    ctx.foreverPool = createForeverPoolState();
+    const target = continuousRefillCount(
+      0,
+      ctx.queueSettings.maxQueueSize,
+      "all",
+    );
+    const batch = Math.max(target, CONTINUOUS_REFILL_BATCH);
+    const tracks = await pullForeverTracks(
+      ctx.foreverPool,
+      {
+        getAlbumList2: (type, size, offset) =>
+          ctx.library.getAlbumList2(type, size, offset),
+        getAlbumSongs: async (albumId) => {
+          const album = await ctx.library.getAlbum(albumId).catch(() => null);
+          return album?.songs ?? [];
+        },
+      },
+      batch,
+      new Set(),
+    );
+    if (tracks.length === 0) {
+      toast.warning("No tracks found in your library");
+      return;
+    }
+    ctx.shuffle = true;
+    ctx.autoplay = true;
+    ctx.playTracks(tracks, 0, false, "all", {
+      feedback: "shuffle",
+      preserveForeverPool: true,
+    });
+    toast.success("Playing everything");
+  } catch (err) {
+    toast.error(
+      err instanceof Error ? err.message : "Failed to play everything",
+    );
+  } finally {
+    ctx.continuousBusy = "off";
+  }
+}
+
 export function clearContinuousMode(ctx: MusicRadioContext) {
   ctx.continuousMode = "off";
   ctx.persistPlaybackState();
@@ -286,6 +342,7 @@ export function createRadioOps(ctx: MusicRadioContext) {
     startRandomRadio: (count?: number) => startRandomRadio(ctx, count),
     playRandomTracks: (tracks: SubsonicSong[]) => playRandomTracks(ctx, tracks),
     playLibraryShuffle: () => playLibraryShuffle(ctx),
+    playAllForever: () => playAllForever(ctx),
     playPersonalRadio: (count?: number) => playPersonalRadio(ctx, count),
     clearContinuousMode: () => clearContinuousMode(ctx),
     playRandomInternetRadio: () => playRandomInternetRadio(ctx),

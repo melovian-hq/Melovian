@@ -26,6 +26,7 @@
     resizeBottomLeft: "mdi:resize-bottom-left",
     headphones: "mdi:headphones",
     heartPulse: "mdi:heart-pulse",
+    infinity: "mdi:all-inclusive",
     listMusic: "mdi:playlist-music",
     viewList: "mdi:view-list",
     viewGrid: "mdi:view-grid",

@@ -98,8 +98,10 @@ import {
 import { sources } from "$lib/features/sources/store.svelte";
 import {
   CONTINUOUS_MODE_LABELS,
+  createForeverPoolState,
   createLibraryPoolState,
   type ContinuousMode,
+  type ForeverPoolState,
   type LibraryPoolState,
 } from "$lib/music/continuous-pool";
 import {
@@ -266,6 +268,7 @@ class MusicStore {
   private failedTrackSkips = 0;
   private continuousRefillInFlight: Promise<boolean> | null = null;
   private libraryPool: LibraryPoolState = createLibraryPoolState();
+  private foreverPool: ForeverPoolState = createForeverPoolState();
   private personalRadio: PersonalRadioState = createPersonalRadioState();
   private shuffleUpcoming: number[] = [];
   private shuffleHistory: number[] = [];
@@ -910,6 +913,7 @@ class MusicStore {
       feedback?: "play" | "shuffle" | "queue" | false;
       preservePersonalRadio?: boolean;
       preserveLibraryPool?: boolean;
+      preserveForeverPool?: boolean;
     } = {},
   ) {
     this.playLaunchOps.playTracks(
@@ -1030,6 +1034,10 @@ class MusicStore {
 
   async playLibraryShuffle() {
     return this.radioOps.playLibraryShuffle();
+  }
+
+  async playAllForever() {
+    return this.radioOps.playAllForever();
   }
 
   async playPersonalRadio(count = 25) {
@@ -1475,6 +1483,10 @@ class MusicStore {
 
   private async refillLibraryQueue(count: number): Promise<boolean> {
     return this.trackBoundaryOps.refillLibraryQueue(count);
+  }
+
+  private async refillForeverQueue(count: number): Promise<boolean> {
+    return this.trackBoundaryOps.refillForeverQueue(count);
   }
 
   private async refillPersonalQueue(count: number): Promise<boolean> {

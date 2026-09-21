@@ -183,6 +183,14 @@ const ACTION_COMMANDS: PaletteCommand[] = [
     run: () => void music.playPersonalRadio(),
   },
   {
+    id: "play-everything",
+    label: "Play everything",
+    group: "Playback",
+    icon: "infinity",
+    keywords: ["all", "library", "forever", "continuous", "refill", "shuffle"],
+    run: () => void music.playAllForever(),
+  },
+  {
     id: "theme-light",
     label: "Use light theme",
     group: "Appearance",
