@@ -65,6 +65,7 @@
     items = payload.items;
     extensionsDir = payload.dir;
     manifests = payload.manifests ?? manifests;
+    ensureSettingsDrafts();
     await loadExtensions();
   }
 
@@ -76,6 +77,7 @@
       items = payload.items;
       extensionsDir = payload.dir;
       manifests = payload.manifests ?? [];
+      ensureSettingsDrafts();
     } catch (err) {
       items = [];
       extensionsDir = "";
@@ -233,18 +235,26 @@
 
   // Editable copy per extension: saved values merged over field defaults.
   // Drafts persist across refreshes so unsaved edits are not lost when the
-  // list reloads.
-  function settingsDraftFor(item: ExtensionListItem): Record<string, unknown> {
-    let draft = settingsDrafts[item.id];
-    if (!draft) {
-      draft = {};
-      for (const field of settingsFieldsFor(item)) {
+  // list reloads. They are created in ensureSettingsDrafts from payload
+  // handlers, never during render, because writing state inside a template
+  // expression throws state_unsafe_mutation.
+  function ensureSettingsDrafts() {
+    for (const item of items) {
+      const fields = settingsFieldsFor(item);
+      if (!item.installed || !fields.length || settingsDrafts[item.id]) {
+        continue;
+      }
+      const draft: Record<string, unknown> = {};
+      for (const field of fields) {
         draft[field.key] =
           item.settings?.[field.key] ?? field.default ?? defaultValue(field);
       }
       settingsDrafts[item.id] = draft;
     }
-    return draft;
+  }
+
+  function settingsDraftFor(item: ExtensionListItem): Record<string, unknown> {
+    return settingsDrafts[item.id] ?? {};
   }
 
   function defaultValue(field: ExtensionSettingField): unknown {
@@ -279,6 +289,7 @@
       const payload = await fetchExtensions();
       items = payload.items;
       manifests = payload.manifests ?? [];
+      ensureSettingsDrafts();
       await loadExtensions();
       toast.success(`Reloaded ${item.name}`);
     } catch (err) {
