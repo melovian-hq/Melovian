@@ -146,10 +146,15 @@ func ValidateSettings(manifest Manifest) error {
 			if len(field.Options) == 0 {
 				return fmt.Errorf("settings %q of type choice needs options", key)
 			}
+			seenOptions := make(map[string]bool, len(field.Options))
 			for _, opt := range field.Options {
 				if opt == "" {
 					return fmt.Errorf("settings %q has an empty option", key)
 				}
+				if seenOptions[opt] {
+					return fmt.Errorf("settings %q has duplicate option %q", key, opt)
+				}
+				seenOptions[opt] = true
 			}
 			if field.Default != nil {
 				def, ok := field.Default.(string)

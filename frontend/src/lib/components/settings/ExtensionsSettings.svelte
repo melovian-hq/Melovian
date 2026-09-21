@@ -719,7 +719,7 @@
                             onchange={(e) =>
                               (draft[field.key] = e.currentTarget.value)}
                           >
-                            {#each field.options ?? [] as opt (opt)}
+                            {#each field.options ?? [] as opt, optIndex (optIndex)}
                               <option value={opt}>{opt}</option>
                             {/each}
                           </select>

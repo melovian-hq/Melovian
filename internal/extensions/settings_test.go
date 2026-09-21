@@ -138,6 +138,7 @@ func TestValidateSettingsSchemas(t *testing.T) {
 		{"bad bool default", []SettingField{{Key: "a", Type: "boolean", Default: "x"}}, true},
 		{"choice no options", []SettingField{{Key: "a", Type: "choice"}}, true},
 		{"choice empty option", []SettingField{{Key: "a", Type: "choice", Options: []string{""}}}, true},
+		{"choice duplicate option", []SettingField{{Key: "a", Type: "choice", Options: []string{"x", "x"}}}, true},
 		{"choice bad default", []SettingField{{Key: "a", Type: "choice", Options: []string{"x"}, Default: "y"}}, true},
 		{"choice ok", []SettingField{{Key: "a", Type: "choice", Options: []string{"x"}, Default: "x"}}, false},
 		{"text long default", []SettingField{{Key: "a", Type: "text", Default: strings.Repeat("x", 300)}}, true},

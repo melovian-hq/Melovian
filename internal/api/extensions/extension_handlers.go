@@ -224,7 +224,7 @@ func (h *Handler) handleExtensionAsset(w http.ResponseWriter, r *http.Request) {
 		w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
 		w.Header().Set("X-Content-Type-Options", "nosniff")
 		w.Header().Set("Content-Type", ctype)
-		_, _ = w.Write(data)
+		_, _ = w.Write(data) //#nosec G705 -- bundled asset bytes served with explicit content type and nosniff
 		return
 	}
 	w.Header().Set("Cache-Control", "public, max-age=604800, immutable")
@@ -305,7 +305,14 @@ type installDirRequest struct {
 // handleInstallDir links a local extension directory for development.
 // The path is local machine state, not remote input, so no signature is
 // involved; scripts still face the sandbox and the scriptSafe gate.
+// Server mode disables it: an authenticated remote user could otherwise
+// point the asset route at any server-local directory and read files
+// the Melovian process can reach.
 func (h *Handler) handleInstallDir(w http.ResponseWriter, r *http.Request) {
+	if h.cfg.ServerMode {
+		httputil.WriteError(w, http.StatusForbidden, "server_mode", "local extension directories are only available on desktop installs")
+		return
+	}
 	var req installDirRequest
 	if err := httputil.DecodeJSONBody(r, &req); err != nil {
 		httputil.WriteError(w, http.StatusBadRequest, "invalid_json", err.Error())

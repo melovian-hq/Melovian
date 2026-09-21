@@ -46,7 +46,7 @@ const trackDecorationSchema = v.looseObject({
   playerTheme: v.optional(v.string()),
 });
 
-const trackRuleSchema = v.looseObject({
+export const trackRuleSchema = v.looseObject({
   match: trackMatchSchema,
   decoration: trackDecorationSchema,
 });

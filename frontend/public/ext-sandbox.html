@@ -1,0 +1,105 @@
+<!doctype html>
+<!-- SPDX-FileCopyrightText: 2026 Quad4 Software -->
+<!-- SPDX-License-Identifier: Apache-2.0 -->
+<!--
+  Extension script sandbox. This page is loaded in an iframe with
+  sandbox="allow-scripts" and no allow-same-origin, which forces an
+  opaque origin: no localStorage, no cookies, no DOM access to the
+  parent, and credentialed requests to the app API are impossible.
+  Extension scripts are evaluated inside this realm. If a script
+  escapes the Function wrapper it still lands in the null origin and
+  cannot reach the app.
+
+  Protocol:
+    parent -> iframe  {type:"run", id, source, settings, rules}
+    iframe -> parent  {type:"ready"}
+    iframe -> parent  {type:"done", id, rules, error?}
+  The parent validates the message source against iframe.contentWindow
+  and schema-checks every returned rule.
+-->
+<meta charset="utf-8" />
+<script>
+"use strict";
+(function () {
+  var collected = [];
+  var seedRules = [];
+  var settings = {};
+
+  function contains(haystack, needle) {
+    if (!needle) return true;
+    return String(haystack || "").toLowerCase().includes(String(needle).toLowerCase());
+  }
+
+  function matchesRule(ctx, match) {
+    if (!match) return false;
+    if (match.isLocal != null && match.isLocal !== ctx.isLocal) return false;
+    if (!contains(ctx.track && ctx.track.title, match.titleContains)) return false;
+    if (!contains(ctx.track && ctx.track.artist, match.artistContains)) return false;
+    if (!contains(ctx.track && ctx.track.album, match.albumContains)) return false;
+    var genre = ctx.genre || (ctx.track && ctx.track.genre);
+    if (!contains(genre, match.genreContains)) return false;
+    if (match.titleRegex) {
+      try {
+        if (!new RegExp(match.titleRegex, "i").test((ctx.track && ctx.track.title) || "")) {
+          return false;
+        }
+      } catch (e) {
+        return false;
+      }
+    }
+    if (match.tagEquals) {
+      var tags = ctx.tags || [];
+      var found = false;
+      for (var i = 0; i < tags.length; i++) {
+        if (String(tags[i]).toLowerCase() === String(match.tagEquals).toLowerCase()) {
+          found = true;
+          break;
+        }
+      }
+      if (!found) return false;
+    }
+    if (match.minRating != null && (ctx.rating || 0) < match.minRating) return false;
+    return true;
+  }
+
+  var api = {
+    registerTrackRule: function (rule) {
+      collected.push(rule);
+    },
+    decorateTrack: function (ctx) {
+      var all = seedRules.concat(collected);
+      for (var i = 0; i < all.length; i++) {
+        if (matchesRule(ctx, all[i] && all[i].match)) return all[i].decoration;
+      }
+      return null;
+    },
+    settings: settings,
+  };
+
+  function post(msg) {
+    parent.postMessage(msg, "*");
+  }
+
+  window.addEventListener("message", function (event) {
+    var data = event.data;
+    if (!data || data.type !== "run" || typeof data.source !== "string") return;
+    collected.length = 0;
+    seedRules = Array.isArray(data.rules) ? data.rules : [];
+    settings = data.settings && typeof data.settings === "object" ? data.settings : {};
+    api.settings = settings;
+    var error;
+    try {
+      var fn = new Function(
+        "api",
+        '"use strict";\n' + data.source + "\n;return typeof register === 'function' ? register(api) : undefined;"
+      );
+      fn(api);
+    } catch (err) {
+      error = String(err);
+    }
+    post({ type: "done", id: data.id, rules: collected, error: error });
+  });
+
+  post({ type: "ready" });
+})();
+</script>
