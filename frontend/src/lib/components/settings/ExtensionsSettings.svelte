@@ -4,6 +4,8 @@
   import EmptyState from "$lib/components/ui/EmptyState.svelte";
   import Spinner from "$lib/components/ui/Spinner.svelte";
   import Toggle from "$lib/components/ui/Toggle.svelte";
+  import SettingsCard from "$lib/components/settings/SettingsCard.svelte";
+  import SettingsToggleRow from "$lib/components/settings/SettingsToggleRow.svelte";
   import { loadExtensions } from "$lib/extensions/registry";
   import { APP_NAME, EXTENSION_MANIFEST } from "$lib/brand";
   import {
@@ -549,246 +551,201 @@
   />
 {:else}
   <div class="extensions-settings">
-    <div
-      class="extensions-settings__drop"
-      class:extensions-settings__drop--active={dragOver}
-      role="region"
-      aria-label="Extension upload drop zone"
-      ondragover={onDragOver}
-      ondragleave={onDragLeave}
-      ondrop={(event) => void onDrop(event)}
+    <SettingsCard
+      title="Installed extensions"
+      description="Toggle optional features, adjust their settings, or remove them."
     >
-      <input
-        bind:this={fileInput}
-        type="file"
-        accept=".zip,.wasm,application/zip,application/wasm"
-        class="extensions-settings__file-input"
-        onchange={(event) => void handleUpload(event)}
-      />
-      <p class="extensions-settings__drop-copy">
-        Drop a .zip package here, or upload one. Packages need
-        {EXTENSION_MANIFEST} (and .wasm when used).
-      </p>
-      <Button
-        size="sm"
-        disabled={uploading || busyId !== null}
-        onclick={() => fileInput?.click()}
-      >
-        {uploading ? "Installing..." : "Upload"}
-      </Button>
-    </div>
-
-    <div class="extensions-settings__dev">
-      <p class="extensions-settings__dev-title">Development</p>
-      <p class="extensions-settings__browse-note">
-        Link a local extension folder. Edits apply when you press Reload on its
-        row. Scripts still run in the sandbox.
-      </p>
-      <div class="extensions-settings__dev-form">
-        <input
-          type="text"
-          class="extensions-settings__input extensions-settings__input--wide"
-          placeholder="/path/to/my-extension"
-          aria-label="Extension directory path"
-          bind:value={devPath}
+      {#if items.length === 0}
+        <EmptyState
+          title="No extensions installed"
+          message={extensionsDir
+            ? `Add a folder with ${EXTENSION_MANIFEST} under ${extensionsDir} and restart ${APP_NAME}, or upload a .zip package below.`
+            : `Add a folder with ${EXTENSION_MANIFEST} and restart ${APP_NAME}, or upload a .zip package below.`}
+          icon="puzzle"
+          embedded
         />
-        <Button
-          size="sm"
-          variant="ghost"
-          disabled={!devPath.trim() || busyId !== null || uploading}
-          onclick={() => void handleInstallDir()}
-        >
-          Link
-        </Button>
-      </div>
-    </div>
-
-    {#if items.length === 0}
-      <EmptyState
-        title="No extensions installed"
-        message={extensionsDir
-          ? `Add a folder with ${EXTENSION_MANIFEST} under ${extensionsDir} and restart ${APP_NAME}, or upload a .zip package.`
-          : `Add a folder with ${EXTENSION_MANIFEST} and restart ${APP_NAME}, or upload a .zip package.`}
-        icon="puzzle"
-        embedded
-      />
-    {:else}
-      <div class="extensions-settings__list">
-        {#snippet extensionRow(item: ExtensionListItem)}
-          <div class="extensions-settings__row">
-            {#if item.imageUrl && item.imageUrl !== item.iconUrl}
-              <img
-                class="extensions-settings__banner"
-                src={item.imageUrl}
-                alt=""
-                draggable="false"
-              />
-            {/if}
-            <div class="extensions-settings__body">
-              {#if item.iconUrl}
+      {:else}
+        <div class="extensions-settings__list">
+          {#snippet extensionRow(item: ExtensionListItem)}
+            <div class="extensions-settings__row">
+              {#if item.imageUrl && item.imageUrl !== item.iconUrl}
                 <img
-                  class="extensions-settings__icon"
-                  src={item.iconUrl}
+                  class="extensions-settings__banner"
+                  src={item.imageUrl}
                   alt=""
                   draggable="false"
                 />
-              {:else}
-                <span class="extensions-settings__letter" aria-hidden="true">
-                  {letterAvatar(item.name)}
-                </span>
               {/if}
-              <div class="extensions-settings__copy">
-                <div class="extensions-settings__name-row">
-                  <p class="extensions-settings__name">{item.name}</p>
-                  <span class="extensions-settings__version"
-                    >v{item.version}</span
-                  >
-                </div>
-                {#if item.description}
-                  <p class="extensions-settings__description">
-                    {item.description}
-                  </p>
+              <div class="extensions-settings__body">
+                {#if item.iconUrl}
+                  <img
+                    class="extensions-settings__icon"
+                    src={item.iconUrl}
+                    alt=""
+                    draggable="false"
+                  />
                 {:else}
-                  <p class="extensions-settings__description">{item.id}</p>
+                  <span class="extensions-settings__letter" aria-hidden="true">
+                    {letterAvatar(item.name)}
+                  </span>
                 {/if}
-                {#if extensionMeta(item)}
-                  <p class="extensions-settings__meta">{extensionMeta(item)}</p>
-                {/if}
-                {#if installedDateLabel(item)}
-                  <p class="extensions-settings__installed">
-                    {installedDateLabel(item)}
-                  </p>
-                {/if}
-                <div class="extensions-settings__actions">
-                  {#if item.installed && !item.required}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busyId === item.id || uploading}
-                      onclick={() => void handleUninstall(item)}
+                <div class="extensions-settings__copy">
+                  <div class="extensions-settings__name-row">
+                    <p class="extensions-settings__name">{item.name}</p>
+                    <span class="extensions-settings__version"
+                      >v{item.version}</span
                     >
-                      Uninstall
-                    </Button>
+                  </div>
+                  {#if item.description}
+                    <p class="extensions-settings__description">
+                      {item.description}
+                    </p>
+                  {:else}
+                    <p class="extensions-settings__description">{item.id}</p>
                   {/if}
-                  {#if item.dev && item.installed}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busyId === item.id || uploading}
-                      onclick={() => void handleReloadDev(item)}
-                    >
-                      Reload
-                    </Button>
+                  {#if extensionMeta(item)}
+                    <p class="extensions-settings__meta">
+                      {extensionMeta(item)}
+                    </p>
                   {/if}
-                  {#if item.bundled && !item.installed}
-                    <Button
-                      size="sm"
-                      disabled={busyId === item.id || uploading}
-                      onclick={() => void handleInstallBundled(item)}
-                    >
-                      Install
-                    </Button>
-                  {:else if item.bundled && item.installed}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={busyId === item.id || uploading}
-                      onclick={() => void handleInstallBundled(item)}
-                    >
-                      Reinstall
-                    </Button>
+                  {#if installedDateLabel(item)}
+                    <p class="extensions-settings__installed">
+                      {installedDateLabel(item)}
+                    </p>
+                  {/if}
+                  <div class="extensions-settings__actions">
+                    {#if item.installed && !item.required}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busyId === item.id || uploading}
+                        onclick={() => void handleUninstall(item)}
+                      >
+                        Uninstall
+                      </Button>
+                    {/if}
+                    {#if item.dev && item.installed}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busyId === item.id || uploading}
+                        onclick={() => void handleReloadDev(item)}
+                      >
+                        Reload
+                      </Button>
+                    {/if}
+                    {#if item.bundled && !item.installed}
+                      <Button
+                        size="sm"
+                        disabled={busyId === item.id || uploading}
+                        onclick={() => void handleInstallBundled(item)}
+                      >
+                        Install
+                      </Button>
+                    {:else if item.bundled && item.installed}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={busyId === item.id || uploading}
+                        onclick={() => void handleInstallBundled(item)}
+                      >
+                        Reinstall
+                      </Button>
+                    {/if}
+                  </div>
+                  {#if item.installed && settingsFieldsFor(item).length > 0}
+                    {@const draft = settingsDraftFor(item)}
+                    <div class="extensions-settings__fields">
+                      {#each settingsFieldsFor(item) as field (field.key)}
+                        <label class="extensions-settings__field">
+                          <span class="extensions-settings__field-label">
+                            {field.label || field.key}
+                          </span>
+                          {#if field.type === "boolean"}
+                            <input
+                              type="checkbox"
+                              class="extensions-settings__checkbox"
+                              checked={draft[field.key] === true}
+                              onchange={(e) =>
+                                (draft[field.key] = e.currentTarget.checked)}
+                            />
+                          {:else if field.type === "choice"}
+                            <select
+                              class="extensions-settings__input"
+                              value={String(draft[field.key] ?? "")}
+                              onchange={(e) =>
+                                (draft[field.key] = e.currentTarget.value)}
+                            >
+                              {#each field.options ?? [] as opt, optIndex (optIndex)}
+                                <option value={opt}>{opt}</option>
+                              {/each}
+                            </select>
+                          {:else}
+                            <input
+                              type="text"
+                              class="extensions-settings__input"
+                              maxlength="256"
+                              value={String(draft[field.key] ?? "")}
+                              oninput={(e) =>
+                                (draft[field.key] = e.currentTarget.value)}
+                            />
+                          {/if}
+                        </label>
+                      {/each}
+                      <Button
+                        size="sm"
+                        variant="ghost"
+                        disabled={settingsSavingId === item.id || uploading}
+                        onclick={() => void handleSaveSettings(item)}
+                      >
+                        {settingsSavingId === item.id
+                          ? "Saving..."
+                          : "Save settings"}
+                      </Button>
+                    </div>
                   {/if}
                 </div>
-                {#if item.installed && settingsFieldsFor(item).length > 0}
-                  {@const draft = settingsDraftFor(item)}
-                  <div class="extensions-settings__fields">
-                    {#each settingsFieldsFor(item) as field (field.key)}
-                      <label class="extensions-settings__field">
-                        <span class="extensions-settings__field-label">
-                          {field.label || field.key}
-                        </span>
-                        {#if field.type === "boolean"}
-                          <input
-                            type="checkbox"
-                            class="extensions-settings__checkbox"
-                            checked={draft[field.key] === true}
-                            onchange={(e) =>
-                              (draft[field.key] = e.currentTarget.checked)}
-                          />
-                        {:else if field.type === "choice"}
-                          <select
-                            class="extensions-settings__input"
-                            value={String(draft[field.key] ?? "")}
-                            onchange={(e) =>
-                              (draft[field.key] = e.currentTarget.value)}
-                          >
-                            {#each field.options ?? [] as opt, optIndex (optIndex)}
-                              <option value={opt}>{opt}</option>
-                            {/each}
-                          </select>
-                        {:else}
-                          <input
-                            type="text"
-                            class="extensions-settings__input"
-                            maxlength="256"
-                            value={String(draft[field.key] ?? "")}
-                            oninput={(e) =>
-                              (draft[field.key] = e.currentTarget.value)}
-                          />
-                        {/if}
-                      </label>
-                    {/each}
-                    <Button
-                      size="sm"
-                      variant="ghost"
-                      disabled={settingsSavingId === item.id || uploading}
-                      onclick={() => void handleSaveSettings(item)}
-                    >
-                      {settingsSavingId === item.id
-                        ? "Saving..."
-                        : "Save settings"}
-                    </Button>
-                  </div>
+                {#if item.installed}
+                  <Toggle
+                    checked={item.enabled}
+                    disabled={busyId === item.id ||
+                      uploading ||
+                      (item.hasScript && !item.scriptSafe)}
+                    ariaLabel={item.name}
+                    onchange={(enabled) => void toggle(item, enabled)}
+                  />
                 {/if}
               </div>
-              {#if item.installed}
-                <Toggle
-                  checked={item.enabled}
-                  disabled={busyId === item.id ||
-                    uploading ||
-                    (item.hasScript && !item.scriptSafe)}
-                  ariaLabel={item.name}
-                  onchange={(enabled) => void toggle(item, enabled)}
-                />
-              {/if}
             </div>
-          </div>
-        {/snippet}
-        {#if installedItems.length > 0}
-          <p class="extensions-settings__group">Installed</p>
-          {#each installedItems as item (item.id)}
-            {@render extensionRow(item)}
-          {/each}
-        {/if}
-        {#if availableItems.length > 0}
-          <p class="extensions-settings__group">Available</p>
-          {#each availableItems as item (item.id)}
-            {@render extensionRow(item)}
-          {/each}
-        {/if}
-      </div>
-    {/if}
+          {/snippet}
+          {#if installedItems.length > 0}
+            <p class="extensions-settings__group">Installed</p>
+            {#each installedItems as item (item.id)}
+              {@render extensionRow(item)}
+            {/each}
+          {/if}
+          {#if availableItems.length > 0}
+            <p class="extensions-settings__group">Built in</p>
+            {#each availableItems as item (item.id)}
+              {@render extensionRow(item)}
+            {/each}
+          {/if}
+        </div>
+      {/if}
+    </SettingsCard>
 
-    <div class="extensions-settings__browse">
-      <p class="extensions-settings__browse-title">
-        Browse the registry
+    <SettingsCard
+      title="Browse the registry"
+      description="Extensions published to the configured registry."
+    >
+      {#snippet status()}
         {#if registrySigned}
           <span class="extensions-settings__signed">signed</span>
         {/if}
         {#if registryCustom}
           <span class="extensions-settings__custom">custom</span>
         {/if}
-      </p>
+      {/snippet}
       {#if registryActiveUrl}
         <p
           class="extensions-settings__browse-note extensions-settings__registry-url"
@@ -796,53 +753,12 @@
           {registryActiveUrl}
         </p>
       {/if}
-      <div class="extensions-settings__registry-config">
-        <input
-          type="url"
-          class="extensions-settings__input extensions-settings__input--wide"
-          placeholder="https://example.com/registry.json"
-          aria-label="Custom registry URL"
-          bind:value={registryUrl}
-        />
-        <input
-          type="text"
-          class="extensions-settings__input extensions-settings__input--wide"
-          placeholder="Ed25519 public key (hex)"
-          aria-label="Registry public key"
-          bind:value={registryKey}
-        />
-        <div class="extensions-settings__actions">
-          <Button
-            size="sm"
-            variant="ghost"
-            disabled={registryConfigBusy ||
-              (!registryUrl.trim() && !registryKey.trim())}
-            onclick={() => void handleSaveRegistry()}
-          >
-            Use custom registry
-          </Button>
-          {#if registryCustom}
-            <Button
-              size="sm"
-              variant="ghost"
-              disabled={registryConfigBusy}
-              onclick={() => void handleClearRegistry()}
-            >
-              Use official
-            </Button>
-          {/if}
-        </div>
-      </div>
-      <div class="extensions-settings__auto-update">
-        <Toggle
-          checked={extensionAutoUpdate()}
-          ariaLabel="Auto-update low-risk extensions"
-          onchange={(v) => setExtensionAutoUpdate(v)}
-        />
-        <span class="extensions-settings__browse-note">
-          Automatically install updates flagged low risk
-        </span>
-      </div>
+      <SettingsToggleRow
+        label="Auto-update extensions"
+        description="Install updates flagged low risk without asking"
+        checked={extensionAutoUpdate()}
+        onchange={(v) => setExtensionAutoUpdate(v)}
+      />
       {#if registryLoading}
         <Spinner class="extensions-settings__spinner" />
       {:else if registryError}
@@ -960,7 +876,111 @@
           {/each}
         </div>
       {/if}
-    </div>
+    </SettingsCard>
+
+    <SettingsCard
+      title="Advanced"
+      description="Install from a package file, link a development folder, or point at a different registry."
+    >
+      <div
+        class="extensions-settings__drop"
+        class:extensions-settings__drop--active={dragOver}
+        role="region"
+        aria-label="Extension upload drop zone"
+        ondragover={onDragOver}
+        ondragleave={onDragLeave}
+        ondrop={(event) => void onDrop(event)}
+      >
+        <input
+          bind:this={fileInput}
+          type="file"
+          accept=".zip,.wasm,application/zip,application/wasm"
+          class="extensions-settings__file-input"
+          onchange={(event) => void handleUpload(event)}
+        />
+        <p class="extensions-settings__drop-copy">
+          Drop a .zip package here, or upload one. Packages need
+          {EXTENSION_MANIFEST} (and .wasm when used).
+        </p>
+        <Button
+          size="sm"
+          disabled={uploading || busyId !== null}
+          onclick={() => fileInput?.click()}
+        >
+          {uploading ? "Installing..." : "Upload"}
+        </Button>
+      </div>
+
+      <div class="extensions-settings__dev">
+        <p class="extensions-settings__dev-title">Development</p>
+        <p class="extensions-settings__browse-note">
+          Link a local extension folder. Edits apply when you press Reload on
+          its row. Scripts still run in the sandbox.
+        </p>
+        <div class="extensions-settings__dev-form">
+          <input
+            type="text"
+            class="extensions-settings__input extensions-settings__input--wide"
+            placeholder="/path/to/my-extension"
+            aria-label="Extension directory path"
+            bind:value={devPath}
+          />
+          <Button
+            size="sm"
+            variant="ghost"
+            disabled={!devPath.trim() || busyId !== null || uploading}
+            onclick={() => void handleInstallDir()}
+          >
+            Link
+          </Button>
+        </div>
+      </div>
+
+      <div class="extensions-settings__dev">
+        <p class="extensions-settings__dev-title">Custom registry</p>
+        <p class="extensions-settings__browse-note">
+          Every install from a custom registry is signed by the key you paste
+          here, not the official {APP_NAME} key.
+        </p>
+        <div class="extensions-settings__registry-config">
+          <input
+            type="url"
+            class="extensions-settings__input extensions-settings__input--wide"
+            placeholder="https://example.com/registry.json"
+            aria-label="Custom registry URL"
+            bind:value={registryUrl}
+          />
+          <input
+            type="text"
+            class="extensions-settings__input extensions-settings__input--wide"
+            placeholder="Ed25519 public key (hex)"
+            aria-label="Registry public key"
+            bind:value={registryKey}
+          />
+          <div class="extensions-settings__actions">
+            <Button
+              size="sm"
+              variant="ghost"
+              disabled={registryConfigBusy ||
+                (!registryUrl.trim() && !registryKey.trim())}
+              onclick={() => void handleSaveRegistry()}
+            >
+              Use custom registry
+            </Button>
+            {#if registryCustom}
+              <Button
+                size="sm"
+                variant="ghost"
+                disabled={registryConfigBusy}
+                onclick={() => void handleClearRegistry()}
+              >
+                Use official
+              </Button>
+            {/if}
+          </div>
+        </div>
+      </div>
+    </SettingsCard>
   </div>
 {/if}
 
@@ -971,8 +991,7 @@
   }
 
   .extensions-settings {
-    display: grid;
-    gap: var(--jb-space-3);
+    display: contents;
   }
 
   .extensions-settings__drop {
@@ -1143,21 +1162,6 @@
     margin-top: var(--jb-space-1);
   }
 
-  .extensions-settings__browse {
-    display: grid;
-    gap: var(--jb-space-2);
-    padding-top: var(--jb-space-3);
-    border-top: 1px solid
-      color-mix(in srgb, var(--jb-border, currentColor) 50%, transparent);
-  }
-
-  .extensions-settings__browse-title {
-    margin: 0;
-    font-size: 0.8125rem;
-    font-weight: 600;
-    color: var(--jb-text);
-  }
-
   .extensions-settings__browse-note {
     margin: 0;
     font-size: 0.8125rem;
@@ -1191,13 +1195,6 @@
     background: color-mix(in srgb, var(--jb-danger) 18%, transparent);
     color: var(--jb-danger);
     border: 1px solid color-mix(in srgb, var(--jb-danger) 40%, transparent);
-  }
-
-  .extensions-settings__auto-update {
-    display: flex;
-    align-items: center;
-    gap: var(--jb-space-2);
-    margin-bottom: var(--jb-space-2);
   }
 
   .extensions-settings__versions {

@@ -118,4 +118,20 @@ describe("ExtensionsSettings", () => {
     window.removeEventListener("unhandledrejection", onRejection);
     cleanup();
   });
+
+  it("groups the page into installed, registry, and advanced sections", async () => {
+    const { target, cleanup } = renderPage();
+    await vi.waitFor(() => {
+      expect(target.textContent).toContain("Visualizations");
+    });
+    const titles = [...target.querySelectorAll(".settings-card__title")].map(
+      (el) => el.textContent,
+    );
+    expect(titles).toEqual([
+      "Installed extensions",
+      "Browse the registry",
+      "Advanced",
+    ]);
+    cleanup();
+  });
 });
