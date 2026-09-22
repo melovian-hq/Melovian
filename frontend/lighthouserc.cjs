@@ -66,7 +66,7 @@ module.exports = {
             interactive: ["warn", { maxNumericValue: 7000 }],
             "total-blocking-time": ["warn", { maxNumericValue: 300 }],
             "cumulative-layout-shift": ["warn", { maxNumericValue: 0.05 }],
-            "resource-summary:script": [
+            "resource-summary:script:size": [
               "warn",
               { maxNumericValue: 450 * 1024 },
             ],

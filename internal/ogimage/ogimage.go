@@ -211,9 +211,9 @@ func drawBackdrop(dst *image.RGBA, cover image.Image) {
 		for x := 0; x < Width; x++ {
 			i := row + x*4
 			a := int(overlay.A)
-			dst.Pix[i+0] = uint8((int(dst.Pix[i+0])*(255-a) + int(overlay.R)*a) / 255)
-			dst.Pix[i+1] = uint8((int(dst.Pix[i+1])*(255-a) + int(overlay.G)*a) / 255)
-			dst.Pix[i+2] = uint8((int(dst.Pix[i+2])*(255-a) + int(overlay.B)*a) / 255)
+			dst.Pix[i+0] = toByte((int(dst.Pix[i+0])*(255-a) + int(overlay.R)*a) / 255)
+			dst.Pix[i+1] = toByte((int(dst.Pix[i+1])*(255-a) + int(overlay.G)*a) / 255)
+			dst.Pix[i+2] = toByte((int(dst.Pix[i+2])*(255-a) + int(overlay.B)*a) / 255)
 		}
 	}
 }
@@ -263,10 +263,10 @@ func boxBlur(img *image.RGBA, radius int) {
 		}
 		for x := 0; x < w; x++ {
 			o := tmp.PixOffset(x, y)
-			tmp.Pix[o] = uint8(sr / div)
-			tmp.Pix[o+1] = uint8(sg / div)
-			tmp.Pix[o+2] = uint8(sb2 / div)
-			tmp.Pix[o+3] = uint8(sa / div)
+			tmp.Pix[o] = toByte(sr / div)
+			tmp.Pix[o+1] = toByte(sg / div)
+			tmp.Pix[o+2] = toByte(sb2 / div)
+			tmp.Pix[o+3] = toByte(sa / div)
 			iAdd := rowOff + clamp(x+radius+1, 0, w-1)*4
 			iSub := rowOff + clamp(x-radius, 0, w-1)*4
 			sr += int(img.Pix[iAdd]) - int(img.Pix[iSub])
@@ -287,10 +287,10 @@ func boxBlur(img *image.RGBA, radius int) {
 		}
 		for y := 0; y < h; y++ {
 			o := img.PixOffset(x, y)
-			img.Pix[o] = uint8(sr / div)
-			img.Pix[o+1] = uint8(sg / div)
-			img.Pix[o+2] = uint8(sb2 / div)
-			img.Pix[o+3] = uint8(sa / div)
+			img.Pix[o] = toByte(sr / div)
+			img.Pix[o+1] = toByte(sg / div)
+			img.Pix[o+2] = toByte(sb2 / div)
+			img.Pix[o+3] = toByte(sa / div)
 			iAdd := tmp.PixOffset(x, clamp(y+radius+1, 0, h-1))
 			iSub := tmp.PixOffset(x, clamp(y-radius, 0, h-1))
 			sr += int(tmp.Pix[iAdd]) - int(tmp.Pix[iSub])
@@ -409,9 +409,9 @@ func drawRing(dst *image.RGBA, cx, cy, r, thickness int, c color.RGBA) {
 					existing := dst.RGBAAt(px, py)
 					ia := 255 - int(c.A)
 					dst.SetRGBA(px, py, color.RGBA{
-						R: uint8(min(255, int(c.R)+int(existing.R)*ia/255)),
-						G: uint8(min(255, int(c.G)+int(existing.G)*ia/255)),
-						B: uint8(min(255, int(c.B)+int(existing.B)*ia/255)),
+						R: toByte(int(c.R) + int(existing.R)*ia/255),
+						G: toByte(int(c.G) + int(existing.G)*ia/255),
+						B: toByte(int(c.B) + int(existing.B)*ia/255),
 						A: 255,
 					})
 				}
@@ -477,7 +477,7 @@ func fitText(f font.Face, s string, maxW int) string {
 	}
 	runes := []rune(s)
 	for len(runes) > 0 {
-		candidate := string(runes[:len(runes)]) + "…"
+		candidate := string(runes[:]) + "…"
 		if measure(f, candidate) <= maxW {
 			return candidate
 		}
@@ -533,4 +533,9 @@ func clamp(v, lo, hi int) int {
 		return hi
 	}
 	return v
+}
+
+// toByte clamps a channel sum into byte range for Pix writes.
+func toByte(v int) uint8 {
+	return uint8(clamp(v, 0, 255)) //#nosec G115 -- clamped to byte range
 }
