@@ -3,6 +3,8 @@
 
 import type { MusicLibraryAdapter } from "$lib/music/library-adapter";
 import type { MixFetchers } from "$lib/music/mix-generator";
+import type { PersonalRadioFetchers } from "$lib/music/personal-radio";
+import { getRelatedTracksCached } from "$lib/music/related-tracks-cache";
 import type { SubsonicSong } from "$lib/subsonic";
 import type { FavoriteTrack, ListenEntry } from "$lib/subsonic/types";
 
@@ -75,5 +77,34 @@ export function createMixFetchers(library: MusicLibraryAdapter): MixFetchers {
       }));
       return starred.songs ?? [];
     },
+  };
+}
+
+/**
+ * Fetchers for personal radio seeding. getRelatedTracks routes through the
+ * cached related-tracks lookup, which falls back to same-album and
+ * same-artist candidates when the server has no similar-songs data.
+ */
+export function createPersonalRadioFetchers(
+  library: MusicLibraryAdapter,
+): PersonalRadioFetchers {
+  return {
+    getSimilarSongs: (trackId, count) =>
+      library.getSimilarSongs(trackId, count).catch(() => []),
+    getRandomSongs: (count) =>
+      library.getRandomSongs(count).catch(() => []),
+    searchArtistSongs: async (artist, limit) => {
+      const result = await library.search3(artist, limit).catch(() => ({
+        songs: [] as SubsonicSong[],
+      }));
+      return result.songs.filter(
+        (song) => song.artist?.toLowerCase() === artist.toLowerCase(),
+      );
+    },
+    resolveTrack: (trackId) => library.getSong(trackId).catch(() => null),
+    getRelatedTracks: (track, count) =>
+      getRelatedTracksCached(library, track, count).catch(
+        () => [] as SubsonicSong[],
+      ),
   };
 }

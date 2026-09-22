@@ -632,6 +632,7 @@ class MusicStore {
       exploreBonus: settings.radioExploreBonus,
       albumLookback: settings.flowAlbumLookback,
       coldStart,
+      starredTrackIds: this.favoriteIds,
     };
   }
 
@@ -1046,7 +1047,7 @@ class MusicStore {
     return this.radioOps.playAllForever();
   }
 
-  async playPersonalRadio(count = 25) {
+  async playPersonalRadio(count = 50) {
     return this.radioOps.playPersonalRadio(count);
   }
 

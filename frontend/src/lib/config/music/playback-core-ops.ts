@@ -78,6 +78,7 @@ export interface MusicPlaybackCoreContext {
   recordNowPlaying(track: QueueTrack): Promise<void>;
   enrichCurrentTrack(trackId: string, token: number): Promise<void>;
   maybeCacheTrack(track: QueueTrack): void;
+  maybeRefillContinuousQueue(): Promise<boolean>;
   loadCurrentLyrics(): Promise<void>;
 }
 
@@ -148,6 +149,12 @@ export function onPlaybackStarted(
   void ctx.enrichCurrentTrack(track.id, token);
   if (!isInternetRadioTrack(track)) {
     void ctx.maybeCacheTrack(track);
+    // Top up continuous modes at track start rather than only at track
+    // end, so the queue visibly grows ahead of playback and a stalled
+    // refill retry never waits for the queue to run dry.
+    if (ctx.continuousMode !== "off") {
+      void ctx.maybeRefillContinuousQueue();
+    }
   }
   if (ctx.lyricsOpen) void ctx.loadCurrentLyrics();
 }

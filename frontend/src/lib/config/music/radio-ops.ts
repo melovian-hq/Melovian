@@ -22,6 +22,7 @@ import {
   type PersonalRadioState,
 } from "$lib/music/personal-radio";
 import type { MixSettings } from "$lib/music/mix-settings";
+import { createPersonalRadioFetchers } from "./helpers";
 import type { QueueSettings } from "$lib/music/queue-settings";
 import {
   trackFromRadioStation,
@@ -152,7 +153,7 @@ export async function playLibraryShuffle(ctx: MusicRadioContext) {
   }
 }
 
-export async function playPersonalRadio(ctx: MusicRadioContext, count = 25) {
+export async function playPersonalRadio(ctx: MusicRadioContext, count = 50) {
   if (ctx.continuousBusy !== "off") return;
   ctx.continuousBusy = "personal";
   toast.info("Building your personal radio…");
@@ -188,19 +189,7 @@ export async function playPersonalRadio(ctx: MusicRadioContext, count = 25) {
 
     const tracks = await seedPersonalRadioTracks(
       ctx.personalRadio,
-      {
-        getSimilarSongs: (trackId, c) =>
-          ctx.library.getSimilarSongs(trackId, c).catch(() => []),
-        getRandomSongs: (c) => ctx.library.getRandomSongs(c).catch(() => []),
-        searchArtistSongs: async (artist, limit) => {
-          const result = await ctx.library.search3(artist, limit).catch(() => ({
-            songs: [] as SubsonicSong[],
-          }));
-          return result.songs.filter(
-            (song) => song.artist?.toLowerCase() === artist.toLowerCase(),
-          );
-        },
-      },
+      createPersonalRadioFetchers(ctx.library),
       profile,
       history,
       stats,

@@ -169,6 +169,7 @@ export function createPlaybackCoreContext(
     enrichCurrentTrack: (trackId, token) =>
       store.enrichCurrentTrack(trackId, token),
     maybeCacheTrack: (track) => store.maybeCacheTrack(track),
+    maybeRefillContinuousQueue: () => store.maybeRefillContinuousQueue(),
     loadCurrentLyrics: () => store.loadCurrentLyrics(),
   };
 }

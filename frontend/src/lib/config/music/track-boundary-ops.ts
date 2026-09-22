@@ -30,6 +30,7 @@ import {
   type PersonalRadioState,
 } from "$lib/music/personal-radio";
 import { loadSavedPlayback } from "$lib/music/prefs";
+import { createPersonalRadioFetchers } from "./helpers";
 import {
   enforceQueueLimit,
   remainingQueueSlots,
@@ -61,6 +62,32 @@ import type {
 import type { PlayerLayout } from "./types";
 
 const MAX_FAILED_TRACK_SKIPS = 32;
+
+/**
+ * A refill slot that never settles would wedge every later refill for the
+ * rest of the session (hung upstream fetch, dead connection), so the
+ * in-flight guard expires on a timer even when run() is still pending.
+ */
+const CONTINUOUS_REFILL_TIMEOUT_MS = 20_000;
+
+function guardContinuousRefill(
+  ctx: MusicTrackBoundaryContext,
+  run: () => Promise<boolean>,
+): Promise<boolean> {
+  if (ctx.continuousRefillInFlight) {
+    return ctx.continuousRefillInFlight;
+  }
+  const timed = Promise.race([
+    run(),
+    new Promise<boolean>((resolve) =>
+      setTimeout(() => resolve(false), CONTINUOUS_REFILL_TIMEOUT_MS),
+    ),
+  ]).finally(() => {
+    ctx.continuousRefillInFlight = null;
+  });
+  ctx.continuousRefillInFlight = timed;
+  return timed;
+}
 
 export interface MusicTrackBoundaryContext {
   trackBoundaryBusy: boolean;
@@ -403,11 +430,7 @@ export async function refillLibraryQueue(
   ctx: MusicTrackBoundaryContext,
   count: number,
 ): Promise<boolean> {
-  if (ctx.continuousRefillInFlight) {
-    return ctx.continuousRefillInFlight;
-  }
-
-  const run = async (): Promise<boolean> => {
+  return guardContinuousRefill(ctx, async () => {
     const existingIds = new Set(ctx.queue.map((track) => track.id));
     const more = await pullLibraryTracks(
       ctx.libraryPool,
@@ -423,23 +446,14 @@ export async function refillLibraryQueue(
       existingIds,
     );
     return ctx.appendTracksToQueue(more);
-  };
-
-  ctx.continuousRefillInFlight = run().finally(() => {
-    ctx.continuousRefillInFlight = null;
   });
-  return ctx.continuousRefillInFlight;
 }
 
 export async function refillForeverQueue(
   ctx: MusicTrackBoundaryContext,
   count: number,
 ): Promise<boolean> {
-  if (ctx.continuousRefillInFlight) {
-    return ctx.continuousRefillInFlight;
-  }
-
-  const run = async (): Promise<boolean> => {
+  return guardContinuousRefill(ctx, async () => {
     const existingIds = new Set(ctx.queue.map((track) => track.id));
     const more = await pullForeverTracks(
       ctx.foreverPool,
@@ -455,23 +469,14 @@ export async function refillForeverQueue(
       existingIds,
     );
     return ctx.appendTracksToQueue(more);
-  };
-
-  ctx.continuousRefillInFlight = run().finally(() => {
-    ctx.continuousRefillInFlight = null;
   });
-  return ctx.continuousRefillInFlight;
 }
 
 export async function refillPersonalQueue(
   ctx: MusicTrackBoundaryContext,
   count: number,
 ): Promise<boolean> {
-  if (ctx.continuousRefillInFlight) {
-    return ctx.continuousRefillInFlight;
-  }
-
-  const run = async (): Promise<boolean> => {
+  return guardContinuousRefill(ctx, async () => {
     const history = ctx.listenHistory;
     const stats = ctx.stats;
     const playCountByTrack = new Map<string, number>();
@@ -493,19 +498,7 @@ export async function refillPersonalQueue(
     const existingIds = new Set(ctx.queue.map((track) => track.id));
     const more = await seedPersonalRadioTracks(
       ctx.personalRadio,
-      {
-        getSimilarSongs: (trackId, c) =>
-          ctx.library.getSimilarSongs(trackId, c).catch(() => []),
-        getRandomSongs: (c) => ctx.library.getRandomSongs(c).catch(() => []),
-        searchArtistSongs: async (artist, limit) => {
-          const result = await ctx.library
-            .search3(artist, limit)
-            .catch(() => ({ songs: [] as SubsonicSong[] }));
-          return result.songs.filter(
-            (song) => song.artist?.toLowerCase() === artist.toLowerCase(),
-          );
-        },
-      },
+      createPersonalRadioFetchers(ctx.library),
       profile,
       history,
       stats,
@@ -514,13 +507,21 @@ export async function refillPersonalQueue(
       (entry) => ctx.entryToSong(entry),
       ctx.personalRadioOptions(false),
     );
-    return ctx.appendTracksToQueue(more);
-  };
-
-  ctx.continuousRefillInFlight = run().finally(() => {
-    ctx.continuousRefillInFlight = null;
+    if (more.length > 0) {
+      return ctx.appendTracksToQueue(more);
+    }
+    // The candidate pool can come back empty when the similar endpoint is
+    // dead or everything scored out. Fall back to random draws so the
+    // stream never dies on an empty refill.
+    const fresh = filterUniqueTracks(
+      await ctx.library
+        .getRandomSongs(Math.max(count, CONTINUOUS_REFILL_BATCH * 2))
+        .catch(() => [] as SubsonicSong[]),
+      existingIds,
+    );
+    if (fresh.length === 0) return false;
+    return ctx.appendTracksToQueue(fresh);
   });
-  return ctx.continuousRefillInFlight;
 }
 
 export function appendTracksToQueue(
@@ -572,11 +573,7 @@ export async function appendRandomSongsToQueue(
   ctx: MusicTrackBoundaryContext,
   count: number,
 ): Promise<boolean> {
-  if (ctx.continuousRefillInFlight) {
-    return ctx.continuousRefillInFlight;
-  }
-
-  const run = async (): Promise<boolean> => {
+  return guardContinuousRefill(ctx, async () => {
     const slots = remainingQueueSlots(
       ctx.queue.length,
       ctx.queueSettings.maxQueueSize,
@@ -606,12 +603,7 @@ export async function appendRandomSongsToQueue(
     if (fresh.length === 0) return false;
 
     return ctx.appendTracksToQueue(fresh);
-  };
-
-  ctx.continuousRefillInFlight = run().finally(() => {
-    ctx.continuousRefillInFlight = null;
   });
-  return ctx.continuousRefillInFlight;
 }
 
 export function skipFailedTrack(
