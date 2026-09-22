@@ -26,10 +26,12 @@ type ProxyHandler struct {
 	resolver       *apishared.Resolver
 	sources        *sources.Registry
 	cache          *cache.ResponseCache
+	fallbackProxy  http.Handler
+	deps           sources.Deps
 }
 
 func NewProxyHandler(cfg appconfig.Config, instances *store.InstanceStore, localLibraries *store.LocalLibraryStore, localTracks *store.LocalTrackStore, preferences *store.PreferencesStore, resolver *apishared.Resolver, reg *sources.Registry, cache *cache.ResponseCache) *ProxyHandler {
-	return &ProxyHandler{
+	h := &ProxyHandler{
 		cfg:            cfg,
 		instances:      instances,
 		localLibraries: localLibraries,
@@ -39,6 +41,16 @@ func NewProxyHandler(cfg appconfig.Config, instances *store.InstanceStore, local
 		sources:        reg,
 		cache:          cache,
 	}
+	h.fallbackProxy = subsonic.NewProxy(h.subsonicForContext, cache, cfg.CacheEnabled, apishared.ResolveProgressUserID)
+	h.deps = sources.Deps{
+		Cache:        cache,
+		CacheEnabled: cfg.CacheEnabled,
+		CacheScope:   apishared.ResolveProgressUserID,
+		ClientFor: func(inst store.SourceInstance) *subsonic.Client {
+			return h.resolver.CachedClient(inst.ID, inst.ServerURL, inst.Username, inst.Password)
+		},
+	}
+	return h
 }
 
 func (h *ProxyHandler) subsonicForContext(ctx context.Context) *subsonic.Client {
@@ -172,13 +184,12 @@ func (h *ProxyHandler) Register(mux *http.ServeMux) {
 	})
 	mux.HandleFunc("POST /api/music/library/refresh", h.handleRefreshLibraryCache)
 
-	proxy := subsonic.NewProxy(h.subsonicForContext, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID)
 	if h.sources != nil {
 		mux.Handle("/api/subsonic/", http.HandlerFunc(h.serveSourceREST))
 		mux.Handle("/api/subsonic", http.HandlerFunc(h.serveSourceREST))
 	} else {
-		mux.Handle("/api/subsonic/", proxy)
-		mux.Handle("/api/subsonic", proxy)
+		mux.Handle("/api/subsonic/", h.fallbackProxy)
+		mux.Handle("/api/subsonic", h.fallbackProxy)
 	}
 }
 
@@ -189,13 +200,8 @@ func (h *ProxyHandler) sourceUnavailable(w http.ResponseWriter, r *http.Request)
 	if h.sources == nil {
 		return false
 	}
-	userID := apishared.UserIDFromContext(r.Context())
-	instanceID, err := h.resolver.ResolveInstanceID(r)
-	if err != nil || instanceID == "" {
-		return false
-	}
-	inst, err := h.instances.GetForUser(userID, instanceID)
-	if err != nil {
+	inst, ok := h.instanceForRequest(r)
+	if !ok {
 		return false
 	}
 	status := subsonic.StatusResponse{Enabled: true, Connected: false}
@@ -213,35 +219,35 @@ func (h *ProxyHandler) sourceUnavailable(w http.ResponseWriter, r *http.Request)
 	return false
 }
 
-// sourceDeps builds the shared infrastructure handed to a source while it
-// serves one request.
-func (h *ProxyHandler) sourceDeps() sources.Deps {
-	return sources.Deps{
-		Cache:        h.cache,
-		CacheEnabled: h.cfg.CacheEnabled,
-		CacheScope:   apishared.ResolveProgressUserID,
-		ClientFor: func(inst store.SourceInstance) *subsonic.Client {
-			return h.resolver.CachedClient(inst.ID, inst.ServerURL, inst.Username, inst.Password)
-		},
-	}
-}
-
 // serveSourceREST dispatches a proxied request to the source extension
 // backing the resolved instance. Requests with no resolvable instance
 // fall back to the legacy active-client proxy.
 func (h *ProxyHandler) serveSourceREST(w http.ResponseWriter, r *http.Request) {
+	inst, ok := h.instanceForRequest(r)
+	if !ok {
+		h.fallbackProxy.ServeHTTP(w, r)
+		return
+	}
+	h.sources.ServeREST(w, r, inst, h.deps)
+}
+
+// instanceForRequest returns the instance row for this request, reusing the
+// row the middleware already resolved when available so a proxied call does
+// not re-read and re-decrypt the same record.
+func (h *ProxyHandler) instanceForRequest(r *http.Request) (store.SourceInstance, bool) {
+	if inst, ok := apishared.ResolvedInstanceFromContext(r.Context()); ok {
+		return inst, inst.ID != ""
+	}
 	userID := apishared.UserIDFromContext(r.Context())
 	instanceID, err := h.resolver.ResolveInstanceID(r)
 	if err != nil || instanceID == "" {
-		subsonic.NewProxy(h.subsonicForContext, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID).ServeHTTP(w, r)
-		return
+		return store.SourceInstance{}, false
 	}
 	inst, err := h.instances.GetForUser(userID, instanceID)
 	if err != nil {
-		subsonic.NewProxy(h.subsonicForContext, h.cache, h.cfg.CacheEnabled, apishared.ResolveProgressUserID).ServeHTTP(w, r)
-		return
+		return store.SourceInstance{}, false
 	}
-	h.sources.ServeREST(w, r, inst, h.sourceDeps())
+	return inst, true
 }
 
 func (h *ProxyHandler) handleRefreshLibraryCache(w http.ResponseWriter, r *http.Request) {

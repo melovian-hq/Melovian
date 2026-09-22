@@ -142,6 +142,11 @@ func (r *Router) RemoveSource(src *Source) {
 func (r *Router) readLoop(src *Source) {
 	defer r.wg.Done()
 	chunk := make([]byte, chunkBytes)
+	idle := time.NewTimer(0)
+	if !idle.Stop() {
+		<-idle.C
+	}
+	defer idle.Stop()
 	for {
 		n, err := src.file.Read(chunk)
 		if n > 0 {
@@ -168,10 +173,11 @@ func (r *Router) readLoop(src *Source) {
 			continue
 		}
 		if n == 0 {
+			idle.Reset(10 * time.Millisecond)
 			select {
 			case <-r.done:
 				return
-			case <-time.After(10 * time.Millisecond):
+			case <-idle.C:
 			}
 		}
 	}

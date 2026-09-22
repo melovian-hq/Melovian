@@ -18,6 +18,9 @@ var (
 
 	streamTransportOnce sync.Once
 	streamTransport     http.RoundTripper
+
+	publicTransportOnce sync.Once
+	publicTransport     *http.Transport
 )
 
 func APITransport() http.RoundTripper {
@@ -39,6 +42,13 @@ func StreamTransport() http.RoundTripper {
 // private, or link-local targets (cloud metadata endpoints, LAN hosts)
 // are refused even though the request URL itself looked fine.
 func PublicOnlyTransport() *http.Transport {
+	publicTransportOnce.Do(func() {
+		publicTransport = newPublicOnlyTransport()
+	})
+	return publicTransport
+}
+
+func newPublicOnlyTransport() *http.Transport {
 	t := newPooledTransport(8, 16)
 	dialer := &net.Dialer{Timeout: 10 * time.Second, KeepAlive: 30 * time.Second}
 	t.DialContext = func(ctx context.Context, network, addr string) (net.Conn, error) {

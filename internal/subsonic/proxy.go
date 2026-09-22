@@ -59,7 +59,7 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	target, err := url.Parse(client.ServerURL)
+	target, err := client.parsedBaseURL()
 	if err != nil {
 		http.Error(w, "invalid server url", http.StatusInternalServerError)
 		return
@@ -70,13 +70,10 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 		path = "/"
 	}
 
-	query := r.URL.Query()
-	query.Del("_instance")
-	cacheable := ShouldCacheRequest(r.Method, path) && !randomDraw(path, query)
-	if !isPublicSharePath(path) {
-		query = client.InjectAuth(query)
-	}
-	rewrittenQuery := query.Encode()
+	// The cache key derives from the raw request, so the lookup runs before
+	// query parsing and auth injection. On a hit those steps are skipped
+	// entirely.
+	cacheable := ShouldCacheRequest(r.Method, path) && !randomDraw(path, r.URL.RawQuery)
 	key := cache.Key(r.Method, path, r.URL.RawQuery)
 	if p.cacheScope != nil {
 		if scope := p.cacheScope(r.Context()); scope != "" {
@@ -90,6 +87,13 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 			return
 		}
 	}
+
+	query := r.URL.Query()
+	query.Del("_instance")
+	if !isPublicSharePath(path) {
+		query = client.InjectAuth(query)
+	}
+	rewrittenQuery := query.Encode()
 
 	upstreamURL := *target
 	upstreamURL.Path = path
@@ -177,11 +181,16 @@ func (p *Proxy) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 // randomDraw reports whether the endpoint must return a fresh random result
 // on every call. Caching these serves the identical batch to continuous-mode
 // queue refills, which then dedupe to nothing and stall playback.
-func randomDraw(path string, query url.Values) bool {
+func randomDraw(path, rawQuery string) bool {
 	if strings.Contains(path, "getRandomSongs") {
 		return true
 	}
-	return strings.Contains(path, "getAlbumList") && query.Get("type") == "random"
+	if !strings.Contains(path, "getAlbumList") || !strings.Contains(rawQuery, "type=") {
+		return false
+	}
+	// Only getAlbumList requests that mention a type reach this parse.
+	values, err := url.ParseQuery(rawQuery)
+	return err == nil && values.Get("type") == "random"
 }
 
 func stripUpstreamCORS(header http.Header) {

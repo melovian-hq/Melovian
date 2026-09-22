@@ -61,6 +61,7 @@ func (h *Handler) registerDebugRoutes(mux *http.ServeMux) {
 	mux.Handle("GET /debug/pprof/heap", pprof.Handler("heap"))
 	mux.Handle("GET /debug/pprof/allocs", pprof.Handler("allocs"))
 	mux.Handle("GET /debug/pprof/goroutine", pprof.Handler("goroutine"))
+	mux.Handle("GET /debug/pprof/goroutineleak", pprof.Handler("goroutineleak"))
 	mux.Handle("GET /debug/pprof/threadcreate", pprof.Handler("threadcreate"))
 	mux.Handle("GET /debug/pprof/block", pprof.Handler("block"))
 	mux.Handle("GET /debug/pprof/mutex", pprof.Handler("mutex"))

@@ -192,6 +192,15 @@ func (h *Handler) smartPlaylistCapability(r *http.Request) (bool, string, string
 }
 
 func (h *Handler) subsonicInstanceForRequest(r *http.Request) (store.SourceInstance, error) {
+	if inst, ok := apishared.ResolvedInstanceFromContext(r.Context()); ok {
+		if inst.ID == "" {
+			return store.SourceInstance{}, errors.New("no subsonic instance configured")
+		}
+		if strings.TrimSpace(inst.ServerURL) == "" {
+			return store.SourceInstance{}, errors.New("subsonic server URL is missing")
+		}
+		return inst, nil
+	}
 	instanceID, err := h.resolver.ResolveInstanceID(r)
 	if err != nil {
 		return store.SourceInstance{}, err

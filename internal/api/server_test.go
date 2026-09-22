@@ -33,6 +33,18 @@ func newTestServer(t *testing.T) (*Server, *store.DB) {
 	return NewServer(cfg, db), db
 }
 
+// outsideBrowseRoots returns a directory guaranteed to sit outside the
+// filesystem browse allowlist. The allowlist includes the user's home dir,
+// and on machines where TMPDIR lives under HOME a plain t.TempDir would
+// count as inside the roots.
+func outsideBrowseRoots(t *testing.T) string {
+	t.Helper()
+	fakeHome := t.TempDir()
+	t.Setenv("HOME", fakeHome)
+	t.Setenv("USERPROFILE", fakeHome)
+	return t.TempDir()
+}
+
 func newTestServerWithLocalLibrary(t *testing.T) (*Server, *store.DB) {
 	t.Helper()
 	dir := t.TempDir()

@@ -359,7 +359,7 @@ func TestFilesystemBrowseRejectsSymlinkEscape(t *testing.T) {
 	srv, _ := newTestServer(t)
 	handler := srv.Handler()
 
-	outside := t.TempDir()
+	outside := outsideBrowseRoots(t)
 	link := filepath.Join(srv.cfg.DataDir, "escape-link")
 	if err := os.Symlink(outside, link); err != nil {
 		t.Skipf("symlink unsupported: %v", err)
@@ -389,7 +389,7 @@ func TestLocalLibraryPathRestrictedInServerMode(t *testing.T) {
 	handler := srv.Handler()
 	cookie := setupUser(t, handler, "admin", "password123")
 
-	outside := t.TempDir()
+	outside := outsideBrowseRoots(t)
 	body := bytes.NewBufferString(`{"name":"escape","path":"` + outside + `"}`)
 	req := httptest.NewRequest(http.MethodPost, "/api/local-libraries", body)
 	req.AddCookie(cookie)

@@ -94,7 +94,7 @@ func TestListDirectoriesListsChildren(t *testing.T) {
 
 func TestListDirectoriesRejectsOutsideBrowseRoots(t *testing.T) {
 	srv, _ := newAuthTestServer(t)
-	outside := t.TempDir()
+	outside := outsideBrowseRoots(t)
 	if err := os.Mkdir(filepath.Join(outside, "Music"), 0o750); err != nil {
 		t.Fatal(err)
 	}

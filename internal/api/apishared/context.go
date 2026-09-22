@@ -22,6 +22,7 @@ const (
 	deviceContextKey ctxKey = iota
 	instanceContextKey
 	userContextKey
+	resolvedInstanceContextKey
 )
 
 func WithDeviceID(ctx context.Context, deviceID string) context.Context {
@@ -30,6 +31,21 @@ func WithDeviceID(ctx context.Context, deviceID string) context.Context {
 
 func WithInstanceID(ctx context.Context, instanceID string) context.Context {
 	return context.WithValue(ctx, instanceContextKey, instanceID)
+}
+
+// WithResolvedInstance carries the instance row the request middleware
+// already fetched so downstream handlers skip a second database read and
+// credential decrypt for the same instance.
+func WithResolvedInstance(ctx context.Context, inst store.SourceInstance) context.Context {
+	return context.WithValue(ctx, resolvedInstanceContextKey, inst)
+}
+
+// ResolvedInstanceFromContext returns the middleware-resolved instance. The
+// bool reports whether resolution ran at all; a zero-value instance with
+// ok=true means the request resolved to no instance.
+func ResolvedInstanceFromContext(ctx context.Context) (store.SourceInstance, bool) {
+	v, ok := ctx.Value(resolvedInstanceContextKey).(store.SourceInstance)
+	return v, ok
 }
 
 func WithUserID(ctx context.Context, userID string) context.Context {

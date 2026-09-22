@@ -40,6 +40,21 @@ func Middleware(resolver InstanceResolver, next http.Handler) http.Handler {
 			next.ServeHTTP(w, r.WithContext(ctx))
 			return
 		}
+		// Resolvers that can return the full instance row stash it on the
+		// context so handlers do not re-query and re-decrypt the same record.
+		if full, ok := resolver.(interface {
+			ResolveInstance(*http.Request) (store.SourceInstance, error)
+		}); ok {
+			inst, err := full.ResolveInstance(r)
+			if err != nil {
+				httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())
+				return
+			}
+			ctx = apishared.WithInstanceID(ctx, inst.ID)
+			ctx = apishared.WithResolvedInstance(ctx, inst)
+			next.ServeHTTP(w, r.WithContext(ctx))
+			return
+		}
 		instanceID, err := resolver.ResolveInstanceID(r)
 		if err != nil {
 			httputil.WriteError(w, http.StatusBadRequest, "bad_request", err.Error())

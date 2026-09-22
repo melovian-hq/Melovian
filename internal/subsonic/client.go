@@ -11,10 +11,10 @@ import (
 	"encoding/xml"
 	"fmt"
 	"io"
-	"maps"
 	"net/http"
 	"net/url"
 	"strings"
+	"sync"
 	"time"
 
 	"melovian/internal/consts"
@@ -31,6 +31,12 @@ type Client struct {
 	Password  string
 	client    *http.Client
 	stream    *http.Client
+
+	authOnce  sync.Once
+	authSalt  string
+	authToken string
+	urlOnce   sync.Once
+	baseURL   *url.URL
 }
 
 type PingResponse struct {
@@ -77,12 +83,36 @@ func (s *Client) Enabled() bool {
 	return s.ServerURL != "" && s.Username != "" && s.Password != ""
 }
 
+// authCredentials lazily derives the token and salt once per client. The
+// Subsonic token is a bearer credential (t = md5(password + s)) verified
+// against whatever salt the client sends, so one salt per client is valid
+// and avoids a rand.Read + md5 + hex on every request.
+func (s *Client) authCredentials() (token, salt string) {
+	s.authOnce.Do(func() {
+		s.authSalt = randomSalt()
+		sum := md5.Sum([]byte(s.Password + s.authSalt)) //#nosec G401 -- Subsonic API mandated token = md5(password + salt)
+		s.authToken = hex.EncodeToString(sum[:])
+	})
+	return s.authToken, s.authSalt
+}
+
+// parsedBaseURL caches url.Parse(ServerURL). Proxying runs it once per
+// request otherwise.
+func (s *Client) parsedBaseURL() (*url.URL, error) {
+	s.urlOnce.Do(func() {
+		s.baseURL, _ = url.Parse(s.ServerURL)
+	})
+	if s.baseURL == nil {
+		return nil, fmt.Errorf("invalid server url %q", s.ServerURL)
+	}
+	return s.baseURL, nil
+}
+
 func (s *Client) authParams() url.Values {
-	salt := randomSalt()
-	token := md5.Sum([]byte(s.Password + salt)) //#nosec G401 -- Subsonic API mandated token = md5(password + salt)
+	token, salt := s.authCredentials()
 	return url.Values{
 		"u": {s.Username},
-		"t": {hex.EncodeToString(token[:])},
+		"t": {token},
 		"s": {salt},
 		"v": {Version},
 		"c": {ClientName},
@@ -97,19 +127,22 @@ func randomSalt() string {
 	return hex.EncodeToString(buf)
 }
 
+// InjectAuth replaces any caller-supplied auth params with this client's
+// credentials. Callers pass a fresh url.Values (from r.URL.Query or a
+// literal), so it mutates in place rather than cloning.
 func (s *Client) InjectAuth(query url.Values) url.Values {
-	auth := s.authParams()
-	merged := make(url.Values, len(query)+len(auth))
-	for key, values := range query {
+	token, salt := s.authCredentials()
+	for key := range query {
 		if isAuthParam(key) {
-			continue
-		}
-		for _, value := range values {
-			merged.Add(key, value)
+			delete(query, key)
 		}
 	}
-	maps.Copy(merged, auth)
-	return merged
+	query.Set("u", s.Username)
+	query.Set("t", token)
+	query.Set("s", salt)
+	query.Set("v", Version)
+	query.Set("c", ClientName)
+	return query
 }
 
 func isAuthParam(key string) bool {

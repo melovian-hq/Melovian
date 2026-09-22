@@ -216,14 +216,14 @@ func CloneHeader(header http.Header) http.Header {
 }
 
 func WriteCachedResponse(w http.ResponseWriter, entry Entry, cacheStatus string) {
+	header := w.Header()
 	for key, values := range entry.Header {
 		if len(values) == 0 {
 			continue
 		}
-		w.Header().Set(key, values[0])
-		for _, value := range values[1:] {
-			w.Header().Add(key, value)
-		}
+		// Keys are already canonical from CloneHeader. Assigning the slice
+		// skips the per-value canonicalization Set and Add would redo.
+		header[key] = values
 	}
 	w.Header().Set("X-Cache", cacheStatus)
 	w.WriteHeader(entry.StatusCode)

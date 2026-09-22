@@ -6,7 +6,7 @@ package localmusic
 import (
 	"crypto/rand"
 	"math/big"
-	"sort"
+	"slices"
 	"strings"
 
 	"melovian/internal/store"
@@ -165,18 +165,18 @@ func BuildCatalog(tracks []store.CatalogTrack) Catalog {
 		artist.AlbumCount = len(albumIDs)
 		artists[artistID] = artist
 
-		sort.Slice(albumIDs, func(i, j int) bool {
-			return albums[albumIDs[i]].sortName < albums[albumIDs[j]].sortName
+		slices.SortFunc(albumIDs, func(a, b string) int {
+			return strings.Compare(albums[a].sortName, albums[b].sortName)
 		})
 	}
 
 	for albumID, ids := range songsByAlbum {
-		sort.Slice(ids, func(i, j int) bool {
-			si, sj := songs[ids[i]], songs[ids[j]]
-			if si.Track != sj.Track {
-				return si.Track < sj.Track
+		slices.SortFunc(ids, func(a, b string) int {
+			sa, sb := songs[a], songs[b]
+			if sa.Track != sb.Track {
+				return sa.Track - sb.Track
 			}
-			return si.sortTitle < sj.sortTitle
+			return strings.Compare(sa.sortTitle, sb.sortTitle)
 		})
 		songsByAlbum[albumID] = ids
 	}
@@ -187,35 +187,30 @@ func BuildCatalog(tracks []store.CatalogTrack) Catalog {
 		artistList = append(artistList, artist)
 		artistsByID[artist.ID] = artist
 	}
-	sort.Slice(artistList, func(i, j int) bool {
-		return artistList[i].sortName < artistList[j].sortName
+	slices.SortFunc(artistList, func(a, b Artist) int {
+		return strings.Compare(a.sortName, b.sortName)
 	})
 
-	albumList := make([]Album, 0, len(albums))
+	albumsByName := make([]Album, 0, len(albums))
 	for _, album := range albums {
-		albumList = append(albumList, album)
+		albumsByName = append(albumsByName, album)
 	}
-
-	albumsByName := make([]Album, len(albumList))
-	copy(albumsByName, albumList)
-	sort.Slice(albumsByName, func(i, j int) bool {
-		return albumsByName[i].sortName < albumsByName[j].sortName
+	slices.SortFunc(albumsByName, func(a, b Album) int {
+		return strings.Compare(a.sortName, b.sortName)
 	})
 
-	albumsByIDDesc := make([]Album, len(albumList))
-	copy(albumsByIDDesc, albumList)
-	sort.Slice(albumsByIDDesc, func(i, j int) bool {
-		return albumsByIDDesc[i].ID > albumsByIDDesc[j].ID
+	albumsByIDDesc := make([]Album, len(albumsByName))
+	copy(albumsByIDDesc, albumsByName)
+	slices.SortFunc(albumsByIDDesc, func(a, b Album) int {
+		return strings.Compare(b.ID, a.ID)
 	})
 
-	songList := make([]Song, 0, len(songs))
+	songsByIDAsc := make([]Song, 0, len(songs))
 	for _, song := range songs {
-		songList = append(songList, song)
+		songsByIDAsc = append(songsByIDAsc, song)
 	}
-	songsByIDAsc := make([]Song, len(songList))
-	copy(songsByIDAsc, songList)
-	sort.Slice(songsByIDAsc, func(i, j int) bool {
-		return songsByIDAsc[i].ID < songsByIDAsc[j].ID
+	slices.SortFunc(songsByIDAsc, func(a, b Song) int {
+		return strings.Compare(a.ID, b.ID)
 	})
 
 	return Catalog{
@@ -295,11 +290,11 @@ func (c Catalog) AlbumList(listType string, size int, offset int) []Album {
 		return sliceAlbums(c.albumsByName, size, offset)
 	case "frequent":
 		albums := append([]Album{}, c.albumsByName...)
-		sort.Slice(albums, func(i, j int) bool {
-			if albums[i].SongCount == albums[j].SongCount {
-				return albums[i].sortName < albums[j].sortName
+		slices.SortFunc(albums, func(a, b Album) int {
+			if a.SongCount != b.SongCount {
+				return b.SongCount - a.SongCount
 			}
-			return albums[i].SongCount > albums[j].SongCount
+			return strings.Compare(a.sortName, b.sortName)
 		})
 		return sliceAlbums(albums, size, offset)
 	case "random":

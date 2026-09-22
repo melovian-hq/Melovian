@@ -33,34 +33,46 @@ func NewResolver(instances *store.InstanceStore) *Resolver {
 }
 
 func (r *Resolver) ResolveInstanceID(req *http.Request) (string, error) {
+	inst, err := r.ResolveInstance(req)
+	if err != nil {
+		return "", err
+	}
+	return inst.ID, nil
+}
+
+// ResolveInstance resolves the request's target instance once, returning the
+// full row. A zero-value instance means no instance is configured.
+func (r *Resolver) ResolveInstance(req *http.Request) (store.SourceInstance, error) {
 	headerValue := InstanceIDFromRequest(req)
 	userID := UserIDFromContext(req.Context())
 
 	if headerValue != "" {
-		if _, err := r.instances.GetForUser(userID, headerValue); err != nil {
+		inst, err := r.instances.GetForUser(userID, headerValue)
+		if err != nil {
 			if errors.Is(err, sql.ErrNoRows) {
-				return "", errors.New("unknown instance id")
+				return store.SourceInstance{}, errors.New("unknown instance id")
 			}
-			return "", err
+			return store.SourceInstance{}, err
 		}
-		return headerValue, nil
+		return inst, nil
 	}
 
 	activeID, err := r.instances.GetActiveIDForUser(userID)
 	if err != nil {
-		return "", err
+		return store.SourceInstance{}, err
 	}
 	if activeID == "" {
-		return "", nil
+		return store.SourceInstance{}, nil
 	}
-	if _, err := r.instances.GetForUser(userID, activeID); err != nil {
+	inst, err := r.instances.GetForUser(userID, activeID)
+	if err != nil {
 		if errors.Is(err, sql.ErrNoRows) {
 			_ = r.instances.ClearActiveForUser(userID)
-			return "", nil
+			return store.SourceInstance{}, nil
 		}
-		return "", err
+		return store.SourceInstance{}, err
 	}
-	return activeID, nil
+	return inst, nil
 }
 
 func (r *Resolver) ReloadActive() error {
@@ -123,8 +135,18 @@ func (r *Resolver) ClientCacheSize() int {
 }
 
 func (r *Resolver) ForContext(ctx context.Context) *subsonic.Client {
-	instanceID := InstanceIDFromContext(ctx)
 	userID := UserIDFromContext(ctx)
+	if inst, ok := ResolvedInstanceFromContext(ctx); ok {
+		if inst.ID == "" {
+			if userID != "" {
+				return subsonic.NewClient("", "", "")
+			}
+			return r.Active()
+		}
+		return r.CachedClient(inst.ID, inst.ServerURL, inst.Username, inst.Password)
+	}
+
+	instanceID := InstanceIDFromContext(ctx)
 	if instanceID == "" {
 		if userID != "" {
 			return subsonic.NewClient("", "", "")

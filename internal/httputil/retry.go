@@ -56,13 +56,24 @@ func (t *retryTransport) RoundTrip(req *http.Request) (*http.Response, error) {
 	}
 
 	var lastErr error
+	var timer *time.Timer
+	defer func() {
+		if timer != nil {
+			timer.Stop()
+		}
+	}()
 	for attempt := range 3 {
 		if attempt > 0 {
 			backoff := time.Duration(attempt*attempt) * 200 * time.Millisecond
+			if timer == nil {
+				timer = time.NewTimer(backoff)
+			} else {
+				timer.Reset(backoff)
+			}
 			select {
 			case <-req.Context().Done():
 				return nil, req.Context().Err()
-			case <-time.After(backoff):
+			case <-timer.C:
 			}
 		}
 
