@@ -9,8 +9,42 @@
   import * as musicApi from "$lib/music/api";
   import type { MusicShare } from "$lib/music/api";
   import { createAsyncPage } from "$lib/ui/async-page.svelte";
+  import { router } from "$lib/router/router.svelte";
+  import { toast } from "$lib/ui/toast.svelte";
+  import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
+  import {
+    contextMenu,
+    type ContextMenuEntry,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
 
   let items = $state<MusicShare[]>([]);
+  let shareMenu = $state<(ContextMenuPosition & { share: MusicShare }) | null>(
+    null,
+  );
+
+  function shareMenuItems(share: MusicShare): ContextMenuEntry[] {
+    return [
+      {
+        id: "open",
+        label: "Open",
+        icon: "share",
+        onclick: () => router.navigate(`/share/${share.token}`),
+      },
+      {
+        id: "copy",
+        label: "Copy link",
+        icon: "link",
+        onclick: () => {
+          const url = `${window.location.origin}/share/${share.token}`;
+          void navigator.clipboard
+            ?.writeText(url)
+            .then(() => toast.success("Link copied"))
+            .catch(() => toast.error("Could not copy link"));
+        },
+      },
+    ];
+  }
 
   const page = createAsyncPage<MusicShare[]>({
     errorMessage: "Failed to load inbox",
@@ -68,7 +102,7 @@
   {:else}
     <ul class="shared-inbox__list">
       {#each items as share (share.id)}
-        <li>
+        <li use:contextMenu={(pos) => (shareMenu = { ...pos, share })}>
           <Link href="/share/{share.token}" class="shared-inbox__card">
             <span class="shared-inbox__icon" aria-hidden="true">
               <MdiIcon name="share" size={20} />
@@ -89,6 +123,16 @@
     </ul>
   {/if}
 </div>
+
+{#if shareMenu}
+  <ContextMenu
+    x={shareMenu.x}
+    y={shareMenu.y}
+    label="{label(shareMenu.share)} actions"
+    items={shareMenuItems(shareMenu.share)}
+    onclose={() => (shareMenu = null)}
+  />
+{/if}
 
 <style>
   .shared-inbox {

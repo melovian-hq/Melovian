@@ -67,8 +67,12 @@ export function restoreCachedMixes(ctx: MusicMixContext) {
 }
 
 export async function refreshPersonalization(ctx: MusicMixContext) {
-  await ctx.refreshMixes();
-  void ctx.refreshRecommendations().catch(() => {});
+  // Recommendations feed home feed shelves, so the settle flag must not drop
+  // until they resolve too, or late shelves still shift painted content.
+  await Promise.all([
+    ctx.refreshMixes(),
+    ctx.refreshRecommendations().catch(() => {}),
+  ]);
   ctx.personalizationFetchedAt = Date.now();
 }
 

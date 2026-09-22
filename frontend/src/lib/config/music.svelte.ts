@@ -672,8 +672,12 @@ class MusicStore {
 
   private async refreshPersonalization() {
     try {
-      await this.refreshMixes();
-      void this.refreshRecommendations().catch(() => {});
+      // Recommendations feed home feed shelves, so the settle flag must not
+      // drop until they resolve too, or late shelves still shift content.
+      await Promise.all([
+        this.refreshMixes(),
+        this.refreshRecommendations().catch(() => {}),
+      ]);
       this.personalizationFetchedAt = Date.now();
     } finally {
       this.endHomeFeedSettling();

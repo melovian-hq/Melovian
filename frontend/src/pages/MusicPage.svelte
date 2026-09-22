@@ -122,6 +122,7 @@
       music.loading ||
       (music.connected && music.homeFeedSettling && !hasContent),
   );
+  const feedSettling = $derived(music.connected && music.homeFeedSettling);
 
   const laterShelves = $derived.by(() => {
     const used = new Set<string>([...homeHidden.albums]);
@@ -228,91 +229,117 @@
       {/snippet}
     </EmptyState>
   {:else}
-    <HomeShortcutGrid {shortcuts} />
-
-    {#if jumpBackAlbums.length > 0}
-      <HomeShelf title="Jump back in" href="/music/history">
-        {#each jumpBackAlbums as album (album.id)}
-          <AlbumCard {album} size="sm" hideable />
+    {#if feedSettling}
+      <div class="skeleton-shortcuts" aria-hidden="true">
+        {#each Array.from({ length: 8 }) as _, i (i)}
+          <Skeleton class="skeleton-shortcut" />
         {/each}
-      </HomeShelf>
-    {/if}
+      </div>
+      <div class="home-shelves-pending" aria-hidden="true">
+        {@render pendingShelf()}
+        {@render pendingShelf()}
+      </div>
+    {:else}
+      <HomeShortcutGrid {shortcuts} />
+      {#if jumpBackAlbums.length > 0}
+        <HomeShelf title="Jump back in" href="/music/history">
+          {#each jumpBackAlbums as album (album.id)}
+            <AlbumCard {album} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if visibleMixes.length > 0}
-      <HomeShelf title="Made for you">
-        {#snippet action()}
-          <button
-            type="button"
-            class="mix-refresh-btn"
-            disabled={music.mixesRegenerating}
-            onclick={() => void regenerateMixes()}
-          >
-            {music.mixesRegenerating ? "Refreshing..." : "Refresh mixes"}
-          </button>
-        {/snippet}
-        {#each visibleMixes as mix (mix.id)}
-          <MixCard {mix} displayStyle={mixDisplayStyle} hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if visibleMixes.length > 0}
+        <HomeShelf title="Made for you">
+          {#snippet action()}
+            <button
+              type="button"
+              class="mix-refresh-btn"
+              disabled={music.mixesRegenerating}
+              onclick={() => void regenerateMixes()}
+            >
+              {music.mixesRegenerating ? "Refreshing..." : "Refresh mixes"}
+            </button>
+          {/snippet}
+          {#each visibleMixes as mix (mix.id)}
+            <MixCard {mix} displayStyle={mixDisplayStyle} hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if because}
-      <HomeShelf title="Because you listened to {because.artist}">
-        {#each because.albums as album (album.id)}
-          <AlbumCard {album} size="sm" hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if because}
+        <HomeShelf title="Because you listened to {because.artist}">
+          {#each because.albums as album (album.id)}
+            <AlbumCard {album} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if playlists.length > 0}
-      <HomeShelf title="Your playlists" href="/music/playlists">
-        {#each playlists as playlist (playlist.id)}
-          <HomePlaylistCard {playlist} hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if playlists.length > 0}
+        <HomeShelf title="Your playlists" href="/music/playlists">
+          {#each playlists as playlist (playlist.id)}
+            <HomePlaylistCard {playlist} hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if visibleArtists.length > 0}
-      <HomeShelf title="Your favorite artists" href="/music/favorites">
-        {#each visibleArtists.slice(0, 12) as artist (artist.id)}
-          <ArtistCard {artist} size="sm" hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if visibleArtists.length > 0}
+        <HomeShelf title="Your favorite artists" href="/music/favorites">
+          {#each visibleArtists.slice(0, 12) as artist (artist.id)}
+            <ArtistCard {artist} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if laterShelves.favoriteAlbums.length > 0}
-      <HomeShelf title="Favorite albums" href="/music/favorites">
-        {#each laterShelves.favoriteAlbums as album (album.id)}
-          <AlbumCard {album} size="sm" hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if laterShelves.favoriteAlbums.length > 0}
+        <HomeShelf title="Favorite albums" href="/music/favorites">
+          {#each laterShelves.favoriteAlbums as album (album.id)}
+            <AlbumCard {album} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if laterShelves.newAlbums.length > 0}
-      <HomeShelf title="New in your library" href="/music/albums">
-        {#each laterShelves.newAlbums as album (album.id)}
-          <AlbumCard {album} size="sm" hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if laterShelves.newAlbums.length > 0}
+        <HomeShelf title="New in your library" href="/music/albums">
+          {#each laterShelves.newAlbums as album (album.id)}
+            <AlbumCard {album} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if laterShelves.recommended.length > 0}
-      <HomeShelf title="Recommended for you">
-        {#each laterShelves.recommended as album (album.id)}
-          <AlbumCard {album} size="sm" hideable />
-        {/each}
-      </HomeShelf>
-    {/if}
+      {#if laterShelves.recommended.length > 0}
+        <HomeShelf title="Recommended for you">
+          {#each laterShelves.recommended as album (album.id)}
+            <AlbumCard {album} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
 
-    {#if laterShelves.frequent.length > 0}
-      <HomeShelf title="Popular on your server">
-        {#each laterShelves.frequent as album (album.id)}
-          <AlbumCard {album} size="sm" hideable />
-        {/each}
-      </HomeShelf>
+      {#if laterShelves.frequent.length > 0}
+        <HomeShelf title="Popular on your server">
+          {#each laterShelves.frequent as album (album.id)}
+            <AlbumCard {album} size="sm" hideable />
+          {/each}
+        </HomeShelf>
+      {/if}
     {/if}
   {/if}
 </div>
+
+{#snippet pendingShelf()}
+  <section class="home-shelf-pending" aria-hidden="true">
+    <Skeleton class="skeleton-shelf-heading" />
+    <div class="home-shelf-pending__items">
+      {#each Array.from({ length: 6 }) as _, i (i)}
+        <div class="home-shelf-pending__card">
+          <Skeleton class="skeleton-album" />
+          <Skeleton class="skeleton-line" />
+          <Skeleton class="skeleton-line skeleton-line--short" />
+        </div>
+      {/each}
+    </div>
+  </section>
+{/snippet}
 
 <style>
   .music-home {
@@ -438,6 +465,54 @@
     min-width: 0;
     aspect-ratio: 1;
     border-radius: var(--jb-radius-lg);
+  }
+
+  /* Stand-in for shelves that arrive when the feed settles. Shelves mount
+     atomically below the painted shortcuts so late personalization cannot
+     shift visible content. */
+  .home-shelves-pending {
+    display: flex;
+    flex-direction: column;
+    gap: var(--jb-space-8);
+  }
+
+  .home-shelf-pending {
+    display: flex;
+    flex-direction: column;
+    gap: var(--jb-space-3);
+    min-width: 0;
+    overflow-x: hidden;
+  }
+
+  .home-shelf-pending__items {
+    display: grid;
+    grid-template-columns: repeat(
+      auto-fill,
+      minmax(min(100%, var(--jb-card-grid-min)), 1fr)
+    );
+    gap: var(--jb-space-4);
+    overflow: hidden;
+  }
+
+  .home-shelf-pending__card {
+    display: grid;
+    gap: var(--jb-space-2);
+    align-content: start;
+  }
+
+  :global(.skeleton-line) {
+    height: 0.8rem;
+    border-radius: var(--jb-radius-sm);
+  }
+
+  :global(.skeleton-line--short) {
+    width: 60%;
+  }
+
+  :global(.skeleton-shelf-heading) {
+    height: 1.5rem;
+    width: 11rem;
+    border-radius: var(--jb-radius-sm);
   }
 
   :global(a.home-empty-link) {

@@ -17,6 +17,12 @@
   import { createAsyncPage } from "$lib/ui/async-page.svelte";
   import { APP_NAME } from "$lib/brand";
   import { setPageMeta } from "$lib/seo/meta";
+  import ContextMenu from "$lib/components/ui/ContextMenu.svelte";
+  import {
+    contextMenu,
+    type ContextMenuEntry,
+    type ContextMenuPosition,
+  } from "$lib/components/ui/context-menu";
 
   interface Props {
     token: string;
@@ -106,6 +112,31 @@
     }
   }
 
+  let trackMenu = $state<
+    (ContextMenuPosition & { track: ShareTrack; index: number }) | null
+  >(null);
+
+  function shareTrackMenuItems(
+    track: ShareTrack,
+    index: number,
+  ): ContextMenuEntry[] {
+    return [
+      {
+        id: "play",
+        label: "Play",
+        icon: "play",
+        onclick: () => playTrack(index),
+      },
+      {
+        id: "save",
+        label: "Save to device",
+        icon: "download",
+        disabled: downloadBusyId === track.id,
+        onclick: () => void saveTrack(track),
+      },
+    ];
+  }
+
   const title = $derived(
     share?.title || share?.description || "Shared playlist",
   );
@@ -188,7 +219,10 @@
     {:else}
       <ul class="share-page__tracks">
         {#each tracks as track, index (listItemKey(track.id, index, "track"))}
-          <li class="share-page__track">
+          <li
+            class="share-page__track"
+            use:contextMenu={(pos) => (trackMenu = { ...pos, track, index })}
+          >
             <button
               type="button"
               class="share-page__track-main"
@@ -222,6 +256,16 @@
     {/if}
   {/if}
 </div>
+
+{#if trackMenu}
+  <ContextMenu
+    x={trackMenu.x}
+    y={trackMenu.y}
+    label="{trackMenu.track.title} actions"
+    items={shareTrackMenuItems(trackMenu.track, trackMenu.index)}
+    onclose={() => (trackMenu = null)}
+  />
+{/if}
 
 <style>
   .share-page {
