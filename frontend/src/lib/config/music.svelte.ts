@@ -173,6 +173,7 @@ class MusicStore {
   libraryRefreshing = $state(false);
   libraryRevision = $state(0);
   playlists = $state.raw<MusicPlaylist[]>([]);
+  playlistsHydrated = $state(false);
   serverPlaylists = $state.raw<ServerPlaylist[]>([]);
   internetRadios = $state.raw<InternetRadioStation[]>([]);
   favoriteTracks = $state.raw<FavoriteTrack[]>([]);

@@ -184,6 +184,7 @@
       aria-label="Loading playlist"
     >
       <Skeleton variant="hero" class="playlist-page__skeleton-hero" />
+      <Skeleton variant="block" class="playlist-page__skeleton-search" />
       <div class="playlist-page__skeleton-rows">
         {#each Array.from({ length: 8 }) as _, i (i)}
           <Skeleton variant="row" />
@@ -373,8 +374,15 @@
     gap: var(--jb-space-6);
   }
 
+  /* Matches the loaded playlist-hero height (173px) plus bottom margin. */
   :global(.playlist-page__skeleton-hero) {
-    min-height: 8rem;
+    min-height: 10.75rem;
+    margin-bottom: var(--jb-space-2);
+  }
+
+  /* Matches the LocalSearchBox band so rows do not jump when data lands. */
+  :global(.playlist-page__skeleton-search) {
+    height: 2.75rem;
   }
 
   .playlist-page__skeleton-rows {

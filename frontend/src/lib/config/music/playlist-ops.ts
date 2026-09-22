@@ -27,6 +27,7 @@ export interface MusicPlaylistContext {
   playlists: MusicPlaylist[];
   serverPlaylists: ServerPlaylist[];
   internetRadios: InternetRadioStation[];
+  playlistsHydrated: boolean;
 }
 
 function requireSubsonicClient(ctx: MusicPlaylistContext): SubsonicClient {
@@ -37,7 +38,11 @@ function requireSubsonicClient(ctx: MusicPlaylistContext): SubsonicClient {
 }
 
 export async function refreshPlaylists(ctx: MusicPlaylistContext) {
-  ctx.playlists = await musicApi.listPlaylists();
+  try {
+    ctx.playlists = await musicApi.listPlaylists();
+  } finally {
+    ctx.playlistsHydrated = true;
+  }
 }
 
 export async function refreshServerPlaylists(ctx: MusicPlaylistContext) {

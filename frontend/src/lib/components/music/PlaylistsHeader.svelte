@@ -101,5 +101,7 @@
     margin: 0;
     color: var(--jb-text-muted);
     max-width: 34rem;
+    /* Reserve two lines so a copy variant swap cannot resize the header. */
+    min-height: 2.9rem;
   }
 </style>

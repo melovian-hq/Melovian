@@ -144,6 +144,7 @@ export interface MusicStoreHost {
   playing: MusicStore["playing"];
   playLaunchOps: MusicStore["playLaunchOps"];
   playlists: MusicStore["playlists"];
+  playlistsHydrated: MusicStore["playlistsHydrated"];
   playTracks: MusicStore["playTracks"];
   playTracksNext: MusicStore["playTracksNext"];
   pollLibraryChanges: MusicStore["pollLibraryChanges"];

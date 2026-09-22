@@ -10,6 +10,9 @@ class SourceStore {
   mode = $state<SourceViewMode>("subsonic");
   unifiedAvailable = $state(false);
   multiLocalLibrary = $state(false);
+  /** True once the first refreshStatus settles, so mode-derived UI (the
+      playlist kind toggle) does not pop in after first paint. */
+  statusReady = $state(false);
 
   ready = $derived(instances.ready && localLibraries.ready);
 
@@ -68,6 +71,8 @@ class SourceStore {
       this.multiLocalLibrary = status.multiLocalLibrary;
     } catch {
       // keep current mode when status endpoint unavailable
+    } finally {
+      this.statusReady = true;
     }
   }
 

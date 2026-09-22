@@ -92,9 +92,15 @@ export function runInitialBootstrap(
       return;
     }
     if (!auth.needsAccountLogin) {
-      await Promise.all([instances.init(), localLibraries.init()]);
+      // loadExtensions sends no instance header so it can overlap the store
+      // inits. refreshStatus stays last because apiHeaders carries the
+      // active instance id that instances.init only sets on completion.
+      await Promise.all([
+        instances.init(),
+        localLibraries.init(),
+        loadExtensions(),
+      ]);
       await sources.refreshStatus();
-      await loadExtensions();
       void checkExtensionUpdates();
     }
     perfMeasure("bootstrap", "bootstrap:start");
@@ -106,9 +112,12 @@ export function ensureLibrariesAfterAuth(bootstrapped: boolean): void {
   if (!bootstrapped || auth.loading || auth.needsAccountLogin) return;
   if (instances.ready && localLibraries.ready) return;
   void (async () => {
-    await Promise.all([instances.init(), localLibraries.init()]);
+    await Promise.all([
+      instances.init(),
+      localLibraries.init(),
+      loadExtensions(),
+    ]);
     await sources.refreshStatus();
-    await loadExtensions();
   })();
 }
 

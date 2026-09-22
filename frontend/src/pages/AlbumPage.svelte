@@ -439,8 +439,9 @@
     gap: var(--jb-space-6);
   }
 
+  /* Matches .album-hero min-height so the data swap does not shift rows. */
   :global(.album-page__skeleton-hero) {
-    min-height: 10rem;
+    min-height: 18rem;
   }
 
   .album-page__skeleton-rows {

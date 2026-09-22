@@ -13,6 +13,7 @@ import {
 
 vi.mock("@sentry/svelte", () => ({
   init: vi.fn(),
+  close: vi.fn().mockResolvedValue(true),
   makeFetchTransport: vi.fn(() => ({
     send: vi.fn().mockRejectedValue(new Error("net::ERR_BLOCKED_BY_CLIENT")),
     flush: vi.fn().mockResolvedValue(true),
@@ -29,19 +30,26 @@ vi.mock("@sentry/svelte", () => ({
   captureMessage: vi.fn(),
 }));
 
+// The SDK loads through a dynamic import, so init resolves a task after the
+// config call that requested it.
+async function flushSdk() {
+  await new Promise((resolve) => setTimeout(resolve, 0));
+}
+
 describe("sentry", () => {
   beforeEach(() => {
     vi.clearAllMocks();
     resetSentryForTests();
   });
 
-  it("does not init without a DSN", () => {
+  it("does not init without a DSN", async () => {
     applyRuntimeSentryConfig({});
+    await flushSdk();
     expect(Sentry.init).not.toHaveBeenCalled();
     expect(sentryEnabled()).toBe(false);
   });
 
-  it("initializes from runtime config", () => {
+  it("initializes from runtime config", async () => {
     applyRuntimeSentryConfig({
       dsn: "https://glitchtip.example/1",
       environment: "staging",
@@ -49,6 +57,7 @@ describe("sentry", () => {
       tracesSampleRate: 0.1,
       clientReporting: true,
     });
+    await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalled());
     expect(Sentry.init).toHaveBeenCalledWith(
       expect.objectContaining({
         dsn: "https://glitchtip.example/1",
@@ -64,11 +73,12 @@ describe("sentry", () => {
     expect(sentryEnabled()).toBe(true);
   });
 
-  it("scrubs credentials and PII from events", () => {
+  it("scrubs credentials and PII from events", async () => {
     applyRuntimeSentryConfig({
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalled());
     const opts = vi.mocked(Sentry.init).mock.calls[0][0];
     const event = {
       request: {
@@ -98,11 +108,12 @@ describe("sentry", () => {
     expect(scrubbed?.user).toEqual({ id: "u1" });
   });
 
-  it("scrubs URLs inside breadcrumbs", () => {
+  it("scrubs URLs inside breadcrumbs", async () => {
     applyRuntimeSentryConfig({
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalled());
     const opts = vi.mocked(Sentry.init).mock.calls[0][0];
     const crumb = {
       data: { url: "/rest/ping?u=alice&p=hunter2" },
@@ -113,30 +124,33 @@ describe("sentry", () => {
     expect(url).not.toContain("hunter2");
   });
 
-  it("refuses to init from build env without consent", () => {
+  it("refuses to init from build env without consent", async () => {
     vi.stubEnv("VITE_SENTRY_DSN", "https://glitchtip.example/1");
     try {
       localStorage.removeItem("melovian-telemetry-consent");
       initSentryFromBuildEnv();
+      await flushSdk();
       expect(Sentry.init).not.toHaveBeenCalled();
       localStorage.setItem("melovian-telemetry-consent", "accepted");
       initSentryFromBuildEnv();
-      expect(Sentry.init).toHaveBeenCalledTimes(1);
+      await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalledTimes(1));
     } finally {
       vi.unstubAllEnvs();
       localStorage.removeItem("melovian-telemetry-consent");
     }
   });
 
-  it("skips duplicate init for the same DSN", () => {
+  it("skips duplicate init for the same DSN", async () => {
     applyRuntimeSentryConfig({
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalledTimes(1));
     applyRuntimeSentryConfig({
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await flushSdk();
     expect(Sentry.init).toHaveBeenCalledTimes(1);
   });
 
@@ -146,6 +160,7 @@ describe("sentry", () => {
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalled());
     const opts = vi.mocked(Sentry.init).mock.calls[0][0];
     const transport = opts.transport?.({} as never);
     await transport?.send({} as never);
@@ -155,21 +170,24 @@ describe("sentry", () => {
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await flushSdk();
     expect(Sentry.init).toHaveBeenCalledTimes(1);
     expect(sentryEnabled()).toBe(false);
   });
 
-  it("captures client errors when enabled", () => {
+  it("captures client errors when enabled", async () => {
     applyRuntimeSentryConfig({
       dsn: "https://glitchtip.example/1",
       clientReporting: true,
     });
+    await vi.waitFor(() => expect(Sentry.init).toHaveBeenCalled());
     captureClientError(new Error("boom"), "test");
     expect(Sentry.captureException).toHaveBeenCalled();
   });
 
-  it("does not init from build env when unset", () => {
+  it("does not init from build env when unset", async () => {
     initSentryFromBuildEnv();
+    await flushSdk();
     expect(Sentry.init).not.toHaveBeenCalled();
   });
 });

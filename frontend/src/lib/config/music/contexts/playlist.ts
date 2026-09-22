@@ -27,6 +27,12 @@ export function createPlaylistContext(
     set playlists(v) {
       store.playlists = v;
     },
+    get playlistsHydrated() {
+      return store.playlistsHydrated;
+    },
+    set playlistsHydrated(v) {
+      store.playlistsHydrated = v;
+    },
     get serverPlaylists() {
       return store.serverPlaylists;
     },

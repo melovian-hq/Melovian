@@ -486,8 +486,10 @@
     gap: var(--jb-space-6);
   }
 
+  /* Matches .artist-hero min-height so the data swap does not shift the
+     sections below. */
   :global(.artist-page__skeleton-hero) {
-    min-height: 10rem;
+    min-height: 18rem;
   }
 
   .artist-page__skeleton-cards {

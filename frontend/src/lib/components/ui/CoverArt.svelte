@@ -20,6 +20,8 @@
     fetchpriority?: "high" | "low" | "auto";
     draggable?: boolean;
     onPrimaryFailed?: () => void;
+    /** Bound to the rendered img so parents can observe viewport proximity. */
+    artEl?: HTMLImageElement | null;
   }
 
   let {
@@ -36,6 +38,7 @@
     fetchpriority,
     draggable = false,
     onPrimaryFailed,
+    artEl = $bindable<HTMLImageElement | null>(null),
   }: Props = $props();
 
   let failed = $state(false);
@@ -132,6 +135,7 @@
 </script>
 
 <img
+  bind:this={artEl}
   src={displaySrc}
   {alt}
   {width}

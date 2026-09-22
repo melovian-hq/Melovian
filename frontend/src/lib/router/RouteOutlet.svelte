@@ -145,6 +145,12 @@
 
     if (Page === null) {
       coldLoading = true;
+      // Cold boot: no committed view is painted yet, so the shell can adopt
+      // the matched route chrome now. Waiting for commit renders sidebar and
+      // topbar on bare routes such as /setup, then removes them at commit
+      // and shifts the content area.
+      outletState.content = activeContent;
+      outletState.bare = activeBare;
     }
 
     void activeLoad()

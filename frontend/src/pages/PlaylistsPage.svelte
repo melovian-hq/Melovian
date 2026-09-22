@@ -70,6 +70,20 @@
     sources.hasLocalActive || music.playlists.length > 0,
   );
   const showKindToggle = $derived(canUseServer && canUseLocal);
+  // The tab row slot is locked once the source decision settles so a late
+  // flip in either direction cannot shift painted content below it.
+  const kindUndecided = $derived(
+    !music.libraryReady ||
+      music.loading ||
+      loading ||
+      (!sources.hasLocalActive && !music.playlistsHydrated),
+  );
+  let kindLocked = $state<"tabs" | "gap" | null>(null);
+  $effect(() => {
+    if (kindLocked === null && !kindUndecided) {
+      kindLocked = showKindToggle ? "tabs" : "gap";
+    }
+  });
   let playlistKind = $state<PlaylistKind>("server");
   const showSmartPlaylist = $derived(
     music.libraryReady &&
@@ -300,15 +314,20 @@
   <MusicBreadcrumbs items={[{ label: "Playlists" }]} />
 
   <PlaylistsHeader
-    {showKindToggle}
+    showKindToggle={kindLocked === "tabs" ||
+      (kindLocked === null && showKindToggle)}
     {canUseServer}
     {importing}
     bind:importInput
     {onImportSelected}
   />
 
-  {#if showKindToggle}
+  {#if kindLocked === "tabs" || (kindLocked === null && showKindToggle)}
     <PlaylistKindTabs bind:value={playlistKind} />
+  {:else if kindLocked === null && kindUndecided}
+    <!-- Reserve the tab row height while the source decision is undecided so
+         a late toggle does not push the search box and sections down. -->
+    <div class="playlists-kind-placeholder" aria-hidden="true"></div>
   {/if}
 
   <LocalSearchBox
@@ -485,6 +504,11 @@
 
   .playlists-section {
     margin-bottom: var(--jb-space-8);
+  }
+
+  /* Matches .playlists-kind rendered height (43.75px + 24px margin). */
+  .playlists-kind-placeholder {
+    height: 4.25rem;
   }
 
   .playlists-section__head {

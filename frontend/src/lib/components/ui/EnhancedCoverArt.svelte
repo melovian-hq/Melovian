@@ -1,3 +1,37 @@
+<script lang="ts" module>
+  // One observer for every card on the page. Lazy artwork defers its
+  // enhancement lookup until the card approaches the viewport so offscreen
+  // rows do not compete with cover art and API calls during first paint.
+  const pendingLookups = new Map<Element, () => void>();
+  let lookupObserver: IntersectionObserver | null = null;
+
+  function whenNearViewport(el: Element, run: () => void): () => void {
+    if (typeof IntersectionObserver === "undefined") {
+      run();
+      return () => {};
+    }
+    pendingLookups.set(el, run);
+    lookupObserver ??= new IntersectionObserver(
+      (entries) => {
+        for (const entry of entries) {
+          if (!entry.isIntersecting) continue;
+          const fn = pendingLookups.get(entry.target);
+          if (!fn) continue;
+          pendingLookups.delete(entry.target);
+          lookupObserver?.unobserve(entry.target);
+          fn();
+        }
+      },
+      { rootMargin: "300px" },
+    );
+    lookupObserver.observe(el);
+    return () => {
+      pendingLookups.delete(el);
+      lookupObserver?.unobserve(el);
+    };
+  }
+</script>
+
 <script lang="ts">
   import CoverArt from "$lib/components/ui/CoverArt.svelte";
   import { music } from "$lib/config/music.svelte";
@@ -53,6 +87,7 @@
   let enhancedSrc = $state<string | null>(null);
   let primaryFailed = $state(false);
   let enhancedFailed = $state(false);
+  let artEl = $state<HTMLImageElement | null>(null);
 
   $effect(() => {
     void src;
@@ -95,51 +130,62 @@
     }
 
     let cancelled = false;
-    const options = { resolvedSrc: src, primaryLoadFailed: primaryFailed };
-    const resolve =
-      kind === "artist"
-        ? enhanceArtistArtwork(
-            {
-              id: entity.id,
-              name: entity.name ?? entity.title ?? "",
-              coverArt: entity.coverArt,
-              artistImageUrl: entity.artistImageUrl,
-            },
-            settings,
-            options,
-          )
-        : kind === "album"
-          ? enhanceAlbumArtwork(
+    const el = artEl;
+
+    const start = () => {
+      if (cancelled) return;
+      const options = { resolvedSrc: src, primaryLoadFailed: primaryFailed };
+      const resolve =
+        kind === "artist"
+          ? enhanceArtistArtwork(
               {
                 id: entity.id,
                 name: entity.name ?? entity.title ?? "",
-                artist: entity.artist,
                 coverArt: entity.coverArt,
+                artistImageUrl: entity.artistImageUrl,
               },
               settings,
               options,
             )
-          : enhanceTrackArtwork(
-              {
-                id: entity.id,
-                title: entity.title ?? entity.name ?? "",
-                artist: entity.artist,
-                album: entity.album,
-                coverArt: entity.coverArt,
-                albumId: entity.albumId,
-              },
-              settings,
-              options,
-            );
+          : kind === "album"
+            ? enhanceAlbumArtwork(
+                {
+                  id: entity.id,
+                  name: entity.name ?? entity.title ?? "",
+                  artist: entity.artist,
+                  coverArt: entity.coverArt,
+                },
+                settings,
+                options,
+              )
+            : enhanceTrackArtwork(
+                {
+                  id: entity.id,
+                  title: entity.title ?? entity.name ?? "",
+                  artist: entity.artist,
+                  album: entity.album,
+                  coverArt: entity.coverArt,
+                  albumId: entity.albumId,
+                },
+                settings,
+                options,
+              );
 
-    void resolve.then((url) => {
-      if (cancelled) return;
-      enhancedSrc = url;
-      enhancedFailed = false;
-    });
+      void resolve.then((url) => {
+        if (cancelled) return;
+        enhancedSrc = url;
+        enhancedFailed = false;
+      });
+    };
+
+    const unobserve =
+      loading === "lazy" && el
+        ? whenNearViewport(el, start)
+        : (start(), undefined);
 
     return () => {
       cancelled = true;
+      unobserve?.();
     };
   });
 
@@ -152,6 +198,7 @@
 </script>
 
 <CoverArt
+  bind:artEl
   src={preferredSrc}
   previewSrc={stablePreview}
   {seed}
