@@ -12,6 +12,7 @@ import (
 	"io"
 	"net/http"
 	"strings"
+	"sync"
 	"time"
 
 	"melovian/internal/api/apishared"
@@ -19,6 +20,7 @@ import (
 	"melovian/internal/api/realtime"
 	"melovian/internal/appconfig"
 	"melovian/internal/brand"
+	"melovian/internal/cache"
 	"melovian/internal/httputil"
 	"melovian/internal/localmusic"
 	"melovian/internal/store"
@@ -40,6 +42,9 @@ type Handler struct {
 	devices        *realtime.DeviceRegistry
 	limiter        *apishared.RateLimiter
 	library        *library.Handler
+	ogCache        *cache.ResponseCache
+	previewMu      sync.Mutex
+	previews       map[string]sharePreviewEntry
 }
 
 type Deps struct {
@@ -71,6 +76,8 @@ func New(d Deps) *Handler {
 		devices:        d.Devices,
 		limiter:        d.Limiter,
 		library:        d.Library,
+		ogCache:        cache.NewResponseCache(),
+		previews:       make(map[string]sharePreviewEntry),
 	}
 }
 
@@ -631,32 +638,15 @@ func (h *Handler) serveShareCover(w http.ResponseWriter, r *http.Request, share 
 		http.NotFound(w, r)
 		return
 	}
-	if strings.HasPrefix(coverID, "trk_") || strings.HasPrefix(coverID, "alb_") || strings.HasPrefix(share.ResourceID, "pl_") {
-		catalog, err := h.localCatalogForShare(share)
-		if err == nil {
-			data, mime, ok := h.localCoverDataForOwner(share, catalog, coverID)
-			if ok {
-				w.Header().Set("Content-Type", mime)
-				_, _ = w.Write(data) //#nosec G705 -- cover bytes with explicit image content type
-				return
-			}
-		}
-	}
-	client := h.subsonicClientForShare(share)
-	if !client.Enabled() {
+	data, mime, ok := h.shareCoverData(share, coverID, 300)
+	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	body, contentType, err := client.CoverArt(coverID, 300)
-	if err != nil {
-		http.NotFound(w, r)
-		return
+	if mime != "" {
+		w.Header().Set("Content-Type", mime)
 	}
-	defer func() { _ = body.Close() }()
-	if contentType != "" {
-		w.Header().Set("Content-Type", contentType)
-	}
-	_, _ = io.Copy(w, io.LimitReader(body, 8<<20))
+	_, _ = w.Write(data) //#nosec G705 -- cover bytes with explicit image content type
 }
 
 func (h *Handler) ShareCoverAllowed(share store.Share, coverID string) bool {

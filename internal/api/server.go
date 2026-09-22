@@ -346,6 +346,19 @@ func (s *Server) buildAPIHandler() http.Handler {
 			s.sharingH.HandlePublicShare(w, r)
 			return
 		}
+		if strings.HasPrefix(r.URL.Path, "/og/") {
+			// OG cards are public link previews. They bypass the auth and
+			// instance middleware like /s/ and only expose what public
+			// share tokens and listen invites already reveal.
+			if s.cfg.DemoModeEffective() && r.Method != http.MethodGet && r.Method != http.MethodHead && r.Method != http.MethodOptions {
+				httputil.WriteJSON(w, http.StatusForbidden, map[string]any{
+					"error": "demo mode is read-only",
+				})
+				return
+			}
+			s.sharingH.HandleOGImage(w, r)
+			return
+		}
 		api.ServeHTTP(w, r)
 	}))
 }
@@ -449,7 +462,8 @@ func isStaticAssetPath(path string) bool {
 func isAPIPath(path string) bool {
 	return path == "/health" || path == "/metrics" || path == "/api" ||
 		strings.HasPrefix(path, "/api/") || strings.HasPrefix(path, "/rest/") ||
-		strings.HasPrefix(path, "/s/") || strings.HasPrefix(path, "/debug/")
+		strings.HasPrefix(path, "/s/") || strings.HasPrefix(path, "/og/") ||
+		strings.HasPrefix(path, "/debug/")
 }
 
 func needsSPAFallback(path string) bool {

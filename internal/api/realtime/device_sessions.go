@@ -218,6 +218,23 @@ func (r *DeviceRegistry) EnsureInviteToken(scope, deviceID string) (sessionID, t
 	return session.ID, session.InviteToken, true
 }
 
+// SessionByInviteToken returns the session and current host playback for an
+// invite token without joining. Used for link previews and invite metadata.
+func (r *DeviceRegistry) SessionByInviteToken(token string) (ListenSession, *PlaybackSnapshot, bool) {
+	token = strings.TrimSpace(token)
+	if token == "" {
+		return ListenSession{}, nil, false
+	}
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	for _, s := range r.sessions {
+		if s.InviteToken != "" && s.InviteToken == token && s.CrossUser {
+			return cloneSession(*s), r.hostPlaybackLocked(s), true
+		}
+	}
+	return ListenSession{}, nil, false
+}
+
 // JoinSessionByToken joins a listen session via invite token across account scopes.
 func (r *DeviceRegistry) JoinSessionByToken(scope, deviceID, userID, token string) (sessionID string, snap *PlaybackSnapshot, ok bool) {
 	token = strings.TrimSpace(token)

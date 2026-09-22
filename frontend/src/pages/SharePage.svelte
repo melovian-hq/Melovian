@@ -34,6 +34,7 @@
   let password = $state("");
   let unlocking = $state(false);
   let downloadBusyId = $state<string | null>(null);
+  let coverFailed = $state(false);
 
   function shareTrackToQueue(track: ShareTrack): QueueTrack {
     const stream = musicApi.publicShareStreamUrl(token, track.id);
@@ -55,6 +56,7 @@
     load: () => {
       const current = token;
       share = null;
+      coverFailed = false;
       return musicApi.getPublicShare(current);
     },
     apply: (result) => {
@@ -90,6 +92,16 @@
     const tracks = share?.tracks ?? [];
     if (tracks.length === 0) return;
     music.playTracks(tracks.map(shareTrackToQueue), index);
+  }
+
+  async function copyLink() {
+    const url = share?.url || window.location.href;
+    try {
+      await navigator.clipboard.writeText(url);
+      toast.success("Link copied");
+    } catch {
+      toast.error("Could not copy link");
+    }
   }
 
   async function saveTrack(track: ShareTrack) {
@@ -137,24 +149,58 @@
     ];
   }
 
-  const title = $derived(
-    share?.title || share?.description || "Shared playlist",
-  );
+  const shareKind = $derived.by(() => {
+    switch (share?.resourceType) {
+      case "album":
+        return "Shared album";
+      case "song":
+        return "Shared track";
+      default:
+        return "Shared playlist";
+    }
+  });
+  const title = $derived(share?.title || share?.description || shareKind);
   const tracks = $derived(share?.tracks ?? []);
   const unlocked = $derived(
     Boolean(share) && !share?.requiresPassword && !share?.requiresLogin,
   );
+  const coverUrl = $derived(
+    unlocked && !coverFailed ? musicApi.publicShareCoverUrl(token) : null,
+  );
+  const subtitle = $derived.by(() => {
+    if (!share) return "";
+    if (share.resourceType === "playlist") {
+      const count = tracks.length;
+      return `${count.toLocaleString()} ${count === 1 ? "track" : "tracks"}`;
+    }
+    const artist = tracks.find((t) => t.artist)?.artist;
+    return artist ?? "";
+  });
 
   $effect(() => {
     if (!share) return;
-    const shareTitle = title.trim() || "Shared playlist";
-    const count = tracks.length;
+    const gated = Boolean(share.requiresPassword || share.requiresLogin);
+    if (gated) {
+      setPageMeta({
+        title: "Shared music",
+        description: `Open music shared with you on ${APP_NAME}.`,
+        index: false,
+      });
+      return;
+    }
+    const shareTitle = title.trim() || shareKind;
     setPageMeta({
       title: shareTitle,
-      description:
-        count > 0
-          ? `${shareTitle} · ${count} track${count === 1 ? "" : "s"} shared via ${APP_NAME}.`
-          : `A playlist shared via ${APP_NAME}.`,
+      description: subtitle
+        ? `${shareTitle} · ${subtitle} · shared via ${APP_NAME}.`
+        : `Shared via ${APP_NAME}.`,
+      image: musicApi.publicShareOgUrl(token),
+      type:
+        share.resourceType === "album"
+          ? "music.album"
+          : share.resourceType === "song"
+            ? "music.song"
+            : "website",
     });
   });
 </script>
@@ -171,7 +217,7 @@
   {:else if share?.requiresPassword}
     <section class="share-page__gate">
       <h1>Password required</h1>
-      <p>This shared playlist is protected by a password.</p>
+      <p>This shared content is protected by a password.</p>
       <form class="share-page__password" onsubmit={unlock}>
         <Input
           type="password"
@@ -187,7 +233,7 @@
   {:else if share?.requiresLogin}
     <EmptyState
       title="Sign in required"
-      message="This shared playlist is only available to signed-in accounts."
+      message="This shared content is only available to signed-in accounts."
       icon="lock"
     >
       {#snippet actions()}
@@ -196,17 +242,36 @@
     </EmptyState>
   {:else if unlocked}
     <header class="share-page__header">
-      <p class="share-page__eyebrow">Shared playlist</p>
-      <h1>{title}</h1>
-      <p class="share-page__meta">
-        {tracks.length.toLocaleString()}
-        {tracks.length === 1 ? "track" : "tracks"}
-      </p>
-      <div class="share-page__actions">
-        <Button type="button" disabled={tracks.length === 0} onclick={playAll}>
-          <MdiIcon name="play" size={18} />
-          Play all
-        </Button>
+      {#if coverUrl}
+        <img
+          class="share-page__cover"
+          src={coverUrl}
+          alt=""
+          width="160"
+          height="160"
+          onerror={() => (coverFailed = true)}
+        />
+      {/if}
+      <div class="share-page__heading">
+        <p class="share-page__eyebrow">{shareKind}</p>
+        <h1>{title}</h1>
+        {#if subtitle}
+          <p class="share-page__meta">{subtitle}</p>
+        {/if}
+        <div class="share-page__actions">
+          <Button
+            type="button"
+            disabled={tracks.length === 0}
+            onclick={playAll}
+          >
+            <MdiIcon name="play" size={18} />
+            Play all
+          </Button>
+          <Button type="button" variant="ghost" onclick={() => void copyLink()}>
+            <MdiIcon name="link" size={18} />
+            Copy link
+          </Button>
+        </div>
       </div>
     </header>
 
@@ -303,6 +368,36 @@
     display: flex;
     gap: var(--jb-space-2);
     align-items: center;
+  }
+
+  .share-page__header {
+    display: flex;
+    align-items: flex-end;
+    gap: var(--jb-space-4);
+  }
+
+  .share-page__cover {
+    width: 10rem;
+    height: 10rem;
+    border-radius: var(--jb-radius-md);
+    object-fit: cover;
+    flex-shrink: 0;
+  }
+
+  @media (max-width: 480px) {
+    .share-page__header {
+      flex-direction: column;
+      align-items: flex-start;
+    }
+
+    .share-page__cover {
+      width: 8rem;
+      height: 8rem;
+    }
+  }
+
+  .share-page__heading {
+    min-width: 0;
   }
 
   .share-page__header h1 {

@@ -244,34 +244,15 @@ func (h *Handler) handlePartyCover(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	coverID := trackID
-	if strings.HasPrefix(coverID, "trk_") || strings.HasPrefix(coverID, "alb_") {
-		catalog, err := h.library.LocalCatalogForUser(session.HostUserID)
-		if err == nil {
-			data, mime, ok := h.partyLocalCover(session.HostUserID, catalog, coverID)
-			if ok {
-				w.Header().Set("Content-Type", mime)
-				_, _ = w.Write(data) //#nosec G705 -- cover bytes with explicit image content type
-				return
-			}
-		}
-	}
-
-	client := h.subsonicClientForPartyHost(session.HostUserID)
-	if !client.Enabled() {
+	data, mime, ok := h.listenCoverData(session, trackID, 300)
+	if !ok {
 		http.NotFound(w, r)
 		return
 	}
-	body, contentType, err := client.CoverArt(coverID, 300)
-	if err != nil {
-		http.NotFound(w, r)
-		return
+	if mime != "" {
+		w.Header().Set("Content-Type", mime)
 	}
-	defer func() { _ = body.Close() }()
-	if contentType != "" {
-		w.Header().Set("Content-Type", contentType)
-	}
-	_, _ = io.Copy(w, io.LimitReader(body, 8<<20))
+	_, _ = w.Write(data) //#nosec G705 -- cover bytes with explicit image content type
 }
 
 func (h *Handler) subsonicClientForPartyHost(hostUserID string) *subsonic.Client {

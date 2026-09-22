@@ -171,6 +171,7 @@ func main() {
 		Assets:    api.StaticAssetHandler(dist),
 		Shell:     dist,
 		PublicURL: cfg.PublicURL,
+		Meta:      apiServer.PageMeta,
 	})
 
 	httpServer := &http.Server{

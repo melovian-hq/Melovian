@@ -844,6 +844,14 @@ export function publicShareDownloadUrl(token: string, trackId: string): string {
   );
 }
 
+export function publicShareCoverUrl(token: string): string {
+  return resolveMediaUrl(`/s/${encodeURIComponent(token)}/cover`);
+}
+
+export function publicShareOgUrl(token: string): string {
+  return resolveMediaUrl(`/og/share/${encodeURIComponent(token)}.png`);
+}
+
 export function mediaTrackDownloadUrl(
   trackId: string,
   options?: { title?: string; artist?: string },

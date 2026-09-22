@@ -8,6 +8,7 @@ import (
 	"fmt"
 	"html"
 	"regexp"
+	"strconv"
 	"strings"
 
 	"melovian/internal/brand"
@@ -18,6 +19,10 @@ type Page struct {
 	Title       string
 	Description string
 	Image       string
+	// ImageWidth and ImageHeight emit og:image dimensions when the image is
+	// a generated card. Zero omits the tags.
+	ImageWidth  int
+	ImageHeight int
 	Type        string
 	Index       bool
 }
@@ -136,6 +141,10 @@ func Inject(raw []byte, page Page, baseURL, path string) []byte {
 		"og:description": desc,
 		"og:url":         pageURL,
 		"og:image":       imageURL,
+	}
+	if page.ImageWidth > 0 && page.ImageHeight > 0 {
+		props["og:image:width"] = strconv.Itoa(page.ImageWidth)
+		props["og:image:height"] = strconv.Itoa(page.ImageHeight)
 	}
 
 	htmlStr = upsertMeta(htmlStr, "name", tags)

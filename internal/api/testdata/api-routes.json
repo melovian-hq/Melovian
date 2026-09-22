@@ -760,6 +760,11 @@
     },
     {
       "method": "GET",
+      "pattern": "/debug/pprof/goroutineleak",
+      "requires": "debug-pprof"
+    },
+    {
+      "method": "GET",
       "pattern": "/debug/pprof/threadcreate",
       "requires": "debug-pprof"
     },

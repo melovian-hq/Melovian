@@ -68,6 +68,7 @@ func main() {
 			Handler: &api.CombinedHandler{
 				API:    apiServer.Handler(),
 				Assets: application.BundledAssetFileServer(assets),
+				Meta:   apiServer.PageMeta,
 			},
 		},
 	}

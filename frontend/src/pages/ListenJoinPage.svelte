@@ -8,6 +8,7 @@
   import { deviceSync } from "$lib/music/device-sync.svelte";
   import { eventSocket } from "$lib/core/events/ws.svelte";
   import { router } from "$lib/router/router.svelte";
+  import { setPageMeta } from "$lib/seo/meta";
 
   interface Props {
     token: string;
@@ -46,6 +47,14 @@
       joining = false;
     }
   }
+
+  $effect(() => {
+    setPageMeta({
+      title: "Listen together",
+      description: `Join a live listen-together session on ${APP_NAME}.`,
+      index: false,
+    });
+  });
 
   $effect(() => {
     void token;

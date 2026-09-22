@@ -23,6 +23,9 @@ type CombinedHandler struct {
 	// PublicURL is the preferred absolute origin for og:url and og:image.
 	// When empty, the request Host and scheme are used.
 	PublicURL string
+	// Meta optionally upgrades the static route meta with entity data for
+	// public links like /share/{token} and /listen/{token}.
+	Meta func(r *http.Request, path string, fallback seo.Page) seo.Page
 }
 
 func (h *CombinedHandler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
@@ -86,6 +89,9 @@ func (h *CombinedHandler) serveShell(w http.ResponseWriter, r *http.Request, pag
 		base = requestOrigin(r)
 	}
 	page := seo.ForPath(pagePath)
+	if h.Meta != nil {
+		page = h.Meta(r, pagePath, page)
+	}
 	body := seo.Inject(raw, page, base, pagePath)
 
 	setStaticAssetCacheHeaders(w, "/")
