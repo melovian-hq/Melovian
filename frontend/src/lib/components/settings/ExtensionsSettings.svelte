@@ -57,6 +57,9 @@
   let registryActiveUrl = $state("");
   let registryConfigBusy = $state(false);
 
+  const installedItems = $derived(items.filter((i) => i.installed));
+  const availableItems = $derived(items.filter((i) => !i.installed));
+
   async function applyPayload(payload: {
     items: ExtensionListItem[];
     dir: string;
@@ -611,7 +614,7 @@
       />
     {:else}
       <div class="extensions-settings__list">
-        {#each items as item (item.id)}
+        {#snippet extensionRow(item: ExtensionListItem)}
           <div class="extensions-settings__row">
             {#if item.imageUrl && item.imageUrl !== item.iconUrl}
               <img
@@ -760,7 +763,19 @@
               {/if}
             </div>
           </div>
-        {/each}
+        {/snippet}
+        {#if installedItems.length > 0}
+          <p class="extensions-settings__group">Installed</p>
+          {#each installedItems as item (item.id)}
+            {@render extensionRow(item)}
+          {/each}
+        {/if}
+        {#if availableItems.length > 0}
+          <p class="extensions-settings__group">Available</p>
+          {#each availableItems as item (item.id)}
+            {@render extensionRow(item)}
+          {/each}
+        {/if}
       </div>
     {/if}
 
@@ -992,6 +1007,19 @@
   .extensions-settings__list {
     display: grid;
     gap: var(--jb-space-2);
+  }
+
+  .extensions-settings__group {
+    margin: var(--jb-space-2) 0 0;
+    font-size: 0.75rem;
+    font-weight: 600;
+    text-transform: uppercase;
+    letter-spacing: 0.05em;
+    color: var(--jb-text-subtle);
+  }
+
+  .extensions-settings__group:first-child {
+    margin-top: 0;
   }
 
   .extensions-settings__row {
@@ -1253,19 +1281,27 @@
 
   .extensions-settings__dev-form {
     display: flex;
+    flex-wrap: wrap;
     align-items: center;
     gap: var(--jb-space-2);
+    width: 100%;
   }
 
   .extensions-settings__input--wide {
-    min-width: 16rem;
+    flex: 1 1 14rem;
+    min-width: 0;
+    max-width: none;
   }
 
   .extensions-settings__registry-config {
     display: grid;
     gap: var(--jb-space-2);
-    justify-items: start;
+    justify-items: stretch;
     margin-bottom: var(--jb-space-2);
+  }
+
+  .extensions-settings__registry-config .extensions-settings__actions {
+    justify-self: start;
   }
 
   .extensions-settings__registry-url {

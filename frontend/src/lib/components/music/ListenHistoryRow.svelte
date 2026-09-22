@@ -146,7 +146,7 @@
   }
 
   .history-row--playing .history-row__title {
-    color: var(--jb-accent);
+    color: var(--jb-active);
   }
 
   .history-row__main {

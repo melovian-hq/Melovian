@@ -235,6 +235,10 @@
     background: var(--jb-accent-muted);
   }
 
+  .now-playing-queue__item--current .now-playing-queue__track {
+    color: var(--jb-active);
+  }
+
   .now-playing-queue__item--over {
     box-shadow: inset 0 2px 0 0 var(--jb-accent);
   }

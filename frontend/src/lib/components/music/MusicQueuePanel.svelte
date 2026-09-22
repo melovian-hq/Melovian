@@ -459,6 +459,10 @@
     background: var(--jb-accent-muted);
   }
 
+  .queue-panel__item--current .queue-panel__track {
+    color: var(--jb-active);
+  }
+
   .queue-panel__remove {
     display: grid;
     place-content: center;
