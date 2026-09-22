@@ -95,6 +95,10 @@
     }
 
     window.addEventListener("message", function (event) {
+      // Only the embedding frame may send run commands. event.origin is
+      // unusable here because this document is itself an opaque origin,
+      // so verify the sender window identity instead.
+      if (event.source !== parent) return;
       var data = event.data;
       if (!data || data.type !== "run" || typeof data.source !== "string")
         return;
