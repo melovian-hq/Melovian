@@ -6,6 +6,7 @@ import {
   filterSettingsTabs,
   isSettingsPath,
   isSettingsTabId,
+  navTabsForMode,
   SETTINGS_TAB_IDS,
   SETTINGS_TABS,
   settingsTabFromPath,
@@ -73,6 +74,46 @@ describe("settings tabs", () => {
     expect(tabs.some((tab) => tab.id === "tasks")).toBe(true);
     expect(tabs.find((tab) => tab.id === "about")?.tier).toBe("recommended");
     expect(tabs.find((tab) => tab.id === "tasks")?.tier).toBe("advanced");
+  });
+
+  it("limits simple mode to recommended tabs", () => {
+    const ids = navTabsForMode(SETTINGS_TABS, "simple", "general", false).map(
+      (t) => t.id,
+    );
+    expect(ids).toEqual([
+      "profile",
+      "general",
+      "servers",
+      "playback",
+      "downloads",
+      "about",
+    ]);
+  });
+
+  it("shows every tab in advanced mode", () => {
+    expect(
+      navTabsForMode(SETTINGS_TABS, "advanced", "general", false).map(
+        (t) => t.id,
+      ),
+    ).toEqual(SETTINGS_TABS.map((t) => t.id));
+  });
+
+  it("pins the active advanced tab in simple mode", () => {
+    const ids = navTabsForMode(
+      SETTINGS_TABS,
+      "simple",
+      "extensions",
+      false,
+    ).map((t) => t.id);
+    expect(ids.at(-1)).toBe("extensions");
+    expect(ids).toContain("profile");
+  });
+
+  it("ignores the mode while searching", () => {
+    const hits = filterSettingsTabs(SETTINGS_TABS, "lrclib");
+    expect(
+      navTabsForMode(hits, "simple", "lyrics", true).map((t) => t.id),
+    ).toEqual(["lyrics"]);
   });
 
   it("filters tabs by label description and keywords", () => {

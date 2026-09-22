@@ -1,32 +1,44 @@
 <script lang="ts">
   import type { SettingsTab, SettingsTabId } from "$lib/settings/tabs";
-  import MdiIcon from "$lib/components/ui/MdiIcon.svelte";
+  import { navTabsForMode } from "$lib/settings/tabs";
   import {
-    settingsNavAdvancedCollapsed,
-    settingsNavAdvancedOpen,
-    toggleSettingsNavAdvanced,
+    settingsNavMode,
+    setSettingsNavMode,
+    type SettingsNavMode,
   } from "$lib/settings/nav-state.svelte";
+  import { Tabs } from "bits-ui";
 
   interface Props {
     tabs: readonly SettingsTab[];
     active: SettingsTabId;
     onselect: (id: SettingsTabId) => void;
+    searching?: boolean;
   }
 
-  let { tabs, active, onselect }: Props = $props();
+  let { tabs, active, onselect, searching = false }: Props = $props();
 
-  const recommended = $derived(tabs.filter((tab) => tab.tier !== "advanced"));
-  const advanced = $derived(tabs.filter((tab) => tab.tier === "advanced"));
-  const activeIsAdvanced = $derived(advanced.some((tab) => tab.id === active));
-  const advancedOpen = $derived(
-    settingsNavAdvancedOpen(settingsNavAdvancedCollapsed(), activeIsAdvanced),
-  );
+  const mode = $derived(settingsNavMode());
+  const items = $derived(navTabsForMode(tabs, mode, active, searching));
 </script>
 
 <nav class="settings-nav" aria-label="Settings sections">
+  <Tabs.Root
+    value={mode}
+    onValueChange={(next) => setSettingsNavMode(next as SettingsNavMode)}
+    style="display: contents"
+  >
+    <Tabs.List class="settings-nav__mode" aria-label="Settings level">
+      <Tabs.Trigger value="simple" class="settings-nav__mode-btn">
+        Simple
+      </Tabs.Trigger>
+      <Tabs.Trigger value="advanced" class="settings-nav__mode-btn">
+        Advanced
+      </Tabs.Trigger>
+    </Tabs.List>
+  </Tabs.Root>
+
   <div class="settings-nav__group">
-    <p class="settings-nav__group-label">Settings</p>
-    {#each recommended as tab (tab.id)}
+    {#each items as tab (tab.id)}
       <button
         type="button"
         class="settings-nav__item"
@@ -39,86 +51,64 @@
       </button>
     {/each}
   </div>
-
-  {#if advanced.length > 0}
-    <div class="settings-nav__group">
-      <button
-        type="button"
-        class="settings-nav__group-label settings-nav__group-toggle"
-        aria-expanded={advancedOpen}
-        aria-controls="settings-nav-advanced-items"
-        onclick={toggleSettingsNavAdvanced}
-      >
-        <span>Advanced</span>
-        <span class="settings-nav__chevron">
-          <MdiIcon name="chevronDown" size={14} />
-        </span>
-      </button>
-      <div
-        id="settings-nav-advanced-items"
-        class="settings-nav__group-items"
-        class:settings-nav__group-items--collapsed={!advancedOpen}
-      >
-        {#each advanced as tab (tab.id)}
-          <button
-            type="button"
-            class="settings-nav__item"
-            class:settings-nav__item--active={active === tab.id}
-            aria-current={active === tab.id ? "page" : undefined}
-            onclick={() => onselect(tab.id)}
-          >
-            <span class="settings-nav__label">{tab.label}</span>
-            <span class="settings-nav__description">{tab.description}</span>
-          </button>
-        {/each}
-      </div>
-    </div>
-  {/if}
 </nav>
 
 <style>
   .settings-nav {
     display: flex;
+    flex-direction: column;
     flex-shrink: 0;
-    gap: var(--jb-space-1);
-    overflow-x: auto;
+    gap: var(--jb-space-2);
     padding: var(--jb-space-2) 0;
     border-bottom: 1px solid var(--jb-border);
     background: transparent;
-    scrollbar-width: thin;
   }
 
   .settings-nav__group {
     display: flex;
     gap: var(--jb-space-1);
+    overflow-x: auto;
+    scrollbar-width: thin;
   }
 
-  .settings-nav__group-items {
-    display: contents;
+  :global(.settings-nav__mode) {
+    display: flex;
+    flex-shrink: 0;
+    gap: var(--jb-space-1);
+    padding: 0.2rem;
+    border-radius: var(--jb-radius-full);
+    border: 1px solid var(--jb-border);
+    background: var(--jb-surface);
   }
 
-  .settings-nav__group-label {
-    display: none;
-  }
-
-  .settings-nav__group-toggle {
+  :global(.settings-nav__mode-btn) {
+    flex: 1;
     border: none;
     background: transparent;
-    font: inherit;
+    color: var(--jb-text-muted);
+    font-size: 0.8125rem;
+    font-weight: 650;
+    padding: 0.4rem 0.9rem;
+    border-radius: var(--jb-radius-full);
     cursor: pointer;
+    text-align: center;
+    transition:
+      background var(--jb-transition),
+      color var(--jb-transition);
   }
 
-  .settings-nav__chevron {
-    flex-shrink: 0;
-    transition: transform var(--jb-transition);
+  :global(.settings-nav__mode-btn:hover) {
+    color: var(--jb-text);
   }
 
-  .settings-nav__group-toggle[aria-expanded="true"] .settings-nav__chevron {
-    transform: rotate(180deg);
+  :global(.settings-nav__mode-btn[data-state="active"]) {
+    background: var(--jb-bg-muted);
+    color: var(--jb-text);
+    box-shadow: var(--jb-shadow-sm);
   }
 
   @media (prefers-reduced-motion: reduce) {
-    .settings-nav__chevron {
+    :global(.settings-nav__mode-btn) {
       transition: none;
     }
   }
@@ -169,16 +159,11 @@
   }
 
   @media (max-width: 768px) {
-    .settings-nav {
+    .settings-nav__group {
       display: grid;
       grid-template-columns: repeat(2, minmax(0, 1fr));
       gap: var(--jb-space-2);
       overflow: visible;
-      padding: var(--jb-space-2) 0;
-    }
-
-    .settings-nav__group {
-      display: contents;
     }
 
     .settings-nav__item {
@@ -193,7 +178,6 @@
       position: sticky;
       top: calc(var(--jb-window-chrome-offset, 0px) + var(--jb-space-4));
       align-self: flex-start;
-      flex-direction: column;
       align-items: stretch;
       width: 16rem;
       max-height: calc(100vh - 6rem);
@@ -203,50 +187,14 @@
       border-right: 1px solid var(--jb-border);
       border-radius: 0;
       padding: 0 var(--jb-space-4) 0 0;
-      background: transparent;
-      scrollbar-width: thin;
       gap: var(--jb-space-4);
     }
 
     .settings-nav__group {
       flex-direction: column;
       align-items: stretch;
+      overflow: visible;
       gap: var(--jb-space-1);
-    }
-
-    .settings-nav__group-label {
-      margin: 0 0 var(--jb-space-1);
-      padding: 0 var(--jb-space-3);
-      font-size: 0.6875rem;
-      font-weight: 700;
-      letter-spacing: 0.06em;
-      text-transform: uppercase;
-      color: var(--jb-text-subtle);
-    }
-
-    p.settings-nav__group-label {
-      display: block;
-    }
-
-    .settings-nav__group-toggle {
-      display: flex;
-      align-items: center;
-      justify-content: space-between;
-      width: 100%;
-      border-radius: var(--jb-radius-sm);
-    }
-
-    .settings-nav__group-toggle:hover {
-      color: var(--jb-text);
-    }
-
-    .settings-nav__group-toggle:focus-visible {
-      outline: none;
-      box-shadow: var(--jb-focus-ring);
-    }
-
-    .settings-nav__group-items--collapsed {
-      display: none;
     }
 
     .settings-nav__item {

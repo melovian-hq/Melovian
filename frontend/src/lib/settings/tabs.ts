@@ -201,6 +201,26 @@ export function visibleSettingsTabs(opts: {
   });
 }
 
+/**
+ * Tabs shown in the sidebar for a mode. Simple hides advanced entries,
+ * except the active one so a deep link or pinned page keeps its nav row.
+ * Searching bypasses the mode so results cover every tab.
+ */
+export function navTabsForMode(
+  tabs: readonly SettingsTab[],
+  mode: "simple" | "advanced",
+  active: SettingsTabId,
+  searching: boolean,
+): SettingsTab[] {
+  if (searching || mode === "advanced") return [...tabs];
+  const visible = tabs.filter((tab) => tab.tier !== "advanced");
+  const activeTab = tabs.find((tab) => tab.id === active);
+  if (activeTab && !visible.includes(activeTab)) {
+    visible.push(activeTab);
+  }
+  return visible;
+}
+
 /** Filter tabs by label, description, or keywords. Empty query returns all tabs. */
 export function filterSettingsTabs(
   tabs: readonly SettingsTab[],

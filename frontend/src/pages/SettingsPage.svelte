@@ -120,7 +120,12 @@
     />
   {:else}
     <div class="settings-layout">
-      <SettingsNav tabs={filteredTabs} active={tab} onselect={goTab} />
+      <SettingsNav
+        tabs={filteredTabs}
+        active={tab}
+        onselect={goTab}
+        searching={searchQuery.trim().length > 0}
+      />
 
       <div class="settings-layout__content">
         {#key tab}

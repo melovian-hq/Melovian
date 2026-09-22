@@ -55,7 +55,7 @@ export const StorageKeys = {
   themeUiSize: storageKey("theme-ui-size"),
   customCss: storageKey("custom-css"),
   sidebarCollapsed: storageKey("sidebar-collapsed"),
-  settingsNavAdvancedCollapsed: storageKey("settings-nav-advanced-collapsed"),
+  settingsNavMode: storageKey("settings-nav-mode"),
   /** Opt-in auto-update for low-risk registry extensions. */
   extensionAutoUpdate: storageKey("extension-auto-update"),
   eq: storageKey("eq"),

@@ -3,42 +3,25 @@
 
 import { describe, expect, it, vi } from "vitest";
 import { StorageKeys } from "$lib/brand";
-import {
-  settingsNavAdvancedCollapsed,
-  settingsNavAdvancedOpen,
-  toggleSettingsNavAdvanced,
-} from "./nav-state.svelte";
+import { settingsNavMode, setSettingsNavMode } from "./nav-state.svelte";
 
-describe("settings nav advanced state", () => {
-  it("defaults to collapsed", () => {
-    expect(settingsNavAdvancedCollapsed()).toBe(true);
+describe("settings nav mode", () => {
+  it("defaults to simple", () => {
+    expect(settingsNavMode()).toBe("simple");
   });
 
-  it("persists the toggle across recreation", async () => {
-    toggleSettingsNavAdvanced();
-    expect(settingsNavAdvancedCollapsed()).toBe(false);
-    expect(localStorage.getItem(StorageKeys.settingsNavAdvancedCollapsed)).toBe(
-      "false",
+  it("persists the mode across recreation", async () => {
+    setSettingsNavMode("advanced");
+    expect(settingsNavMode()).toBe("advanced");
+    expect(localStorage.getItem(StorageKeys.settingsNavMode)).toBe(
+      '"advanced"',
     );
 
     vi.resetModules();
     const fresh = await import("./nav-state.svelte");
-    expect(fresh.settingsNavAdvancedCollapsed()).toBe(false);
+    expect(fresh.settingsNavMode()).toBe("advanced");
 
-    fresh.toggleSettingsNavAdvanced();
-    expect(fresh.settingsNavAdvancedCollapsed()).toBe(true);
-  });
-
-  it("force-expands while the active tab is advanced", () => {
-    expect(settingsNavAdvancedOpen(true, true)).toBe(true);
-    expect(settingsNavAdvancedOpen(true, false)).toBe(false);
-    expect(settingsNavAdvancedOpen(false, false)).toBe(true);
-    expect(settingsNavAdvancedOpen(false, true)).toBe(true);
-  });
-
-  it("does not write the stored preference when force-expanded", () => {
-    const open = settingsNavAdvancedOpen(settingsNavAdvancedCollapsed(), true);
-    expect(open).toBe(true);
-    expect(settingsNavAdvancedCollapsed()).toBe(true);
+    fresh.setSettingsNavMode("simple");
+    expect(fresh.settingsNavMode()).toBe("simple");
   });
 });
