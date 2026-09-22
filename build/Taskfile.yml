@@ -360,6 +360,12 @@ tasks:
     cmds:
       - cd frontend && pnpm exec vitest run src/lib/core/bounded-cache.perf.test.ts src/lib/music/metadata-enhancement.perf.test.ts
 
+  perf:audit:
+    summary: Audit frontend route performance budgets against a static demo build
+    dir: frontend
+    cmds:
+      - pnpm {{if eq .SCOPE "full"}}perf:full{{else}}perf{{end}}
+
   test:property:
     summary: Run frontend property and contract tests
     cmds:

@@ -25,6 +25,8 @@ export interface PerfEntry {
 export interface PerfVitals {
   fcp?: number;
   lcp?: number;
+  lcpEl?: string;
+  cls: number;
   domContentLoaded?: number;
   load?: number;
 }
@@ -40,9 +42,15 @@ export interface PerfSummary {
 const BUFFER_MAX = 200;
 const SLOW_OP_WARN_MS = 250;
 const LONGTASK_WARN_MS = 200;
+const LAYOUT_SHIFT_WARN = 0.05;
+
+interface LayoutShiftLike extends PerformanceEntry {
+  value: number;
+  hadRecentInput?: boolean;
+}
 
 const entries: PerfEntry[] = [];
-const vitals: PerfVitals = {};
+const vitals: PerfVitals = { cls: 0 };
 let longtaskCount = 0;
 let longtaskTotalMs = 0;
 let started = false;
@@ -177,6 +185,20 @@ export function initPerf(): void {
   captureNavigationVitals();
   observe("largest-contentful-paint", (entry) => {
     vitals.lcp = Math.round(entry.startTime);
+    const el = (entry as { element?: Element }).element;
+    vitals.lcpEl = el ? el.tagName.toLowerCase() : undefined;
+  });
+  observe("layout-shift", (entry) => {
+    const shift = entry as LayoutShiftLike;
+    if (shift.hadRecentInput) return;
+    vitals.cls = Math.round((vitals.cls + shift.value) * 10000) / 10000;
+    if (shift.value >= LAYOUT_SHIFT_WARN) {
+      logger.debug(
+        `layout shift ${shift.value.toFixed(3)} moved visible content`,
+        undefined,
+        "perf",
+      );
+    }
   });
   observe("longtask", (entry) => {
     longtaskCount += 1;

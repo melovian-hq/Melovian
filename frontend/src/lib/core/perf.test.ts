@@ -2,7 +2,14 @@
 // SPDX-License-Identifier: Apache-2.0
 
 import { describe, expect, it } from "vitest";
-import { perfEntries, perfRecord, perfSummary, perfTime } from "./perf";
+import {
+  initPerf,
+  perfEntries,
+  perfRecord,
+  perfSummary,
+  perfTime,
+  perfVitals,
+} from "./perf";
 
 describe("perfRecord", () => {
   it("stores entries with a duration", () => {
@@ -52,5 +59,21 @@ describe("perfSummary", () => {
     expect(summary.slowest[0].name).toBe("slow-b");
     expect(summary.slowest[1].name).toBe("slow-a");
     expect(summary.recent.length).toBeLessThanOrEqual(25);
+  });
+});
+
+describe("initPerf", () => {
+  it("exposes a console handle and starts cls at zero", () => {
+    initPerf();
+    expect(perfVitals().cls).toBe(0);
+    expect(window.__melPerf).toBeDefined();
+    expect(window.__melPerf?.vitals.cls).toBe(0);
+    expect(typeof window.__melPerf?.summary).toBe("function");
+  });
+
+  it("is idempotent", () => {
+    initPerf();
+    initPerf();
+    expect(window.__melPerf).toBeDefined();
   });
 });

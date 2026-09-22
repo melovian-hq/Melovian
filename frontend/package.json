@@ -28,7 +28,9 @@
     "test:e2e:smoke": "playwright test --project=smoke",
     "test:e2e:ui": "playwright test --ui",
     "lighthouse": "VITE_STATIC_DEMO=true pnpm build && lhci autorun",
-    "lighthouse:ci": "lhci autorun"
+    "lighthouse:ci": "lhci autorun",
+    "perf": "VITE_STATIC_DEMO=true pnpm build && node scripts/perf-audit.mjs",
+    "perf:full": "VITE_STATIC_DEMO=true pnpm build && node scripts/perf-audit.mjs --scope=full"
   },
   "dependencies": {
     "@iconify/svelte": "^5.2.2",

@@ -227,6 +227,14 @@ tasks:
     cmds:
       - task: common:test:perf
 
+  perf:audit:
+    desc: Audit frontend route performance budgets (task perf:audit SCOPE=full for all routes)
+    summary: Audit frontend route performance budgets against a static demo build
+    cmds:
+      - task: common:perf:audit
+        vars:
+          SCOPE: "{{.SCOPE}}"
+
   test:e2e:
     desc: Build server and run Playwright e2e suite
     summary: Build server and run Playwright e2e suite against demo mode
