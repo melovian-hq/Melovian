@@ -307,21 +307,21 @@ export async function seedPersonalRadioTracks(
   );
   const similarSeedIds = [
     ...new Set(
-      [...(state.lastCompletedId ? [state.lastCompletedId] : []), ...rotatedSeeds].filter(
-        Boolean,
-      ),
+      [
+        ...(state.lastCompletedId ? [state.lastCompletedId] : []),
+        ...rotatedSeeds,
+      ].filter(Boolean),
     ),
   ].slice(0, SEEDS_PER_BATCH);
 
-  const artistPool = stats?.topArtists.slice(0, coldStart ? 4 : ARTIST_POOL_SIZE) ?? [];
+  const artistPool =
+    stats?.topArtists.slice(0, coldStart ? 4 : ARTIST_POOL_SIZE) ?? [];
   const topArtists = rotateWindow(
     artistPool,
     coldStart ? 2 : ARTISTS_PER_BATCH,
     batchIndex * 4,
   );
-  const randomCount = coldStart
-    ? Math.max(count, 40)
-    : Math.max(count * 2, 30);
+  const randomCount = coldStart ? Math.max(count, 40) : Math.max(count * 2, 30);
 
   const moodTracks =
     state.recentCompletions.length > 0

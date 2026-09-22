@@ -91,8 +91,7 @@ export function createPersonalRadioFetchers(
   return {
     getSimilarSongs: (trackId, count) =>
       library.getSimilarSongs(trackId, count).catch(() => []),
-    getRandomSongs: (count) =>
-      library.getRandomSongs(count).catch(() => []),
+    getRandomSongs: (count) => library.getRandomSongs(count).catch(() => []),
     searchArtistSongs: async (artist, limit) => {
       const result = await library.search3(artist, limit).catch(() => ({
         songs: [] as SubsonicSong[],

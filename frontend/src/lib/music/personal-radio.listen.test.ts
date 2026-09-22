@@ -106,15 +106,32 @@ describe("personal-radio listen seeds mock", () => {
         return [];
       },
     };
-    const entryToSong = (e: ListenEntry) =>
-      ({ id: e.trackId, title: e.trackTitle, artist: e.artistName });
+    const entryToSong = (e: ListenEntry) => ({
+      id: e.trackId,
+      title: e.trackTitle,
+      artist: e.artistName,
+    });
 
     await seedPersonalRadioTracks(
-      state, fetchers, profile, history, null, 6, new Set(), entryToSong,
+      state,
+      fetchers,
+      profile,
+      history,
+      null,
+      6,
+      new Set(),
+      entryToSong,
     );
     const batch0 = [...queried];
     await seedPersonalRadioTracks(
-      state, fetchers, profile, history, null, 6, new Set(), entryToSong,
+      state,
+      fetchers,
+      profile,
+      history,
+      null,
+      6,
+      new Set(),
+      entryToSong,
     );
     const batch1 = queried.slice(batch0.length);
 
@@ -159,12 +176,22 @@ describe("personal-radio listen seeds mock", () => {
       resolveTrack: async (id) =>
         ({ id, title: id, artist: "Resolved" }) as SubsonicSong,
     };
-    const entryToSong = (e: ListenEntry) =>
-      ({ id: e.trackId, title: e.trackTitle, artist: e.artistName });
+    const entryToSong = (e: ListenEntry) => ({
+      id: e.trackId,
+      title: e.trackTitle,
+      artist: e.artistName,
+    });
 
     for (let batch = 0; batch < 3; batch += 1) {
       await seedPersonalRadioTracks(
-        state, fetchers, profile, history, null, 6, new Set(), entryToSong,
+        state,
+        fetchers,
+        profile,
+        history,
+        null,
+        6,
+        new Set(),
+        entryToSong,
       );
     }
 
