@@ -89,43 +89,35 @@
       sticky="always"
       preventScroll={false}
     >
-      {#snippet child({ props })}
-        <div {...props}>
-          {#each items as entry (entry.id)}
-            {#if isContextMenuItem(entry)}
-              <ContextMenu.Item
-                class={[
-                  "context-menu__item",
-                  entry.danger && "context-menu__item--danger",
-                ]}
-                disabled={entry.disabled}
-                textValue={entry.label}
-                closeOnSelect={!entry.keepOpen}
-                onSelect={() => runItem(entry)}
-              >
-                {#snippet child({ props: itemProps })}
-                  <button
-                    type="button"
-                    {...itemProps}
-                    disabled={entry.disabled}
-                  >
-                    {#if entry.icon}
-                      <MdiIcon name={entry.icon} size={16} />
-                    {/if}
-                    {entry.label}
-                  </button>
-                {/snippet}
-              </ContextMenu.Item>
-            {:else}
-              <ContextMenu.Separator class="context-menu__sep">
-                {#snippet child({ props: sepProps })}
-                  <div {...sepProps}></div>
-                {/snippet}
-              </ContextMenu.Separator>
-            {/if}
-          {/each}
-        </div>
-      {/snippet}
+      {#each items as entry (entry.id)}
+        {#if isContextMenuItem(entry)}
+          <ContextMenu.Item
+            class={[
+              "context-menu__item",
+              entry.danger && "context-menu__item--danger",
+            ]}
+            disabled={entry.disabled}
+            textValue={entry.label}
+            closeOnSelect={!entry.keepOpen}
+            onSelect={() => runItem(entry)}
+          >
+            {#snippet child({ props: itemProps })}
+              <button type="button" {...itemProps} disabled={entry.disabled}>
+                {#if entry.icon}
+                  <MdiIcon name={entry.icon} size={16} />
+                {/if}
+                {entry.label}
+              </button>
+            {/snippet}
+          </ContextMenu.Item>
+        {:else}
+          <ContextMenu.Separator class="context-menu__sep">
+            {#snippet child({ props: sepProps })}
+              <div {...sepProps}></div>
+            {/snippet}
+          </ContextMenu.Separator>
+        {/if}
+      {/each}
     </ContextMenu.Content>
   </ContextMenu.Portal>
 </ContextMenu.Root>

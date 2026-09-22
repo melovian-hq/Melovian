@@ -46,6 +46,12 @@ describe("ContextMenu", () => {
     // Bits UI Portal renders the menu into document.body, not the mount target
     expect(document.body.textContent).toContain("Play now");
     expect(document.body.textContent).toContain("Add to queue");
+    const menu = document.querySelector("[role='menu']");
+    // The floating wrapper carries the computed position. If the content
+    // child snippet drops wrapperProps the menu parks off-screen instead.
+    expect(
+      menu?.parentElement?.hasAttribute("data-bits-floating-content-wrapper"),
+    ).toBe(true);
     const buttons = document.querySelectorAll("[role='menuitem']");
     expect(buttons).toHaveLength(2);
     (buttons[0] as HTMLButtonElement).click();
