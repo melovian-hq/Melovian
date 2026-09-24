@@ -173,7 +173,7 @@
           {/if}
           <button
             type="button"
-            class="now-playing-queue__remove"
+            class="now-playing-queue__remove now-playing-queue__remove--end"
             aria-label="Remove from queue"
             onclick={(event) => {
               event.stopPropagation();
@@ -222,7 +222,7 @@
 
   .now-playing-queue__item {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto auto;
     align-items: center;
     gap: var(--jb-space-2);
     padding: var(--jb-space-2);
@@ -253,6 +253,12 @@
     background: transparent;
     color: var(--jb-text-muted);
     cursor: pointer;
+  }
+
+  /* Radio rows omit the menu button, so pin the remove button to the last
+     column to keep it aligned across mixed queues. */
+  .now-playing-queue__remove--end {
+    grid-column: -2;
   }
 
   .now-playing-queue__art {

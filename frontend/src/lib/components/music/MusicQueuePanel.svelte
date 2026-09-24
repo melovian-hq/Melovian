@@ -446,7 +446,7 @@
 
   .queue-panel__item {
     display: grid;
-    grid-template-columns: auto 1fr auto auto;
+    grid-template-columns: auto 1fr auto auto auto;
     align-items: center;
     gap: var(--jb-space-2);
     padding: var(--jb-space-2);
