@@ -126,6 +126,14 @@ export function isSupersededPlaybackError(
   return message === LOAD_SUPERSEDED;
 }
 
+/**
+ * How long a track must stay current before now-playing pings, metadata
+ * enrichment, and cache writes fire. Each of those is one or more network
+ * requests, so a track skipped inside this window should generate none of
+ * them.
+ */
+const PLAYBACK_SETTLE_MS = 3_000;
+
 export function onPlaybackStarted(
   ctx: MusicPlaybackCoreContext,
   track: QueueTrack,
@@ -142,21 +150,28 @@ export function onPlaybackStarted(
   ctx.startProgressTracking();
   ctx.startSmoothProgress();
   ctx.syncMediaSession();
-  void ctx.recordNowPlaying(track);
-  if (options.incrementPlay) {
-    void saveProgress(ctx, 0, { incrementPlay: true });
-  }
-  void ctx.enrichCurrentTrack(track.id, token);
-  if (!isInternetRadioTrack(track)) {
-    void ctx.maybeCacheTrack(track);
+  if (!isInternetRadioTrack(track) && ctx.continuousMode !== "off") {
     // Top up continuous modes at track start rather than only at track
     // end, so the queue visibly grows ahead of playback and a stalled
     // refill retry never waits for the queue to run dry.
-    if (ctx.continuousMode !== "off") {
-      void ctx.maybeRefillContinuousQueue();
-    }
+    void ctx.maybeRefillContinuousQueue();
   }
-  if (ctx.lyricsOpen) void ctx.loadCurrentLyrics();
+  setTimeout(() => {
+    // The epoch misses teardowns that leave it untouched (clearQueue,
+    // disconnect), so confirm this track is still the current one too.
+    if (token !== ctx.playbackEpoch || ctx.currentTrack?.id !== track.id) {
+      return;
+    }
+    void ctx.recordNowPlaying(track);
+    if (options.incrementPlay) {
+      void saveProgress(ctx, 0, { incrementPlay: true });
+    }
+    void ctx.enrichCurrentTrack(track.id, token);
+    if (!isInternetRadioTrack(track)) {
+      void ctx.maybeCacheTrack(track);
+    }
+    if (ctx.lyricsOpen) void ctx.loadCurrentLyrics();
+  }, PLAYBACK_SETTLE_MS);
 }
 
 export async function playCurrentWork(

@@ -275,6 +275,7 @@ class MusicStore {
   private shuffleUpcoming: number[] = [];
   private shuffleHistory: number[] = [];
   private static readonly HOME_STALE_MS = 2 * 60 * 1000;
+  private static readonly PREFETCH_SETTLE_MS = 1500;
   private readonly contexts = new MusicContextBinder(
     this,
     MusicStore.HOME_STALE_MS,
@@ -339,6 +340,7 @@ class MusicStore {
     createBoundedSet<string>(64),
   );
   private progressTimer: ReturnType<typeof setInterval> | undefined;
+  private prefetchTimer: ReturnType<typeof setTimeout> | undefined;
   private lastSavedPosition = 0;
   private cleanupListeners: (() => void)[] = [];
   private resumeOnPlay = false;
@@ -1227,20 +1229,26 @@ class MusicStore {
 
   private prefetchAround() {
     if (!this.engine || this.queue.length <= 1 || this.queueIndex < 0) return;
-    const len = this.queue.length;
 
-    const prevIdx = (this.queueIndex - 1 + len) % len;
-    const prev = this.queue[prevIdx];
     const nextIdx = this.sequentialNextIndex();
     const next = nextIdx >= 0 ? this.queue[nextIdx] : undefined;
     if (next) {
       prefetchNowPlayingCoverArt(this.config, next);
     }
-    if (this.cacheSettings.enabled || this.shuffle || this.repeat === "one") {
-      this.engine.prefetch([]);
-    } else {
-      this.engine.prefetch(prev ? [this.playableStreamUrl(prev)] : []);
-    }
+    // Warming the previous track opens a real stream download. Debounce it
+    // so a burst of quick skips only fetches the track that survives.
+    if (this.prefetchTimer) clearTimeout(this.prefetchTimer);
+    this.prefetchTimer = setTimeout(() => {
+      this.prefetchTimer = undefined;
+      if (!this.engine || this.queue.length <= 1 || this.queueIndex < 0) return;
+      const len = this.queue.length;
+      const prev = this.queue[(this.queueIndex - 1 + len) % len];
+      if (this.cacheSettings.enabled || this.shuffle || this.repeat === "one") {
+        this.engine.prefetch([]);
+      } else {
+        this.engine.prefetch(prev ? [this.playableStreamUrl(prev)] : []);
+      }
+    }, MusicStore.PREFETCH_SETTLE_MS);
   }
 
   private maybePrepareNext() {
